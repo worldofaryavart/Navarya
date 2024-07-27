@@ -19,7 +19,14 @@ export async function POST(request: Request) {
       stream: false
     })
 
-    return NextResponse.json({ response: response.choices[0].message.content })
+    // Check if the response has the expected structure
+    if (response.choices && response.choices.length > 0 && response.choices[0].message?.content) {
+      return NextResponse.json({ response: response.choices[0].message.content })
+    } else {
+      // If the response doesn't have the expected structure, return an error
+      console.error('Unexpected API response structure:', response)
+      return NextResponse.json({ message: 'Unexpected API response' }, { status: 500 })
+    }
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json({ message: 'An error occurred' }, { status: 500 })
