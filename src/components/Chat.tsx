@@ -1,10 +1,13 @@
-"use client";
+"use client"
 
 import React, { useState, useRef, useEffect } from "react";
-import { FiSend, FiPlus, FiClock, FiUser } from "react-icons/fi";
+import { FiSend, FiPlus, FiClock, FiUser, FiCopy } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
-import { TypeAnimation } from 'react-type-animation';
-import { FaUser, FaRobot } from 'react-icons/fa';
+import { TypeAnimation } from "react-type-animation";
+import { FaUser, FaRobot } from "react-icons/fa";
+import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface Message {
   role: "user" | "assistant";
@@ -13,6 +16,7 @@ interface Message {
     mainPoints: string[];
     followUpQuestion?: string;
   };
+  codeBlock?: string;
 }
 
 const Chat: React.FC = () => {
@@ -46,10 +50,11 @@ const Chat: React.FC = () => {
       if (!response.ok) throw new Error("Failed to fetch");
 
       const data = await response.json();
-      const assistantMessage = {
-        role: "assistant" as const,
+      const assistantMessage: Message = {
+        role: "assistant",
         content: data.response,
         structuredContent: data.structuredContent,
+        codeBlock: data.codeBlock,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
@@ -70,8 +75,47 @@ const Chat: React.FC = () => {
     "What is the capital of France?",
     "Explain quantum computing",
     "How to make a chocolate cake?",
-    "Latest developments in AI"
+    "Latest developments in AI",
   ];
+
+  const copyToClipboard = (content: string) => {
+    navigator.clipboard
+      .writeText(content)
+      .then(() => {
+        alert("Copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy: ", err);
+      });
+  };
+
+  const renderMessageContent = (msg: Message) => {
+    return (
+      <ReactMarkdown
+        components={{
+          code({ inline, className, children, ...props }: any) {
+            const match = /language-(\w+)/.exec(className || "");
+            return !inline && match ? (
+              <SyntaxHighlighter
+                style={vscDarkPlus}
+                language={match[1]}
+                PreTag="div"
+                {...props}
+              >
+                {String(children).replace(/\n$/, "")}
+              </SyntaxHighlighter>
+            ) : (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
+          },
+        }}
+      >
+        {msg.content}
+      </ReactMarkdown>
+    );
+  };
 
   return (
     <div className="flex h-screen bg-gray-900 text-white">
@@ -107,36 +151,25 @@ const Chat: React.FC = () => {
               >
                 <div
                   className={`flex items-start space-x-2 max-w-[70%] p-3 rounded-lg ${
-                    msg.role === "user"
-                      ? "bg-blue-600"
-                      : "bg-gray-700"
+                    msg.role === "user" ? "bg-blue-600" : "bg-gray-700"
                   }`}
                 >
                   {msg.role === "user" ? (
                     <FaUser className="mt-1" />
                   ) : (
-                    <FaRobot className="mt-1" />
+                    <div className="flex flex-col items-center">
+                      <FaRobot className="mt-1" />
+                      <button
+                        onClick={() => copyToClipboard(msg.content)}
+                        className="mt-2 text-xs text-gray-400 hover:text-white"
+                        title="Copy response"
+                      >
+                        <FiCopy />
+                      </button>
+                    </div>
                   )}
-                  <div>
-                    {msg.role === "assistant" && msg.structuredContent ? (
-                      <>
-                        <ul className="list-disc list-inside">
-                          {msg.structuredContent.mainPoints.map((point, i) => (
-                            <li key={i}>{point}</li>
-                          ))}
-                        </ul>
-                        {msg.structuredContent.followUpQuestion && (
-                          <p className="mt-2 font-semibold">{msg.structuredContent.followUpQuestion}</p>
-                        )}
-                      </>
-                    ) : (
-                      <TypeAnimation
-                        sequence={[msg.content]}
-                        wrapper="div"
-                        cursor={false}
-                        speed={50}
-                      />
-                    )}
+                  <div className="prose prose-invert max-w-none">
+                    {renderMessageContent(msg)}
                   </div>
                 </div>
               </motion.div>
@@ -169,7 +202,10 @@ const Chat: React.FC = () => {
           )}
           <div ref={messagesEndRef} />
         </div>
-        <form onSubmit={handleSubmit} className="p-4 bg-gray-800 border-t border-gray-700">
+        <form
+          onSubmit={handleSubmit}
+          className="p-4 bg-gray-800 border-t border-gray-700"
+        >
           <div className="flex items-center space-x-2 max-w-4xl mx-auto">
             <input
               type="text"

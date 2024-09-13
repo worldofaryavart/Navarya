@@ -10,10 +10,10 @@ export async function POST(request: Request) {
     const response = await together.chat.completions.create({
       model: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
       messages: [
-        { role: "system", content: "You are a helpful assistant. Provide concise, structured responses with main points as a numbered list. End with a follow-up question if appropriate." },
+        { role: "system", content: "You are a helpful assistant specialized in coding. When asked for code, provide the full code directly without explanations. For non-code questions, provide concise, structured responses with main points as a numbered list. End with a follow-up question if appropriate." },
         { role: "user", content: message }
       ],
-      max_tokens: 512,
+      max_tokens: 1024,
       temperature: 0.7,
       top_p: 0.7,
       top_k: 50,
@@ -24,12 +24,9 @@ export async function POST(request: Request) {
 
     if (response.choices && response.choices.length > 0 && response.choices[0].message?.content) {
       const content = response.choices[0].message.content
-      const structuredContent = processResponse(content)
+      const processedContent = processResponse(content, message)
 
-      return NextResponse.json({
-        response: content,
-        structuredContent
-      })
+      return NextResponse.json(processedContent)
     } else {
       console.error('Unexpected API response structure:', response)
       return NextResponse.json({ message: 'Unexpected API response' }, { status: 500 })
@@ -40,7 +37,17 @@ export async function POST(request: Request) {
   }
 }
 
-function processResponse(content: string): { mainPoints: string[], followUpQuestion?: string } {
+function processResponse(content: string, userMessage: string): { response: string, structuredContent?: { mainPoints: string[], followUpQuestion?: string }, codeBlock?: string } {
+  if (userMessage.toLowerCase().includes('code') || content.includes('```')) {
+    const codeMatch = content.match(/```(?:\w+)?\n([\s\S]*?)```/)
+    if (codeMatch) {
+      return {
+        response: content,
+        codeBlock: codeMatch[1].trim()
+      }
+    }
+  }
+
   const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0)
   const mainPoints: string[] = []
   let followUpQuestion: string | undefined
@@ -54,5 +61,8 @@ function processResponse(content: string): { mainPoints: string[], followUpQuest
     }
   }
 
-  return { mainPoints, followUpQuestion }
+  return {
+    response: content,
+    structuredContent: { mainPoints, followUpQuestion }
+  }
 }
