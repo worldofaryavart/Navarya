@@ -82,7 +82,7 @@ const Chat: React.FC = () => {
     navigator.clipboard
       .writeText(content)
       .then(() => {
-        alert("Copied to clipboard!");
+        // alert("Copied to clipboard!");
       })
       .catch((err) => {
         console.error("Failed to copy: ", err);
