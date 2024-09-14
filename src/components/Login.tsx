@@ -62,7 +62,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         transition={{ duration: 0.5, delay: 0.2 }}
         className="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 max-w-md w-full mx-auto"
       >
-        <p className="text-xl mb-6 text-white font-semibold">Start your journey with Claude</p>
+        <p className="text-xl mb-6 text-white font-semibold">Start your journey with AaryaI</p>
         <button
           onClick={handleGoogleSignIn}
           className="bg-white text-gray-800 py-3 px-6 rounded-full w-full mb-6 flex items-center justify-center transition duration-300 hover:bg-gray-100 hover:shadow-lg"
