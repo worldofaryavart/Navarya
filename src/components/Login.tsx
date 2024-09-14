@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { signInWithGoogle, signInWithEmail } from '../utils/auth';
 import { useRouter } from 'next/navigation';
 import { FaGoogle } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type LoginProps = {
   onLogin: () => void;
@@ -12,7 +12,18 @@ type LoginProps = {
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const router = useRouter();
+
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage('');
+      }, 5000); // Error message will disappear after 5 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -20,7 +31,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       onLogin();
     } catch (error) {
       console.error('Google sign-in error:', error);
-      // Handle error (e.g., show error message to user)
+      setErrorMessage('An error occurred during Google sign-in. Please try again.');
     }
   };
 
@@ -32,7 +43,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       // router.push('/dashboard');
     } catch (error) {
       console.error('Email sign-in error:', error);
-      // Handle error (e.g., show error message to user)
+      setErrorMessage('Invalid email or password. Please try again.');
     }
   };
 
@@ -60,9 +71,24 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 max-w-md w-full mx-auto"
+        className="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 max-w-md w-full mx-auto relative"
       >
         <p className="text-xl mb-6 text-white font-semibold drop-shadow-md">Start your journey with AaryaI</p>
+        <AnimatePresence>
+          {errorMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="absolute top-0 left-0 right-0 z-10 px-4 py-2"
+            >
+              <p className="text-red-500 bg-red-100 border border-red-400 rounded p-2 text-sm">
+                {errorMessage}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <button
           onClick={handleGoogleSignIn}
           className="bg-white text-gray-800 py-3 px-6 rounded-full w-full mb-6 flex items-center justify-center transition duration-300 hover:bg-gray-100 hover:shadow-lg"
