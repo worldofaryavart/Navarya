@@ -3,28 +3,27 @@
 import { useState, useEffect } from 'react'
 import Chat from '../components/Chat'
 import Login from '../components/Login'
+import { checkAuthState } from '@/utils/auth'
+
 
 export default function Home() {
-  const [userExists, setUserExists] = useState<boolean | null>(null)
+  const [userExists, setUserExists] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
-    // Check if user exists
-    const checkUserExists = async () => {
-      try {
-        // Replace this with your actual API call to check if the user exists
-        const response = await fetch('/api/check-user')
-        const data = await response.json()
-        setUserExists(data.exists)
-      } catch (error) {
-        console.error('Error checking user:', error)
-        setUserExists(false)
-      }
-    }
-    checkUserExists()
-  }, [])
+    const unsubscribe = checkAuthState((user) => {
+      setUserExists(!!user)
+      setLoading(false)
+    })
 
-  if (userExists === null) {
-    // Loading state while checking user existence
+    return () => unsubscribe()
+  },[])
+
+  const handleLogin = () => {
+    setUserExists(true)
+  }
+
+  if (loading) {
     return <div>Loading...</div>
   }
 
@@ -33,7 +32,7 @@ export default function Home() {
       {userExists ? (
         <Chat />
       ) : (
-        <Login />
+        <Login onLogin={handleLogin} />
       )}
     </main>
   )
