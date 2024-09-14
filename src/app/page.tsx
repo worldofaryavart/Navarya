@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { checkAuthState } from '@/utils/auth'
-import Login from '@/components/Login'
 import dynamic from 'next/dynamic'
+import { checkAuthState } from '@/utils/auth'
 
-const Chat = dynamic(() => import ('@/components/Chat'), {ssr:false})
-
+const Login = dynamic(() => import('../components/Login'), { ssr: false })
+const Chat = dynamic(() => import('../components/Chat'), { ssr: false })
 
 export default function Home() {
   const [userExists, setUserExists] = useState<boolean>(false)
@@ -19,14 +18,10 @@ export default function Home() {
     })
 
     return () => unsubscribe()
-  },[])
+  }, [])
 
   const handleLogin = () => {
     setUserExists(true)
-  }
-
-  if (typeof window == 'undefined'){
-    return null;
   }
 
   if (loading) {
