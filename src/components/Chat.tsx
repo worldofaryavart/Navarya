@@ -70,7 +70,6 @@ const Chat: React.FC = () => {
       setIsLoading(false);
     }
   };
-
   const suggestionPrompts = [
     "What is the capital of France?",
     "Explain quantum computing",
@@ -116,7 +115,6 @@ const Chat: React.FC = () => {
       </ReactMarkdown>
     );
   };
-
   return (
     <div className="flex h-screen bg-gray-900 text-white">
       <div className="w-64 bg-gray-800 p-4">
