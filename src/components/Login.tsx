@@ -42,10 +42,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="grid gap-6 mb-8"
+        className="grid mb-8"
       >
         <Image
-          src="/aaryaai.webp"
+          src="/aaryai.png"
           alt="Aarya Logo"
           width={80}
           height={80}
