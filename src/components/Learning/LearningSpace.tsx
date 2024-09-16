@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { FiSend, FiPlus, FiClock, FiUser, FiCopy, FiMenu, FiX, FiChevronLeft } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypeAnimation } from "react-type-animation";
-import { FaUser, FaRobot } from "react-icons/fa";
+import { FaUser, FaRobot, FaGlobeEurope, FaAtom, FaBirthdayCake, FaMicrochip } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -86,10 +86,10 @@ const LearningSpace: React.FC = () => {
   };
 
   const suggestionPrompts = [
-    "What is the capital of France?",
-    "Explain quantum computing",
-    "How to make a chocolate cake?",
-    "Latest developments in AI",
+    { text: "Describe France Revolution", icon: <FaGlobeEurope /> },
+    { text: "Explain quantum computing", icon: <FaAtom /> },
+    { text: "How to make a chocolate cake?", icon: <FaBirthdayCake /> },
+    { text: "Latest developments in AI", icon: <FaMicrochip /> },
   ];
 
   const copyToClipboard = (content: string) => {
@@ -140,7 +140,7 @@ const LearningSpace: React.FC = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
         <header className="bg-gray-800 shadow-lg p-4 flex justify-between items-center">
           {!isSidebarOpen && (
             <button 
@@ -207,18 +207,24 @@ const LearningSpace: React.FC = () => {
                 </motion.div>
               )}
               {messages.length === 0 && !input && (
-                <div className="flex flex-wrap justify-center gap-4 mt-8">
-                  {suggestionPrompts.map((prompt, index) => (
-                    <motion.button
-                      key={index}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm shadow-md"
-                      onClick={() => setInput(prompt)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {prompt}
-                    </motion.button>
-                  ))}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl transition-all duration-300">
+                  <div className="bg-gray-800 bg-opacity-70 p-8 rounded-2xl border-2 border-blue-500 shadow-2xl backdrop-blur-sm">
+                    <h2 className="text-2xl font-bold mb-6 text-center text-blue-400 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">Learn with AaryaI</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 justify-center">
+                      {suggestionPrompts.map((prompt, index) => (
+                        <motion.button
+                          key={index}
+                          className="flex items-center space-x-3 bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm shadow-lg w-full group"
+                          onClick={() => setInput(prompt.text)}
+                          whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(66, 153, 225, 0.5)" }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <span className="text-2xl group-hover:scale-110 transition-transform duration-300">{prompt.icon}</span>
+                          <span className="font-medium">{prompt.text}</span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
