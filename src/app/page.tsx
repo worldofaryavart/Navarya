@@ -3,25 +3,31 @@
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { checkAuthState } from '@/utils/auth'
+import { useRouter } from 'next/navigation'
 
 const Login = dynamic(() => import('../components/Login'), { ssr: false })
-const Chat = dynamic(() => import('../components/Chat'), { ssr: false })
+const Learning = dynamic(() => import('@/components/Learning/Learning'), { ssr: false })
 
 export default function Home() {
   const [userExists, setUserExists] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
+  const router = useRouter()
 
   useEffect(() => {
     const unsubscribe = checkAuthState((user) => {
       setUserExists(!!user)
       setLoading(false)
+      if (user) {
+        router.push('/learning')
+      }
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [router])
 
   const handleLogin = () => {
     setUserExists(true)
+    router.push('/learning')
   }
 
   if (loading) {
@@ -39,7 +45,7 @@ export default function Home() {
   return (
     <main className="flex flex-col h-screen bg-gray-900 text-white">
       {userExists ? (
-        <Chat />
+        <Learning />
       ) : (
         <Login onLogin={handleLogin} />
       )}
