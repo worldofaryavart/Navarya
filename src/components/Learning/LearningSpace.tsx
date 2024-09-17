@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { FiSend, FiPlus, FiClock, FiUser, FiCopy, FiMenu, FiX, FiChevronLeft } from "react-icons/fi";
+import { FiSend, FiPlus, FiClock, FiUser, FiCopy, FiMenu, FiX, FiChevronLeft, FiImage, FiVolume2 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypeAnimation } from "react-type-animation";
 import { FaUser, FaRobot, FaGlobeEurope, FaAtom, FaBirthdayCake, FaMicrochip } from "react-icons/fa";
@@ -10,6 +10,7 @@ import Sidebar from "@/components/Sidebar";
 import Profile from "@/components/Profile";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Image from 'next/image';
+import axios from 'axios';
 
 const auth = getAuth();
 
@@ -21,6 +22,8 @@ interface Message {
     followUpQuestion?: string;
   };
   codeBlock?: string;
+  imageUrl?: string;
+  audioUrl?: string;
 }
 
 const LearningSpace: React.FC = () => {
@@ -31,6 +34,8 @@ const LearningSpace: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
   const [user, setUser] = useState(auth.currentUser);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -55,24 +60,59 @@ const LearningSpace: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      // Start all API calls in parallel
+      const chatPromise = fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
+      }).then(res => res.json());
+
+      const imagePromise = axios.post('/api/image', { 
+        prompt: `An educational illustration representing ${input}, in the style of 3Blue1Brown` 
       });
 
-      if (!response.ok) throw new Error("Failed to fetch");
-
-      const data = await response.json();
+      // Wait for chat response first
+      const chatData = await chatPromise;
       const assistantMessage: Message = {
         role: "assistant",
-        content: data.response,
-        structuredContent: data.structuredContent,
-        codeBlock: data.codeBlock,
+        content: chatData.content,
+        structuredContent: chatData.structuredContent,
+        codeBlock: chatData.codeBlock,
       };
       setMessages((prev) => [...prev, assistantMessage]);
+      setIsLoading(false);
+
+      // Then handle image and audio
+      try {
+        setIsGeneratingImage(true);
+        const imageResponse = await imagePromise;
+        const imageUrl = imageResponse.data[0];
+        setMessages((prev) => prev.map((msg, index) => 
+          index === prev.length - 1 ? { ...msg, imageUrl: imageUrl } : msg
+        ));
+      } catch (imageError) {
+        console.error("Image generation error:", imageError);
+      } finally {
+        setIsGeneratingImage(false);
+      }
+
+      try {
+        setIsGeneratingAudio(true);
+        const audioResponse = await axios.post('/api/voice', { 
+          text: assistantMessage.content 
+        }, { responseType: 'blob' });
+        const audioUrl = URL.createObjectURL(audioResponse.data);
+        setMessages((prev) => prev.map((msg, index) => 
+          index === prev.length - 1 ? { ...msg, audioUrl: audioUrl } : msg
+        ));
+      } catch (audioError) {
+        console.error("Audio generation error:", audioError);
+      } finally {
+        setIsGeneratingAudio(false);
+      }
+
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Main error:", error);
       setMessages((prev) => [
         ...prev,
         {
@@ -82,6 +122,8 @@ const LearningSpace: React.FC = () => {
       ]);
     } finally {
       setIsLoading(false);
+      setIsGeneratingImage(false);
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -105,29 +147,50 @@ const LearningSpace: React.FC = () => {
 
   const renderMessageContent = (msg: Message) => {
     return (
-      <ReactMarkdown
-        components={{
-          code({ inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || "");
-            return !inline && match ? (
-              <SyntaxHighlighter
-                style={vscDarkPlus}
-                language={match[1]}
-                PreTag="div"
-                {...props}
-              >
-                {String(children).replace(/\n$/, "")}
-              </SyntaxHighlighter>
-            ) : (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            );
-          },
-        }}
-      >
-        {msg.content}
-      </ReactMarkdown>
+      <>
+        <ReactMarkdown
+          components={{
+            code({ inline, className, children, ...props }: any) {
+              const match = /language-(\w+)/.exec(className || "");
+              return !inline && match ? (
+                <SyntaxHighlighter
+                  style={vscDarkPlus}
+                  language={match[1]}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, "")}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            },
+          }}
+        >
+          {msg.content}
+        </ReactMarkdown>
+        {msg.imageUrl && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">Generated Image:</h3>
+            <Image 
+              src={msg.imageUrl} 
+              alt="Generated visual aid" 
+              width={500} 
+              height={300} 
+              layout="responsive"
+              className="rounded-lg shadow-md" 
+            />
+          </div>
+        )}
+        {msg.audioUrl && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">Audio Explanation:</h3>
+            <audio controls src={msg.audioUrl} className="w-full" />
+          </div>
+        )}
+      </>
     );
   };
 
@@ -194,7 +257,7 @@ const LearningSpace: React.FC = () => {
                   </motion.div>
                 ))}
               </AnimatePresence>
-              {isLoading && (
+              {(isLoading || isGeneratingImage || isGeneratingAudio) && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -202,7 +265,9 @@ const LearningSpace: React.FC = () => {
                 >
                   <div className="flex items-center space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg bg-gray-700 shadow-md">
                     <FaRobot className="mt-1 hidden sm:block" />
-                    <div className="animate-pulse">Thinking...</div>
+                    <div className="animate-pulse">
+                      {isLoading ? "Thinking..." : isGeneratingImage ? "Generating image..." : "Generating audio..."}
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -240,14 +305,14 @@ const LearningSpace: React.FC = () => {
                   onChange={(e) => setInput(e.target.value)}
                   className="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base shadow-inner"
                   placeholder="Type your message..."
-                  disabled={isLoading}
+                  disabled={isLoading || isGeneratingImage || isGeneratingAudio}
                 />
                 <motion.button
                   type="submit"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-300 shadow-md"
-                  disabled={isLoading || !input.trim()}
+                  disabled={isLoading || isGeneratingImage || isGeneratingAudio || !input.trim()}
                 >
                   <FiSend />
                 </motion.button>
