@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const { message } = await request.json()
 
     const response = await together.chat.completions.create({
-      model: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+      model: "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
       messages: [
         { role: "system", content: "You are a helpful assistant specialized in coding. When asked for code, provide the full code directly without explanations. For non-code questions, provide concise, structured responses with main points as a numbered list. End with a follow-up question if appropriate." },
         { role: "user", content: message }
