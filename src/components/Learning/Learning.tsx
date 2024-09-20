@@ -1,6 +1,6 @@
 import React from "react";
-import LearningSpace from "./LearningSpace";
 import LearningMode from "./LearningMode";
+import LearningSpace from "./LearningSpace/LearningSpace";
 
 const Learning: React.FC = () => {
   return (

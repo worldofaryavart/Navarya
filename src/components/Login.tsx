@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { signInWithGoogle, signInWithEmail } from '../utils/auth';
-import { useRouter } from 'next/navigation';
 import { FaGoogle } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -13,7 +12,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const router = useRouter();
 
   useEffect(() => {
     if (errorMessage) {
