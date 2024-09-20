@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FiSend, FiPlus, FiClock, FiUser, FiCopy, FiMenu, FiX, FiChevronLeft } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypeAnimation } from "react-type-animation";
@@ -10,6 +10,7 @@ import Sidebar from "@/components/Sidebar";
 import Profile from "@/components/Profile";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Image from 'next/image';
+import { v4 as uuid4 } from 'uuid';
 
 const auth = getAuth();
 
@@ -23,6 +24,13 @@ interface Message {
   codeBlock?: string;
 }
 
+interface Conversation {
+  id: string;
+  title: string;
+  messages: Message[]; // Change this line
+  createdAt: number;
+}
+
 const LearningSpace: React.FC = () => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -31,6 +39,8 @@ const LearningSpace: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
   const [user, setUser] = useState(auth.currentUser);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [ currentConversationId, setCurrentConversationId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -45,12 +55,42 @@ const LearningSpace: React.FC = () => {
 
   useEffect(scrollToBottom, [messages]);
 
+  const createNewConversation = useCallback(() => {
+    const newConversation: Conversation = {
+      id: uuid4(), 
+      title:`New Conversation ${conversations.length + 1}`, 
+      messages: [],
+      createdAt: Date.now(), // Add this line
+    };
+    setConversations(prev => [...prev, newConversation]);
+    setCurrentConversationId(newConversation.id);
+  }, [conversations.length]);
+
+  useEffect(() => {
+    if (conversations.length === 0) {
+      createNewConversation();
+    }
+  }, [conversations, createNewConversation]);
+
+  const switchConversation = (id: string) => {
+    setCurrentConversationId(id);
+  };
+
+  const getCurrentConversation = () => {
+    return conversations.find(conv => conv.id === currentConversationId) || { id: '', title: '', messages: [] as Message[] };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage = { role: "user" as const, content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessage: Message = { role: "user", content: input };
+    const currentConversation = getCurrentConversation();
+    const updatedMessages = [...currentConversation.messages, userMessage];
+    
+    setConversations(conversations.map(conv => 
+      conv.id === currentConversation.id ? {...conv, messages: updatedMessages} : conv
+    ));
     setInput("");
     setIsLoading(true);
 
@@ -81,7 +121,10 @@ const LearningSpace: React.FC = () => {
         structuredContent: data.structuredContent,
         codeBlock: data.codeBlock,
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      
+      setConversations(conversations.map(conv => 
+        conv.id === currentConversation.id ? {...conv, messages: [...updatedMessages, assistantMessage]} : conv
+      ));
     } catch (error) {
       console.error("Error:", error);
       setMessages((prev) => [
@@ -148,6 +191,10 @@ const LearningSpace: React.FC = () => {
         isSidebarOpen={isSidebarOpen} 
         setIsSidebarOpen={setIsSidebarOpen}
         setCurrentView={setCurrentView}
+        conversations={conversations}
+        switchConversation={switchConversation}
+        createNewConversation={createNewConversation}
+        currentConversationId={currentConversationId}
       />
 
       {/* Main Content */}
@@ -171,7 +218,7 @@ const LearningSpace: React.FC = () => {
           <>
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
               <AnimatePresence>
-                {messages.map((msg, index) => (
+                {getCurrentConversation().messages.map((msg, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
@@ -217,7 +264,7 @@ const LearningSpace: React.FC = () => {
                   </div>
                 </motion.div>
               )}
-              {messages.length === 0 && !input && (
+              {getCurrentConversation().messages.length === 0 && !input && (
                 <div className="flex flex-wrap justify-center gap-4 mt-8">
                   {suggestionPrompts.map((prompt, index) => (
                     <motion.button

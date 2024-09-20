@@ -1,21 +1,40 @@
 import React from 'react';
-import { FiPlus, FiChevronLeft, FiUser, FiLogOut, FiInfo, FiEye, FiBook, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiChevronLeft, FiUser, FiLogOut, FiInfo, FiEye, FiBook, FiSearch, FiMessageSquare } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/utils/firebase';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 
+interface Conversation {
+  id: string;
+  title: string;
+  messages: { role: string; content: string }[];
+  createdAt: number;
+}
+
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
   setCurrentView: (view: 'chat' | 'profile' | 'about' | 'vision') => void;
+  conversations: Conversation[];
+  switchConversation: (id: string) => void;
+  createNewConversation: () => void;
+  currentConversationId: string | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen, setCurrentView }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  isSidebarOpen,
+  setIsSidebarOpen,
+  setCurrentView,
+  conversations,
+  switchConversation,
+  createNewConversation,
+  currentConversationId,
+}) => {
   const [user, setUser] = useState(auth?.currentUser || null);
   const router = useRouter();
   const pathname = usePathname();
@@ -44,6 +63,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen, setC
 
   const toggleMode = () => {
     router.push(isLearningMode ? '/research' : '/learning');
+  };
+
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => b.createdAt - a.createdAt);
+  }, [conversations]);
+
+  const getConversationTitle = (conversation: Conversation) => {
+    const firstUserMessage = conversation.messages.find(msg => msg.role === 'user');
+    if (firstUserMessage) {
+      const words = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
+      return words.length < firstUserMessage.content.length ? `${words}...` : words;
+    }
+    return 'New Conversation';
   };
 
   return (
@@ -92,13 +124,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, setIsSidebarOpen, setC
         </div>
         <button 
           className="w-full mb-4 p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-          onClick={() => setCurrentView('chat')}
+          onClick={() => {
+            createNewConversation();
+            setCurrentView('chat');
+          }}
         >
-          <FiPlus className="mr-2" /> {isLearningMode ? 'New Topic' : 'New Project'}
+          <FiPlus className="mr-2" /> New Conversation
         </button>
-        <div className="mb-4 flex-grow">
-          <h3 className="text-lg font-semibold mb-2">History</h3>
-          {/* Add history items here */}
+        <div className="mb-4 flex-grow overflow-y-auto">
+          <h3 className="text-lg font-semibold mb-2">Conversations</h3>
+          {sortedConversations.map((conversation) => (
+            <button
+              key={conversation.id}
+              className={`w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors mb-2 ${
+                conversation.id === currentConversationId ? 'bg-gray-700' : ''
+              }`}
+              onClick={() => {
+                switchConversation(conversation.id);
+                setCurrentView('chat');
+              }}
+            >
+              <FiMessageSquare className="mr-2" /> {getConversationTitle(conversation)}
+            </button>
+          ))}
         </div>
         <div className="mb-4">
           <h3 className="text-lg font-semibold mb-2">Know Us</h3>
