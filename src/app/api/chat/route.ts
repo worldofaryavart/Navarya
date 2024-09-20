@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         const llamaResponse = await together.chat.completions.create({
           model: "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
           messages: [
-            { role: "system", content: "You are an educational assistant creating scripts in the style of 3Blue1Brown videos." },
+            { role: "system", content: "You are an educational assistant" },
             { role: "user", content: message }
           ],
           max_tokens: 1024,

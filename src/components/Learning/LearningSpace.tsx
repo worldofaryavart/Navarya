@@ -67,10 +67,6 @@ const LearningSpace: React.FC = () => {
         body: JSON.stringify({ message: input }),
       }).then(res => res.json());
 
-      const imagePromise = axios.post('/api/image', { 
-        prompt: `An educational illustration representing ${input}, in the style of 3Blue1Brown` 
-      });
-
       // Wait for chat response first
       const chatData = await chatPromise;
       const assistantMessage: Message = {
@@ -81,35 +77,6 @@ const LearningSpace: React.FC = () => {
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setIsLoading(false);
-
-      // Then handle image and audio
-      try {
-        setIsGeneratingImage(true);
-        const imageResponse = await imagePromise;
-        const imageUrl = imageResponse.data[0];
-        setMessages((prev) => prev.map((msg, index) => 
-          index === prev.length - 1 ? { ...msg, imageUrl: imageUrl } : msg
-        ));
-      } catch (imageError) {
-        console.error("Image generation error:", imageError);
-      } finally {
-        setIsGeneratingImage(false);
-      }
-
-      try {
-        setIsGeneratingAudio(true);
-        const audioResponse = await axios.post('/api/voice', { 
-          text: assistantMessage.content 
-        }, { responseType: 'blob' });
-        const audioUrl = URL.createObjectURL(audioResponse.data);
-        setMessages((prev) => prev.map((msg, index) => 
-          index === prev.length - 1 ? { ...msg, audioUrl: audioUrl } : msg
-        ));
-      } catch (audioError) {
-        console.error("Audio generation error:", audioError);
-      } finally {
-        setIsGeneratingAudio(false);
-      }
 
     } catch (error) {
       console.error("Main error:", error);
@@ -171,25 +138,6 @@ const LearningSpace: React.FC = () => {
         >
           {msg.content}
         </ReactMarkdown>
-        {msg.imageUrl && (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Generated Image:</h3>
-            <Image 
-              src={msg.imageUrl} 
-              alt="Generated visual aid" 
-              width={500} 
-              height={300} 
-              layout="responsive"
-              className="rounded-lg shadow-md" 
-            />
-          </div>
-        )}
-        {msg.audioUrl && (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Audio Explanation:</h3>
-            <audio controls src={msg.audioUrl} className="w-full" />
-          </div>
-        )}
       </>
     );
   };
