@@ -1,13 +1,23 @@
-import React from 'react';
-import { FiPlus, FiChevronLeft, FiUser, FiLogOut, FiInfo, FiEye, FiBook, FiSearch, FiMessageSquare } from 'react-icons/fi';
-import { motion } from 'framer-motion';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/utils/firebase';
-import { useEffect, useState, useMemo } from 'react';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import React from "react";
+import {
+  FiPlus,
+  FiChevronLeft,
+  FiUser,
+  FiLogOut,
+  FiInfo,
+  FiEye,
+  FiBook,
+  FiSearch,
+  FiMessageSquare,
+} from "react-icons/fi";
+import { motion } from "framer-motion";
+import { signOut, User } from "firebase/auth";
+import { auth } from "@/utils/firebase";
+import { useEffect, useState, useMemo } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 
 interface Conversation {
   id: string;
@@ -19,7 +29,7 @@ interface Conversation {
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
-  setCurrentView: (view: 'chat' | 'profile' | 'about' | 'vision') => void;
+  setCurrentView: (view: "chat" | "profile" | "about" | "vision") => void;
   conversations: Conversation[];
   switchConversation: (id: string) => void;
   createNewConversation: () => void;
@@ -35,10 +45,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   createNewConversation,
   currentConversationId,
 }) => {
-  const [user, setUser] = useState(auth?.currentUser || null);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const isLearningMode = pathname === '/learning';
+  const isLearningMode = pathname === "/learning";
 
   useEffect(() => {
     if (auth) {
@@ -53,16 +63,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     try {
       if (auth) {
         await signOut(auth);
+        router.push('/'); // Redirect to home page after logout
       } else {
-        console.error('Auth is not initialized');
+        console.error("Auth is not initialized");
       }
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
     }
   };
 
   const toggleMode = () => {
-    router.push(isLearningMode ? '/research' : '/learning');
+    router.push(isLearningMode ? "/research" : "/learning");
   };
 
   const sortedConversations = useMemo(() => {
@@ -70,19 +81,23 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, [conversations]);
 
   const getConversationTitle = (conversation: Conversation) => {
-    const firstUserMessage = conversation.messages.find(msg => msg.role === 'user');
+    const firstUserMessage = conversation.messages.find(
+      (msg) => msg.role === "user"
+    );
     if (firstUserMessage) {
-      const words = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-      return words.length < firstUserMessage.content.length ? `${words}...` : words;
+      const words = firstUserMessage.content.split(" ").slice(0, 5).join(" ");
+      return words.length < firstUserMessage.content.length
+        ? `${words}...`
+        : words;
     }
-    return 'New Conversation';
+    return "New Conversation";
   };
 
   return (
     <motion.div
       initial={false}
-      animate={{ width: isSidebarOpen ? '16rem' : '0rem' }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      animate={{ width: isSidebarOpen ? "16rem" : "0rem" }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="fixed md:relative inset-y-0 left-0 bg-gray-800 overflow-hidden z-20 shadow-lg"
     >
       <div className="w-64 h-full p-4 flex flex-col">
@@ -101,13 +116,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="w-full h-12 bg-gray-700 rounded-full p-1 flex items-center">
             <motion.div
               className="w-1/2 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full absolute"
-              animate={{ x: isLearningMode ? 0 : '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              animate={{ x: isLearningMode ? 0 : "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
             />
             <button
               onClick={toggleMode}
               className={`w-1/2 h-10 rounded-full z-10 font-bold text-sm transition-colors ${
-                isLearningMode ? 'text-white' : 'text-gray-300'
+                isLearningMode ? "text-white" : "text-gray-300"
               }`}
             >
               Learning
@@ -115,18 +130,18 @@ const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={toggleMode}
               className={`w-1/2 h-10 rounded-full z-10 font-bold text-sm transition-colors ${
-                !isLearningMode ? 'text-white' : 'text-gray-300'
+                !isLearningMode ? "text-white" : "text-gray-300"
               }`}
             >
               Research
             </button>
           </div>
         </div>
-        <button 
+        <button
           className="w-full mb-4 p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
           onClick={() => {
             createNewConversation();
-            setCurrentView('chat');
+            setCurrentView("chat");
           }}
         >
           <FiPlus className="mr-2" /> New Conversation
@@ -137,21 +152,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={conversation.id}
               className={`w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors mb-2 ${
-                conversation.id === currentConversationId ? 'bg-gray-700' : ''
+                conversation.id === currentConversationId ? "bg-gray-700" : ""
               }`}
               onClick={() => {
                 switchConversation(conversation.id);
-                setCurrentView('chat');
+                setCurrentView("chat");
               }}
             >
-              <FiMessageSquare className="mr-2" /> {getConversationTitle(conversation)}
+              <FiMessageSquare className="mr-2" />{" "}
+              {getConversationTitle(conversation)}
             </button>
           ))}
         </div>
         <div className="mb-4">
           <h3 className="text-lg font-semibold mb-2">Know Us</h3>
           <Link href="/about" passHref>
-            <button 
+            <button
               className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors mb-2"
               onClick={() => setIsSidebarOpen(false)}
             >
@@ -159,7 +175,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </Link>
           <Link href="/vision" passHref>
-            <button 
+            <button
               className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors"
               onClick={() => setIsSidebarOpen(false)}
             >
@@ -170,20 +186,20 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="mt-auto">
           <div className="border-t border-gray-600 my-2"></div>
           <h3 className="text-lg font-semibold mb-2">Profile</h3>
-          <button 
+          <button
             className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors mb-2"
-            onClick={() => setCurrentView('profile')}
+            onClick={() => setCurrentView("profile")}
           >
-            <Image 
-              src={user?.photoURL || '/default-profile.png'} 
-              alt="Profile" 
+            <Image
+              src={user?.photoURL || "/default-profile.png"}
+              alt="Profile"
               width={24}
               height={24}
-              className="rounded-full mr-2" 
+              className="rounded-full mr-2"
             />
-            {user?.displayName || 'View Profile'}
+            {user?.displayName || "View Profile"}
           </button>
-          <button 
+          <button
             className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors text-red-400"
             onClick={handleLogout}
           >

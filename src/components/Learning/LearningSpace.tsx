@@ -11,8 +11,9 @@ import Profile from "@/components/Profile";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Image from 'next/image';
 import { v4 as uuid4 } from 'uuid';
-
-const auth = getAuth();
+import { db, auth } from '@/utils/firebase';
+import { doc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { useRouter } from 'next/router';
 
 interface Message {
   role: "user" | "assistant";
@@ -27,24 +28,60 @@ interface Message {
 interface Conversation {
   id: string;
   title: string;
-  messages: Message[]; // Change this line
+  messages: Message[];
   createdAt: number;
 }
 
 const LearningSpace: React.FC = () => {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!auth?.currentUser) {
+      router.push('/');
+    }
+  }, [router]);
+
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
-  const [user, setUser] = useState(auth.currentUser);
+  const [user, setUser] = useState(auth?.currentUser || null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [ currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+
+  const fetchConversations = async () => {
+    if (user && db) {
+      try {
+        const conversationsRef = collection(db, 'users', user.uid, 'conversations');
+        const conversationsSnapshot = await getDocs(conversationsRef);
+        const fetchedConversations = conversationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Conversation[];
+        setConversations(fetchedConversations);
+        if (fetchedConversations.length > 0) {
+          setCurrentConversationId(fetchedConversations[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching conversations:", error);
+      }
+    }
+  };
 
   useEffect(() => {
+    if (!auth) {
+      console.error("Auth is not initialized");
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        fetchConversations();
+      } else {
+        setConversations([]);
+        setCurrentConversationId(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -53,14 +90,14 @@ const LearningSpace: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(scrollToBottom, [messages]);
+  useEffect(scrollToBottom, [conversations]);
 
   const createNewConversation = useCallback(() => {
     const newConversation: Conversation = {
       id: uuid4(), 
       title:`New Conversation ${conversations.length + 1}`, 
       messages: [],
-      createdAt: Date.now(), // Add this line
+      createdAt: Date.now(),
     };
     setConversations(prev => [...prev, newConversation]);
     setCurrentConversationId(newConversation.id);
@@ -76,64 +113,97 @@ const LearningSpace: React.FC = () => {
     setCurrentConversationId(id);
   };
 
-  const getCurrentConversation = () => {
-    return conversations.find(conv => conv.id === currentConversationId) || { id: '', title: '', messages: [] as Message[] };
+  const getCurrentConversation = (): Conversation => {
+    return conversations.find(conv => conv.id === currentConversationId) || 
+      { id: '', title: '', messages: [], createdAt: Date.now() };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || !user || !db) return;
 
-    const userMessage: Message = { role: "user", content: input };
     const currentConversation = getCurrentConversation();
-    const updatedMessages = [...currentConversation.messages, userMessage];
-    
-    setConversations(conversations.map(conv => 
-      conv.id === currentConversation.id ? {...conv, messages: updatedMessages} : conv
-    ));
-    setInput("");
-    setIsLoading(true);
+    const newMessage: Message = { role: "user", content: input };
 
     try {
-      console.log("Sending request to API...");
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
-      });
-
-      console.log("API response status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("API response data:", data);
-
-      if (!data.response) {
-        throw new Error("No response content in API response");
-      }
-
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.response,
-        structuredContent: data.structuredContent,
-        codeBlock: data.codeBlock,
-      };
+      const updatedMessages = [...currentConversation.messages, newMessage];
+      const conversationRef = doc(db, 'users', user.uid, 'conversations', currentConversation.id);
       
-      setConversations(conversations.map(conv => 
-        conv.id === currentConversation.id ? {...conv, messages: [...updatedMessages, assistantMessage]} : conv
-      ));
-    } catch (error) {
-      console.error("Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
+      const cleanConversation: Conversation = {
+        ...currentConversation,
+        messages: updatedMessages,
+        createdAt: currentConversation.createdAt || Date.now(),
+      };
+
+      await setDoc(conversationRef, cleanConversation);
+      
+      setConversations(prevConversations => 
+        prevConversations.map(conv => 
+          conv.id === currentConversation.id ? cleanConversation : conv
+        )
+      );
+
+      setInput("");
+      setIsLoading(true);
+
+      try {
+        console.log("Sending request to API...");
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: input }),
+        });
+  
+        console.log("API response status:", response.status);
+  
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const data = await response.json();
+        console.log("API response data:", data);
+  
+        if (!data.response) {
+          throw new Error("No response content in API response");
+        }
+  
+        const assistantMessage: Message = {
           role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
-        },
-      ]);
+          content: data.response,
+          structuredContent: data.structuredContent,
+          codeBlock: data.codeBlock,
+        };
+        
+        const updatedConversation: Conversation = {
+          ...currentConversation,
+          messages: [...updatedMessages, assistantMessage],
+          createdAt: currentConversation.createdAt,
+        };
+  
+        setConversations(prevConversations => prevConversations.map(conv => 
+          conv.id === currentConversation.id ? updatedConversation : conv
+        ));
+      } catch (error) {
+        console.error("Error:", error);
+        setConversations(prevConversations => prevConversations.map(conv => 
+          conv.id === currentConversation.id ? {
+            ...conv, 
+            messages: [...conv.messages, {
+              role: "assistant",
+              content: "Sorry, I encountered an error. Please try again.",
+            }]
+          } : conv
+        ));
+      } finally {
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Firestore error:", error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+      // Handle the error appropriately
     } finally {
       setIsLoading(false);
     }

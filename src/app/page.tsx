@@ -17,18 +17,13 @@ export default function Home() {
     const unsubscribe = checkAuthState((user) => {
       setUserExists(!!user)
       setLoading(false)
-      if (user) {
-        router.push('/learning')
+      if (!user) {
+        router.push('/')
       }
     })
 
     return () => unsubscribe()
   }, [router])
-
-  const handleLogin = () => {
-    setUserExists(true)
-    router.push('/learning')
-  }
 
   if (loading) {
     return (
@@ -42,13 +37,13 @@ export default function Home() {
     );
   }
 
-  return (
-    <main className="flex flex-col h-screen bg-gray-900 text-white">
-      {userExists ? (
-        <Learning />
-      ) : (
-        <Login onLogin={handleLogin} />
-      )}
-    </main>
-  )
+  if (!userExists) {
+    return (
+      <main className="flex flex-col h-screen bg-gray-900 text-white">
+        <Login onLogin={() => setUserExists(true)} />
+      </main>
+    )
+  }
+
+  return <Learning />
 }
