@@ -11,25 +11,10 @@ import Profile from "@/components/Profile";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Image from 'next/image';
 import { v4 as uuid4 } from 'uuid';
+import { storeConversation, updateConversation, getConversations } from "@/utils/conversationService"; // Import the functions
+import { Conversation, Message } from "@/types/conversation"; // Import the interfaces
 
 const auth = getAuth();
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  structuredContent?: {
-    mainPoints: string[];
-    followUpQuestion?: string;
-  };
-  codeBlock?: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[]; // Change this line
-  createdAt: number;
-}
 
 const ResearchSpace: React.FC = () => {
   const [input, setInput] = useState("");
@@ -40,14 +25,25 @@ const ResearchSpace: React.FC = () => {
   const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
   const [user, setUser] = useState(auth.currentUser);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [ currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        loadConversations(currentUser.uid);
+      }
     });
     return () => unsubscribe();
   }, []);
+
+  const loadConversations = async (userId: string) => {
+    const loadedConversations = await getConversations(userId);
+    setConversations(loadedConversations);
+    if (loadedConversations.length > 0) {
+      setCurrentConversationId(loadedConversations[0].id);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,16 +51,18 @@ const ResearchSpace: React.FC = () => {
 
   useEffect(scrollToBottom, [messages]);
 
-  const createNewConversation = useCallback(() => {
+  const createNewConversation = useCallback(async () => {
     const newConversation: Conversation = {
-      id: uuid4(), 
-      title:`New Conversation ${conversations.length + 1}`, 
+      id: uuid4(),
+      userId: user?.uid || '',
+      title: `New Conversation ${conversations.length + 1}`,
       messages: [],
-      createdAt: Date.now(), // Add this line
+      createdAt: Date.now(),
     };
     setConversations(prev => [...prev, newConversation]);
     setCurrentConversationId(newConversation.id);
-  }, [conversations.length]);
+    await storeConversation(newConversation);
+  }, [conversations.length, user?.uid]);
 
   useEffect(() => {
     if (conversations.length === 0) {
@@ -77,7 +75,7 @@ const ResearchSpace: React.FC = () => {
   };
 
   const getCurrentConversation = () => {
-    return conversations.find(conv => conv.id === currentConversationId) || { id: '', title: '', messages: [] as Message[] };
+    return conversations.find(conv => conv.id === currentConversationId) || { id: '', userId: '', title: '', messages: [], createdAt: 0 };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,9 +85,9 @@ const ResearchSpace: React.FC = () => {
     const userMessage: Message = { role: "user", content: input };
     const currentConversation = getCurrentConversation();
     const updatedMessages = [...currentConversation.messages, userMessage];
-    
-    setConversations(conversations.map(conv => 
-      conv.id === currentConversation.id ? {...conv, messages: updatedMessages} : conv
+
+    setConversations(conversations.map(conv =>
+      conv.id === currentConversation.id ? { ...conv, messages: updatedMessages } : conv
     ));
     setInput("");
     setIsLoading(true);
@@ -121,10 +119,16 @@ const ResearchSpace: React.FC = () => {
         structuredContent: data.structuredContent,
         codeBlock: data.codeBlock,
       };
-      
-      setConversations(conversations.map(conv => 
-        conv.id === currentConversation.id ? {...conv, messages: [...updatedMessages, assistantMessage]} : conv
+
+      const updatedConversation = {
+        ...currentConversation,
+        messages: [...updatedMessages, assistantMessage],
+      };
+
+      setConversations(conversations.map(conv =>
+        conv.id === currentConversation.id ? updatedConversation : conv
       ));
+      await updateConversation(updatedConversation);
     } catch (error) {
       console.error("Error:", error);
       setMessages((prev) => [
@@ -187,8 +191,8 @@ const ResearchSpace: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white">
-      <Sidebar 
-        isSidebarOpen={isSidebarOpen} 
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         setCurrentView={setCurrentView}
         conversations={conversations}
@@ -201,7 +205,7 @@ const ResearchSpace: React.FC = () => {
       <div className="flex-1 flex flex-col">
         <header className="bg-gray-800 shadow-lg p-4 flex justify-between items-center">
           {!isSidebarOpen && (
-            <button 
+            <button
               className="text-2xl hover:text-blue-400 transition-colors"
               onClick={() => setIsSidebarOpen(true)}
             >
@@ -213,102 +217,10 @@ const ResearchSpace: React.FC = () => {
           </h1>
           <div className="w-8"></div> {/* Placeholder for balance */}
         </header>
-        
-        {currentView === 'chat' ? (
-          <>
-            <div className="flex-grow overflow-y-auto p-4 space-y-4">
-              <AnimatePresence>
-                {getCurrentConversation().messages.map((msg, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className={`flex ${
-                      msg.role === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-start space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg ${
-                        msg.role === "user" ? "bg-blue-600" : "bg-gray-700"
-                      } shadow-md`}
-                    >
-                      {msg.role === "user" ? (
-                        <Image 
-                          src={user?.photoURL || '/default-profile.png'} 
-                          alt="User" 
-                          width={24}
-                          height={24}
-                          className="rounded-full mt-1 hidden sm:block" 
-                        />
-                      ) : (
-                        <FaRobot className="mt-1 hidden sm:block" />
-                      )}
-                      <div className="prose prose-invert max-w-none text-sm sm:text-base">
-                        {renderMessageContent(msg)}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              {isLoading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex justify-start"
-                >
-                  <div className="flex items-center space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg bg-gray-700 shadow-md">
-                    <FaRobot className="mt-1 hidden sm:block" />
-                    <div className="animate-pulse">Thinking...</div>
-                  </div>
-                </motion.div>
-              )}
-              {getCurrentConversation().messages.length === 0 && !input && (
-                <div className="flex flex-wrap justify-center gap-4 mt-8">
-                  {suggestionPrompts.map((prompt, index) => (
-                    <motion.button
-                      key={index}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm shadow-md"
-                      onClick={() => setInput(prompt)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {prompt}
-                    </motion.button>
-                  ))}
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-            <form
-              onSubmit={handleSubmit}
-              className="p-4 bg-gray-800 border-t border-gray-700 shadow-lg"
-            >
-              <div className="flex items-center space-x-2 max-w-4xl mx-auto">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base shadow-inner"
-                  placeholder="Type your message..."
-                  disabled={isLoading}
-                />
-                <motion.button
-                  type="submit"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-300 shadow-md"
-                  disabled={isLoading || !input.trim()}
-                >
-                  <FiSend />
-                </motion.button>
-              </div>
-            </form>
-          </>
-        ) : (
-          <Profile />
-        )}
+
+        <div className="flex-grow flex items-center justify-center">
+          <h2 className="text-3xl font-bold">This ResearchSpace is experimental and a work in progress.</h2>
+        </div>
       </div>
     </div>
   );

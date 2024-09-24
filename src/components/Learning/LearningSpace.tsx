@@ -11,97 +11,58 @@ import Profile from "@/components/Profile";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Image from 'next/image';
 import { v4 as uuid4 } from 'uuid';
-import { db, auth } from '@/utils/firebase';
-import { doc, setDoc, collection, getDocs } from 'firebase/firestore';
-import { useRouter } from 'next/router';
+import { storeConversation, updateConversation, getConversations } from "@/utils/conversationService"; // Import the functions
+import { Conversation, Message } from "@/types/conversation"; // Import the interfaces
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  structuredContent?: {
-    mainPoints: string[];
-    followUpQuestion?: string;
-  };
-  codeBlock?: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-}
+const auth = getAuth();
 
 const LearningSpace: React.FC = () => {
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!auth?.currentUser) {
-      router.push('/');
-    }
-  }, [router]);
-
   const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
-  const [user, setUser] = useState(auth?.currentUser || null);
+  const [user, setUser] = useState(auth.currentUser);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
 
-  const fetchConversations = async () => {
-    if (user && db) {
-      try {
-        const conversationsRef = collection(db, 'users', user.uid, 'conversations');
-        const conversationsSnapshot = await getDocs(conversationsRef);
-        const fetchedConversations = conversationsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Conversation[];
-        setConversations(fetchedConversations);
-        if (fetchedConversations.length > 0) {
-          setCurrentConversationId(fetchedConversations[0].id);
-        }
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
-      }
-    }
-  };
-
   useEffect(() => {
-    if (!auth) {
-      console.error("Auth is not initialized");
-      return;
-    }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        fetchConversations();
-      } else {
-        setConversations([]);
-        setCurrentConversationId(null);
+        loadConversations(currentUser.uid);
       }
     });
     return () => unsubscribe();
   }, []);
 
+  const loadConversations = async (userId: string) => {
+    const loadedConversations = await getConversations(userId);
+    setConversations(loadedConversations);
+    if (loadedConversations.length > 0) {
+      setCurrentConversationId(loadedConversations[0].id);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(scrollToBottom, [conversations]);
+  useEffect(scrollToBottom, [messages]);
 
-  const createNewConversation = useCallback(() => {
+  const createNewConversation = useCallback(async () => {
     const newConversation: Conversation = {
-      id: uuid4(), 
-      title:`New Conversation ${conversations.length + 1}`, 
+      id: uuid4(),
+      userId: user?.uid || '',
+      title: `New Conversation ${conversations.length + 1}`,
       messages: [],
       createdAt: Date.now(),
     };
     setConversations(prev => [...prev, newConversation]);
     setCurrentConversationId(newConversation.id);
-  }, [conversations.length]);
+    await storeConversation(newConversation);
+  }, [conversations.length, user?.uid]);
 
   useEffect(() => {
     if (conversations.length === 0) {
@@ -113,97 +74,70 @@ const LearningSpace: React.FC = () => {
     setCurrentConversationId(id);
   };
 
-  const getCurrentConversation = (): Conversation => {
-    return conversations.find(conv => conv.id === currentConversationId) || 
-      { id: '', title: '', messages: [], createdAt: Date.now() };
+  const getCurrentConversation = () => {
+    return conversations.find(conv => conv.id === currentConversationId) || { id: '', userId: '', title: '', messages: [], createdAt: 0 };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !user || !db) return;
+    if (!input.trim() || isLoading) return;
 
+    const userMessage: Message = { role: "user", content: input };
     const currentConversation = getCurrentConversation();
-    const newMessage: Message = { role: "user", content: input };
+    const updatedMessages = [...currentConversation.messages, userMessage];
+
+    setConversations(conversations.map(conv =>
+      conv.id === currentConversation.id ? { ...conv, messages: updatedMessages } : conv
+    ));
+    setInput("");
+    setIsLoading(true);
 
     try {
-      const updatedMessages = [...currentConversation.messages, newMessage];
-      const conversationRef = doc(db, 'users', user.uid, 'conversations', currentConversation.id);
-      
-      const cleanConversation: Conversation = {
-        ...currentConversation,
-        messages: updatedMessages,
-        createdAt: currentConversation.createdAt || Date.now(),
+      console.log("Sending request to API...");
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      });
+
+      console.log("API response status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API response data:", data);
+
+      if (!data.response) {
+        throw new Error("No response content in API response");
+      }
+
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: data.response,
+        structuredContent: data.structuredContent,
+        codeBlock: data.codeBlock,
       };
 
-      await setDoc(conversationRef, cleanConversation);
-      
-      setConversations(prevConversations => 
-        prevConversations.map(conv => 
-          conv.id === currentConversation.id ? cleanConversation : conv
-        )
-      );
+      const updatedConversation = {
+        ...currentConversation,
+        messages: [...updatedMessages, assistantMessage],
+      };
 
-      setInput("");
-      setIsLoading(true);
-
-      try {
-        console.log("Sending request to API...");
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: input }),
-        });
-  
-        console.log("API response status:", response.status);
-  
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-  
-        const data = await response.json();
-        console.log("API response data:", data);
-  
-        if (!data.response) {
-          throw new Error("No response content in API response");
-        }
-  
-        const assistantMessage: Message = {
-          role: "assistant",
-          content: data.response,
-          structuredContent: data.structuredContent,
-          codeBlock: data.codeBlock,
-        };
-        
-        const updatedConversation: Conversation = {
-          ...currentConversation,
-          messages: [...updatedMessages, assistantMessage],
-          createdAt: currentConversation.createdAt,
-        };
-  
-        setConversations(prevConversations => prevConversations.map(conv => 
-          conv.id === currentConversation.id ? updatedConversation : conv
-        ));
-      } catch (error) {
-        console.error("Error:", error);
-        setConversations(prevConversations => prevConversations.map(conv => 
-          conv.id === currentConversation.id ? {
-            ...conv, 
-            messages: [...conv.messages, {
-              role: "assistant",
-              content: "Sorry, I encountered an error. Please try again.",
-            }]
-          } : conv
-        ));
-      } finally {
-        setIsLoading(false);
-      }
+      setConversations(conversations.map(conv =>
+        conv.id === currentConversation.id ? updatedConversation : conv
+      ));
+      await updateConversation(updatedConversation);
     } catch (error) {
-      console.error("Firestore error:", error);
-      if (error instanceof Error) {
-        console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
-      }
-      // Handle the error appropriately
+      console.error("Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Sorry, I encountered an error. Please try again.",
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -257,8 +191,8 @@ const LearningSpace: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white">
-      <Sidebar 
-        isSidebarOpen={isSidebarOpen} 
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         setCurrentView={setCurrentView}
         conversations={conversations}
@@ -271,7 +205,7 @@ const LearningSpace: React.FC = () => {
       <div className="flex-1 flex flex-col">
         <header className="bg-gray-800 shadow-lg p-4 flex justify-between items-center">
           {!isSidebarOpen && (
-            <button 
+            <button
               className="text-2xl hover:text-blue-400 transition-colors"
               onClick={() => setIsSidebarOpen(true)}
             >
@@ -283,7 +217,7 @@ const LearningSpace: React.FC = () => {
           </h1>
           <div className="w-8"></div> {/* Placeholder for balance */}
         </header>
-        
+
         {currentView === 'chat' ? (
           <>
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
@@ -305,12 +239,12 @@ const LearningSpace: React.FC = () => {
                       } shadow-md`}
                     >
                       {msg.role === "user" ? (
-                        <Image 
-                          src={user?.photoURL || '/default-profile.png'} 
-                          alt="User" 
+                        <Image
+                          src={user?.photoURL || '/default-profile.png'}
+                          alt="User"
                           width={24}
                           height={24}
-                          className="rounded-full mt-1 hidden sm:block" 
+                          className="rounded-full mt-1 hidden sm:block"
                         />
                       ) : (
                         <FaRobot className="mt-1 hidden sm:block" />
