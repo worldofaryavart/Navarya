@@ -38,7 +38,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [user, setUser] = useState(auth?.currentUser || null);
   const router = useRouter();
   const pathname = usePathname();
-  const isLearningMode = pathname === '/learning';
 
   useEffect(() => {
     if (auth) {
@@ -59,10 +58,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
-
-  const toggleMode = () => {
-    router.push(isLearningMode ? '/research' : '/learning');
   };
 
   const sortedConversations = useMemo(() => {
@@ -96,31 +91,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           >
             <FiChevronLeft />
           </button>
-        </div>
-        <div className="mb-4 relative">
-          <div className="w-full h-12 bg-gray-700 rounded-full p-1 flex items-center">
-            <motion.div
-              className="w-1/2 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full absolute"
-              animate={{ x: isLearningMode ? 0 : '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            />
-            <button
-              onClick={toggleMode}
-              className={`w-1/2 h-10 rounded-full z-10 font-bold text-sm transition-colors ${
-                isLearningMode ? 'text-white' : 'text-gray-300'
-              }`}
-            >
-              Learning
-            </button>
-            <button
-              onClick={toggleMode}
-              className={`w-1/2 h-10 rounded-full z-10 font-bold text-sm transition-colors ${
-                !isLearningMode ? 'text-white' : 'text-gray-300'
-              }`}
-            >
-              Research
-            </button>
-          </div>
         </div>
         <button 
           className="w-full mb-4 p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
