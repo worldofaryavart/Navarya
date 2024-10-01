@@ -1,83 +1,181 @@
-import React from 'react';
-import { FiPlus, FiChevronLeft, FiUser, FiLogOut, FiInfo, FiEye, FiBook, FiSearch, FiMessageSquare } from 'react-icons/fi';
-import { motion } from 'framer-motion';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/utils/firebase';
-import { useEffect, useState, useMemo } from 'react';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import React, { useEffect, useState } from "react";
+import {
+  FiPlus,
+  FiChevronLeft,
+  FiUser,
+  FiLogOut,
+  FiInfo,
+  FiEye,
+  FiMessageSquare,
+} from "react-icons/fi";
+import { motion } from "framer-motion";
+import { signOut } from "firebase/auth";
+import { auth } from "@/utils/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createConversation } from "@/utils/topicService";
+import { Conversation, MessageType, SenderType } from "@/types/types";
 
-interface Conversation {
-  id: string;
-  title: string;
-  messages: { role: string; content: string }[];
-  createdAt: number;
-}
+
 
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
-  setCurrentView: (view: 'chat' | 'profile' | 'about' | 'vision') => void;
-  conversations: Conversation[];
-  switchConversation: (id: string) => void;
-  createNewConversation: () => void;
-  currentConversationId: string | null;
+  setCurrentView: (view: "chat" | "profile" | "about" | "vision") => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   isSidebarOpen,
   setIsSidebarOpen,
   setCurrentView,
-  conversations,
-  switchConversation,
-  createNewConversation,
-  currentConversationId,
 }) => {
-  const [user, setUser] = useState(auth?.currentUser || null);
+  const [user, setUser] = useState(auth!.currentUser);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    if (auth) {
-      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser);
-      });
-      return () => unsubscribe();
-    }
+    const unsubscribe = onAuthStateChanged(auth!, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  const fetchConversations = async () => {
+    // This is a placeholder function. In a real application, you would fetch conversations from your backend.
+    // For demonstration purposes, we'll use mock data.
+    // Mock data for three conversations
+const mockConversations: Conversation[] = [
+  {
+    id: "conv1",
+    conversationHistory: [
+      {
+        id: "msg1",
+        conversationId: "conv1",
+        messageType: MessageType.TEXT,
+        content: "Hello, how are you?",
+        sender: { type: SenderType.USER, id: "user1", name: "John Doe" },
+        timestamp: new Date('2024-09-30T10:00:00'),
+      },
+      {
+        id: "msg2",
+        conversationId: "conv1",
+        messageType: MessageType.TEXT,
+        content: "I'm doing great! How about you?",
+        sender: { type: SenderType.AI, id: "ai1", name: "Aarya AI" },
+        timestamp: new Date('2024-09-30T10:05:00'),
+      },
+    ],
+    createdAt: new Date('2024-09-30T09:00:00'),
+    updatedAt: new Date('2024-09-30T10:05:00'),
+  },
+  {
+    id: "conv2",
+    conversationHistory: [
+      {
+        id: "msg3",
+        conversationId: "conv2",
+        messageType: MessageType.IMAGE,
+        content: "image-url-1.jpg",
+        sender: { type: SenderType.USER, id: "user2", name: "Alice" },
+        timestamp: new Date('2024-09-29T14:30:00'),
+      },
+      {
+        id: "msg4",
+        conversationId: "conv2",
+        messageType: MessageType.TEXT,
+        content: "Nice picture!",
+        sender: { type: SenderType.AI, id: "ai2", name: "Helper AI" },
+        timestamp: new Date('2024-09-29T14:35:00'),
+      },
+    ],
+    createdAt: new Date('2024-09-29T13:30:00'),
+    updatedAt: new Date('2024-09-29T14:35:00'),
+  },
+  {
+    id: "conv3",
+    conversationHistory: [
+      {
+        id: "msg5",
+        conversationId: "conv3",
+        messageType: MessageType.VIDEO,
+        content: "video-url-1.mp4",
+        sender: { type: SenderType.USER, id: "user3", name: "Bob" },
+        timestamp: new Date('2024-09-28T08:00:00'),
+      },
+      {
+        id: "msg6",
+        conversationId: "conv3",
+        messageType: MessageType.TEXT,
+        content: "Check out this cool video!",
+        sender: { type: SenderType.AI, id: "ai3", name: "Media AI" },
+        timestamp: new Date('2024-09-28T08:15:00'),
+      },
+    ],
+    createdAt: new Date('2024-09-28T07:30:00'),
+    updatedAt: new Date('2024-09-28T08:15:00'),
+  },
+];
+
+// Example log of mock conversations
+console.log(mockConversations);
+
+    setConversations(mockConversations);
+  };
 
   const handleLogout = async () => {
     try {
-      if (auth) {
-        await signOut(auth);
-      } else {
-        console.error('Auth is not initialized');
-      }
+      await signOut(auth!);
+      router.push("/login");
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
     }
   };
 
-  const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => b.createdAt - a.createdAt);
-  }, [conversations]);
-
-  const getConversationTitle = (conversation: Conversation) => {
-    const firstUserMessage = conversation.messages.find(msg => msg.role === 'user');
-    if (firstUserMessage) {
-      const words = firstUserMessage.content.split(' ').slice(0, 5).join(' ');
-      return words.length < firstUserMessage.content.length ? `${words}...` : words;
+  const handleNewConversation = async () => {
+    // In a real application, you would create a new conversation here
+    if (!user) {
+      console.error("User not authenticated");
+      return;
     }
-    return 'New Conversation';
+    try {
+      const newConversation = await createConversation(user, "Hello, this is my first message!");
+      console.log("New conversation created:", newConversation);
+      // Update your UI or state here
+      if (newConversation) {
+        // Update your state or dispatch an action with the new conversation
+        setConversations([...conversations, newConversation]);
+      } else {
+        // Handle error case
+        console.log("Failed to create")
+      }
+    } catch (error) {
+      console.error("Failed to create conversation:", error);
+      // Handle the error appropriately
+    }
+  };
+
+  const handleConversationClick = (conversationId: string) => {
+    // In a real application, you would set the active conversation here
+    console.log(`Selecting conversation: ${conversationId}`);
+    setCurrentView("chat");
+  };
+
+  const formatTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   return (
     <motion.div
       initial={false}
-      animate={{ width: isSidebarOpen ? '16rem' : '0rem' }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      animate={{ width: isSidebarOpen ? "16rem" : "0rem" }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="fixed md:relative inset-y-0 left-0 bg-gray-800 overflow-hidden z-20 shadow-lg"
     >
       <div className="w-64 h-full p-4 flex flex-col">
@@ -92,36 +190,35 @@ const Sidebar: React.FC<SidebarProps> = ({
             <FiChevronLeft />
           </button>
         </div>
-        <button 
+        <button
           className="w-full mb-4 p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-          onClick={() => {
-            createNewConversation();
-            setCurrentView('chat');
-          }}
+          onClick={handleNewConversation}
         >
           <FiPlus className="mr-2" /> New Conversation
         </button>
         <div className="mb-4 flex-grow overflow-y-auto">
           <h3 className="text-lg font-semibold mb-2">Conversations</h3>
-          {sortedConversations.map((conversation) => (
+          {conversations.map((conversation) => (
             <button
               key={conversation.id}
-              className={`w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors mb-2 ${
-                conversation.id === currentConversationId ? 'bg-gray-700' : ''
-              }`}
-              onClick={() => {
-                switchConversation(conversation.id);
-                setCurrentView('chat');
-              }}
+              onClick={() => handleConversationClick}
+              className="w-full p-2 text-left flex items-start hover:bg-gray-700 rounded transition-colors mb-2"
             >
-              <FiMessageSquare className="mr-2" /> {getConversationTitle(conversation)}
+              <FiMessageSquare className="mr-2 mt-1 flex-shrink-0" />
+              <div className="flex flex-col overflow-hidden">
+                <div className="font-semibold truncate">{conversation.id}</div>
+                <div className="text-sm text-gray-400 truncate">{conversation.conversationHistory.length}</div>
+              </div>
+              <div className="ml-auto text-xs text-gray-500 flex-shrink-0">
+                {formatTimestamp(conversation.createdAt.getTime())}
+              </div>
             </button>
           ))}
         </div>
         <div className="mb-4">
           <h3 className="text-lg font-semibold mb-2">Know Us</h3>
           <Link href="/about" passHref>
-            <button 
+            <button
               className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors mb-2"
               onClick={() => setIsSidebarOpen(false)}
             >
@@ -129,7 +226,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </Link>
           <Link href="/vision" passHref>
-            <button 
+            <button
               className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors"
               onClick={() => setIsSidebarOpen(false)}
             >
@@ -140,20 +237,23 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="mt-auto">
           <div className="border-t border-gray-600 my-2"></div>
           <h3 className="text-lg font-semibold mb-2">Profile</h3>
-          <button 
+          <button
             className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors mb-2"
-            onClick={() => setCurrentView('profile')}
+            onClick={() => {
+              setCurrentView("profile");
+              setIsSidebarOpen(false);
+            }}
           >
-            <Image 
-              src={user?.photoURL || '/default-profile.png'} 
-              alt="Profile" 
+            <Image
+              src={user?.photoURL || "/default-profile.png"}
+              alt="Profile"
               width={24}
               height={24}
-              className="rounded-full mr-2" 
+              className="rounded-full mr-2"
             />
-            {user?.displayName || 'View Profile'}
+            {user?.displayName || "View Profile"}
           </button>
-          <button 
+          <button
             className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors text-red-400"
             onClick={handleLogout}
           >

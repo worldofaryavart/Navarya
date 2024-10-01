@@ -1,34 +1,18 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { FiSend, FiPlus, FiClock, FiUser, FiCopy, FiMenu, FiX, FiChevronLeft } from "react-icons/fi";
+import React, { useState, useRef, useEffect } from "react";
+import { FiSend, FiPlus, FiMenu } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
-import { TypeAnimation } from "react-type-animation";
-import { FaUser, FaRobot } from "react-icons/fa";
+import { FaRobot } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import Sidebar from "@/components/Sidebar";
 import Profile from "@/components/Profile";
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Image from 'next/image';
-import { v4 as uuid4 } from 'uuid';
-
-const auth = getAuth();
+import { useAuth } from '@/utils/auth';
 
 interface Message {
-  role: "user" | "assistant";
+  type: 'user' | 'ai';
   content: string;
-  structuredContent?: {
-    mainPoints: string[];
-    followUpQuestion?: string;
-  };
-  codeBlock?: string;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[]; // Change this line
-  createdAt: number;
 }
 
 const LearningSpace: React.FC = () => {
@@ -38,102 +22,51 @@ const LearningSpace: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
-  const [user, setUser] = useState(auth.currentUser);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [ currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
+  
+  const { user } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(scrollToBottom, [messages]);
-
-  const createNewConversation = useCallback(() => {
-    const newConversation: Conversation = {
-      id: uuid4(), 
-      title:`New Conversation ${conversations.length + 1}`, 
-      messages: [],
-      createdAt: Date.now(), // Add this line
-    };
-    setConversations(prev => [...prev, newConversation]);
-    setCurrentConversationId(newConversation.id);
-  }, [conversations.length]);
-
   useEffect(() => {
-    if (conversations.length === 0) {
-      createNewConversation();
-    }
-  }, [conversations, createNewConversation]);
-
-  const switchConversation = (id: string) => {
-    setCurrentConversationId(id);
-  };
-
-  const getCurrentConversation = () => {
-    return conversations.find(conv => conv.id === currentConversationId) || { id: '', title: '', messages: [] as Message[] };
-  };
+    scrollToBottom();
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !user) return;
 
-    const userMessage: Message = { role: "user", content: input };
-    const currentConversation = getCurrentConversation();
-    const updatedMessages = [...currentConversation.messages, userMessage];
-    
-    setConversations(conversations.map(conv => 
-      conv.id === currentConversation.id ? {...conv, messages: updatedMessages} : conv
-    ));
-    setInput("");
     setIsLoading(true);
-
+    
     try {
-      console.log("Sending request to API...");
+      // Save user message
+      setMessages(prev => [...prev, { type: 'user', content: input }]);
+      
+      // Make API call
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
       });
 
-      console.log("API response status:", response.status);
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("API response data:", data);
 
       if (!data.response) {
         throw new Error("No response content in API response");
       }
 
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.response,
-        structuredContent: data.structuredContent,
-        codeBlock: data.codeBlock,
-      };
-      
-      setConversations(conversations.map(conv => 
-        conv.id === currentConversation.id ? {...conv, messages: [...updatedMessages, assistantMessage]} : conv
-      ));
+      // Save AI response
+      setMessages(prev => [...prev, { type: 'ai', content: data.response }]);
+
+      setInput("");
     } catch (error) {
       console.error("Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
-        },
-      ]);
+      // Handle error (e.g., display error message to user)
     } finally {
       setIsLoading(false);
     }
@@ -146,18 +79,7 @@ const LearningSpace: React.FC = () => {
     "Latest developments in AI",
   ];
 
-  const copyToClipboard = (content: string) => {
-    navigator.clipboard
-      .writeText(content)
-      .then(() => {
-        // alert("Copied to clipboard!");
-      })
-      .catch((err) => {
-        console.error("Failed to copy: ", err);
-      });
-  };
-
-  const renderMessageContent = (msg: Message) => {
+  const renderMessageContent = (content: string) => {
     return (
       <ReactMarkdown
         components={{
@@ -180,7 +102,7 @@ const LearningSpace: React.FC = () => {
           },
         }}
       >
-        {msg.content}
+        {content}
       </ReactMarkdown>
     );
   };
@@ -191,10 +113,6 @@ const LearningSpace: React.FC = () => {
         isSidebarOpen={isSidebarOpen} 
         setIsSidebarOpen={setIsSidebarOpen}
         setCurrentView={setCurrentView}
-        conversations={conversations}
-        switchConversation={switchConversation}
-        createNewConversation={createNewConversation}
-        currentConversationId={currentConversationId}
       />
 
       {/* Main Content */}
@@ -218,7 +136,7 @@ const LearningSpace: React.FC = () => {
           <>
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
               <AnimatePresence>
-                {getCurrentConversation().messages.map((msg, index) => (
+                {messages.map((msg, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
@@ -226,15 +144,15 @@ const LearningSpace: React.FC = () => {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
                     className={`flex ${
-                      msg.role === "user" ? "justify-end" : "justify-start"
+                      msg.type === "user" ? "justify-end" : "justify-start"
                     }`}
                   >
                     <div
                       className={`flex items-start space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg ${
-                        msg.role === "user" ? "bg-blue-600" : "bg-gray-700"
+                        msg.type === "user" ? "bg-blue-600" : "bg-gray-700"
                       } shadow-md`}
                     >
-                      {msg.role === "user" ? (
+                      {msg.type === "user" ? (
                         <Image 
                           src={user?.photoURL || '/default-profile.png'} 
                           alt="User" 
@@ -246,7 +164,7 @@ const LearningSpace: React.FC = () => {
                         <FaRobot className="mt-1 hidden sm:block" />
                       )}
                       <div className="prose prose-invert max-w-none text-sm sm:text-base">
-                        {renderMessageContent(msg)}
+                        {renderMessageContent(msg.content)}
                       </div>
                     </div>
                   </motion.div>
@@ -264,7 +182,7 @@ const LearningSpace: React.FC = () => {
                   </div>
                 </motion.div>
               )}
-              {getCurrentConversation().messages.length === 0 && !input && (
+              {(messages.length === 0) && !input && (
                 <div className="flex flex-wrap justify-center gap-4 mt-8">
                   {suggestionPrompts.map((prompt, index) => (
                     <motion.button

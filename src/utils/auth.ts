@@ -1,5 +1,6 @@
 import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
 import { app } from './firebase';
+import { useEffect, useState } from 'react';
 
 const getAuthInstance = () => {
   if (typeof window !== 'undefined') {
@@ -25,4 +26,23 @@ export const checkAuthState = (callback: (user: User | null) => void) => {
   const auth = getAuthInstance();
   if (!auth) return () => {};
   return onAuthStateChanged(auth, callback);
+};
+
+export const useAuth = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuthInstance();
+    if (!auth) return;
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe(); // Cleanup on unmount
+  }, []);
+
+  return { user, loading };
 };
