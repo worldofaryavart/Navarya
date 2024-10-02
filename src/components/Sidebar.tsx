@@ -18,8 +18,6 @@ import { useRouter } from "next/navigation";
 import { createConversation } from "@/utils/topicService";
 import { Conversation, MessageType, SenderType } from "@/types/types";
 
-
-
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
@@ -47,83 +45,82 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   const fetchConversations = async () => {
-    // This is a placeholder function. In a real application, you would fetch conversations from your backend.
-    // For demonstration purposes, we'll use mock data.
-    // Mock data for three conversations
-const mockConversations: Conversation[] = [
-  {
-    id: "conv1",
-    conversationHistory: [
+    const mockConversations: Conversation[] = [
       {
-        id: "msg1",
-        conversationId: "conv1",
-        messageType: MessageType.TEXT,
-        content: "Hello, how are you?",
-        sender: { type: SenderType.USER, id: "user1", name: "John Doe" },
-        timestamp: new Date('2024-09-30T10:00:00'),
+        id: "conv1",
+        conversationTitle: "AI ethics",
+        conversationHistory: [
+          {
+            id: "msg1",
+            conversationId: "conv1",
+            messageType: MessageType.TEXT,
+            content: "Hello, how are you?",
+            sender: { type: SenderType.USER, id: "user1", name: "John Doe" },
+            timestamp: new Date("2024-09-30T10:00:00"),
+          },
+          {
+            id: "msg2",
+            conversationId: "conv1",
+            messageType: MessageType.TEXT,
+            content: "I'm doing great! How about you?",
+            sender: { type: SenderType.AI, id: "ai1", name: "Aarya AI" },
+            timestamp: new Date("2024-09-30T10:05:00"),
+          },
+        ],
+        createdAt: new Date("2024-09-30T09:00:00"),
+        updatedAt: new Date("2024-09-30T10:05:00"),
       },
       {
-        id: "msg2",
-        conversationId: "conv1",
-        messageType: MessageType.TEXT,
-        content: "I'm doing great! How about you?",
-        sender: { type: SenderType.AI, id: "ai1", name: "Aarya AI" },
-        timestamp: new Date('2024-09-30T10:05:00'),
-      },
-    ],
-    createdAt: new Date('2024-09-30T09:00:00'),
-    updatedAt: new Date('2024-09-30T10:05:00'),
-  },
-  {
-    id: "conv2",
-    conversationHistory: [
-      {
-        id: "msg3",
-        conversationId: "conv2",
-        messageType: MessageType.IMAGE,
-        content: "image-url-1.jpg",
-        sender: { type: SenderType.USER, id: "user2", name: "Alice" },
-        timestamp: new Date('2024-09-29T14:30:00'),
-      },
-      {
-        id: "msg4",
-        conversationId: "conv2",
-        messageType: MessageType.TEXT,
-        content: "Nice picture!",
-        sender: { type: SenderType.AI, id: "ai2", name: "Helper AI" },
-        timestamp: new Date('2024-09-29T14:35:00'),
-      },
-    ],
-    createdAt: new Date('2024-09-29T13:30:00'),
-    updatedAt: new Date('2024-09-29T14:35:00'),
-  },
-  {
-    id: "conv3",
-    conversationHistory: [
-      {
-        id: "msg5",
-        conversationId: "conv3",
-        messageType: MessageType.VIDEO,
-        content: "video-url-1.mp4",
-        sender: { type: SenderType.USER, id: "user3", name: "Bob" },
-        timestamp: new Date('2024-09-28T08:00:00'),
+        id: "conv2",
+        conversationTitle: "Quantum Computing",
+        conversationHistory: [
+          {
+            id: "msg3",
+            conversationId: "conv2",
+            messageType: MessageType.IMAGE,
+            content: "image-url-1.jpg",
+            sender: { type: SenderType.USER, id: "user2", name: "Alice" },
+            timestamp: new Date("2024-09-29T14:30:00"),
+          },
+          {
+            id: "msg4",
+            conversationId: "conv2",
+            messageType: MessageType.TEXT,
+            content: "Nice picture!",
+            sender: { type: SenderType.AI, id: "ai2", name: "Helper AI" },
+            timestamp: new Date("2024-09-29T14:35:00"),
+          },
+        ],
+        createdAt: new Date("2024-09-29T13:30:00"),
+        updatedAt: new Date("2024-09-29T14:35:00"),
       },
       {
-        id: "msg6",
-        conversationId: "conv3",
-        messageType: MessageType.TEXT,
-        content: "Check out this cool video!",
-        sender: { type: SenderType.AI, id: "ai3", name: "Media AI" },
-        timestamp: new Date('2024-09-28T08:15:00'),
+        id: "conv3",
+        conversationTitle: "Drug discovery",
+        conversationHistory: [
+          {
+            id: "msg5",
+            conversationId: "conv3",
+            messageType: MessageType.VIDEO,
+            content: "video-url-1.mp4",
+            sender: { type: SenderType.USER, id: "user3", name: "Bob" },
+            timestamp: new Date("2024-09-28T08:00:00"),
+          },
+          {
+            id: "msg6",
+            conversationId: "conv3",
+            messageType: MessageType.TEXT,
+            content: "Check out this cool video!",
+            sender: { type: SenderType.AI, id: "ai3", name: "Media AI" },
+            timestamp: new Date("2024-09-28T08:15:00"),
+          },
+        ],
+        createdAt: new Date("2024-09-28T07:30:00"),
+        updatedAt: new Date("2024-09-28T08:15:00"),
       },
-    ],
-    createdAt: new Date('2024-09-28T07:30:00'),
-    updatedAt: new Date('2024-09-28T08:15:00'),
-  },
-];
+    ];
 
-// Example log of mock conversations
-console.log(mockConversations);
+    console.log(mockConversations);
 
     setConversations(mockConversations);
   };
@@ -138,25 +135,24 @@ console.log(mockConversations);
   };
 
   const handleNewConversation = async () => {
-    // In a real application, you would create a new conversation here
     if (!user) {
       console.error("User not authenticated");
       return;
     }
     try {
-      const newConversation = await createConversation(user, "Hello, this is my first message!");
+      const newConversation = await createConversation(
+        user,
+        "Hello, this is my first message!",
+        "AI Defence",
+      );
       console.log("New conversation created:", newConversation);
-      // Update your UI or state here
       if (newConversation) {
-        // Update your state or dispatch an action with the new conversation
         setConversations([...conversations, newConversation]);
       } else {
-        // Handle error case
-        console.log("Failed to create")
+        console.log("Failed to create");
       }
     } catch (error) {
       console.error("Failed to create conversation:", error);
-      // Handle the error appropriately
     }
   };
 
@@ -168,7 +164,10 @@ console.log(mockConversations);
 
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
   };
 
   return (
@@ -206,8 +205,10 @@ console.log(mockConversations);
             >
               <FiMessageSquare className="mr-2 mt-1 flex-shrink-0" />
               <div className="flex flex-col overflow-hidden">
-                <div className="font-semibold truncate">{conversation.id}</div>
-                <div className="text-sm text-gray-400 truncate">{conversation.conversationHistory.length}</div>
+                <div className="font-semibold truncate">{conversation.conversationTitle}</div>
+                <div className="text-sm text-gray-400 truncate">
+                  {conversation.conversationHistory[0].content}
+                </div>
               </div>
               <div className="ml-auto text-xs text-gray-500 flex-shrink-0">
                 {formatTimestamp(conversation.createdAt.getTime())}

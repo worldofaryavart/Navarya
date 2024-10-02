@@ -4,7 +4,7 @@ import { User } from 'firebase/auth';
 import { Conversation, Message, MessageType, SenderType } from '@/types/types';
 
 
-async function createConversation(user: User, initialMessage: string): Promise<Conversation | null>{
+async function createConversation(user: User, initialMessage: string, convTitle: string): Promise<Conversation | null>{
     if (!db) throw new Error ('Firestore is not initialized');
 
     try {
@@ -12,6 +12,7 @@ async function createConversation(user: User, initialMessage: string): Promise<C
         const conversationRef = await addDoc(collection(db, 'conversations'), {
             createdAt: serverTimestamp(),
             updateAt: serverTimestamp(),
+            conversationTitle: convTitle,
             conversationHistory: [],
         });
 
@@ -52,6 +53,7 @@ async function createConversation(user: User, initialMessage: string): Promise<C
 
         const conversation: Conversation = {
             id: conversationRef.id,
+            conversationTitle:conversationData.conversationTitle,
             conversationHistory: [message],
             createdAt: conversationData.createdAt?.toDate() || new Date(),
             updatedAt: conversationData.updatedAt?.toDate() || new Date(),

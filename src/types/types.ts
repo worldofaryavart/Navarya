@@ -1,5 +1,6 @@
 interface Conversation {
     id:string;
+    conversationTitle: string;
     conversationHistory: Message[];
     createdAt: Date;
     updatedAt: Date;
