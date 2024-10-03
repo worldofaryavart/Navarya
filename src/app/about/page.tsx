@@ -2,7 +2,7 @@ import React from 'react';
 
 const AboutPage: React.FC = () => {
   return (
-    <div className="container mx-auto px-4 py-12 bg-gray-900 text-white">
+    <div className="container mx-auto px-4 py-12 bg-gray-900 text-white overflow-y-auto">
       <h1 className="text-4xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
         About Aaryal
       </h1>

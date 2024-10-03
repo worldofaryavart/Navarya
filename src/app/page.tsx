@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { checkAuthState } from '@/utils/auth'
 import { useRouter } from 'next/navigation'
+import WelcomeComponent from '@/components/Welcome'
 
 const Login = dynamic(() => import('../components/Login'), { ssr: false })
 const Learning = dynamic(() => import('@/components/Learning/Learning'), { ssr: false })
@@ -18,7 +19,7 @@ export default function Home() {
       setUserExists(!!user)
       setLoading(false)
       if (user) {
-        router.push('/learning')
+        router.push('/')
       }
     })
 
@@ -27,7 +28,7 @@ export default function Home() {
 
   const handleLogin = () => {
     setUserExists(true)
-    router.push('/learning')
+    router.push('/')
   }
 
   if (loading) {
@@ -45,7 +46,8 @@ export default function Home() {
   return (
     <main className="flex flex-col h-screen bg-gray-900 text-white">
       {userExists ? (
-        <Learning />
+        // <Learning />
+        <WelcomeComponent/>
       ) : (
         <Login onLogin={handleLogin} />
       )}

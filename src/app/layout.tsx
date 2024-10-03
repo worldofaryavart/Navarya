@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { useState } from "react";
+import Layout from "@/components/Layout";
 
 export const metadata: Metadata = {
   title: "AaryaI",
@@ -11,9 +13,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+      <Layout>
+        {children}
+      </Layout>
+      </body>
     </html>
   );
 }

@@ -5,13 +5,11 @@ import { FaRobot } from "react-icons/fa";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import Sidebar from "@/components/Sidebar";
-import Profile from "@/components/Profile";
-import Image from 'next/image';
-import { useAuth } from '@/utils/auth';
+import Image from "next/image";
+import { useAuth } from "@/utils/auth";
 
 interface Message {
-  type: 'user' | 'ai';
+  type: "user" | "ai";
   content: string;
 }
 
@@ -19,10 +17,8 @@ const LearningSpace: React.FC = () => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
-  
+
   const { user } = useAuth();
 
   const scrollToBottom = () => {
@@ -38,11 +34,11 @@ const LearningSpace: React.FC = () => {
     if (!input.trim() || isLoading || !user) return;
 
     setIsLoading(true);
-    
+
     try {
       // Save user message
-      setMessages(prev => [...prev, { type: 'user', content: input }]);
-      
+      setMessages((prev) => [...prev, { type: "user", content: input }]);
+
       // Make API call
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -61,7 +57,7 @@ const LearningSpace: React.FC = () => {
       }
 
       // Save AI response
-      setMessages(prev => [...prev, { type: 'ai', content: data.response }]);
+      setMessages((prev) => [...prev, { type: "ai", content: data.response }]);
 
       setInput("");
     } catch (error) {
@@ -108,125 +104,98 @@ const LearningSpace: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white">
-      <Sidebar 
-        isSidebarOpen={isSidebarOpen} 
-        setIsSidebarOpen={setIsSidebarOpen}
-        setCurrentView={setCurrentView}
-      />
-
+    <div className="flex h-[calc(100vh-63px)] bg-gradient-to-br from-gray-900 to-blue-900 text-white">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <header className="bg-gray-800 shadow-lg p-4 flex justify-between items-center">
-          {!isSidebarOpen && (
-            <button 
-              className="text-2xl hover:text-blue-400 transition-colors"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <FiMenu />
-            </button>
-          )}
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-            {currentView === 'chat' ? 'AaryaI Learning' : 'User Profile'}
-          </h1>
-          <div className="w-8"></div> {/* Placeholder for balance */}
-        </header>
-        
-        {currentView === 'chat' ? (
-          <>
-            <div className="flex-grow overflow-y-auto p-4 space-y-4">
-              <AnimatePresence>
-                {messages.map((msg, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className={`flex ${
-                      msg.type === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-start space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg ${
-                        msg.type === "user" ? "bg-blue-600" : "bg-gray-700"
-                      } shadow-md`}
-                    >
-                      {msg.type === "user" ? (
-                        <Image 
-                          src={user?.photoURL || '/default-profile.png'} 
-                          alt="User" 
-                          width={24}
-                          height={24}
-                          className="rounded-full mt-1 hidden sm:block" 
-                        />
-                      ) : (
-                        <FaRobot className="mt-1 hidden sm:block" />
-                      )}
-                      <div className="prose prose-invert max-w-none text-sm sm:text-base">
-                        {renderMessageContent(msg.content)}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              {isLoading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex justify-start"
+        <div className="flex-grow overflow-y-auto p-4 space-y-4">
+          <AnimatePresence>
+            {messages.map((msg, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className={`flex ${
+                  msg.type === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`flex items-start space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg ${
+                    msg.type === "user" ? "bg-blue-600" : "bg-gray-700"
+                  } shadow-md`}
                 >
-                  <div className="flex items-center space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg bg-gray-700 shadow-md">
+                  {msg.type === "user" ? (
+                    <Image
+                      src={user?.photoURL || "/default-profile.png"}
+                      alt="User"
+                      width={24}
+                      height={24}
+                      className="rounded-full mt-1 hidden sm:block"
+                    />
+                  ) : (
                     <FaRobot className="mt-1 hidden sm:block" />
-                    <div className="animate-pulse">Thinking...</div>
+                  )}
+                  <div className="prose prose-invert max-w-none text-sm sm:text-base">
+                    {renderMessageContent(msg.content)}
                   </div>
-                </motion.div>
-              )}
-              {(messages.length === 0) && !input && (
-                <div className="flex flex-wrap justify-center gap-4 mt-8">
-                  {suggestionPrompts.map((prompt, index) => (
-                    <motion.button
-                      key={index}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm shadow-md"
-                      onClick={() => setInput(prompt)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {prompt}
-                    </motion.button>
-                  ))}
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-            <form
-              onSubmit={handleSubmit}
-              className="p-4 bg-gray-800 border-t border-gray-700 shadow-lg"
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
             >
-              <div className="flex items-center space-x-2 max-w-4xl mx-auto">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base shadow-inner"
-                  placeholder="Type your message..."
-                  disabled={isLoading}
-                />
+              <div className="flex items-center space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg bg-gray-700 shadow-md">
+                <FaRobot className="mt-1 hidden sm:block" />
+                <div className="animate-pulse">Thinking...</div>
+              </div>
+            </motion.div>
+          )}
+          {messages.length === 0 && !input && (
+            <div className="flex flex-wrap justify-center gap-4 mt-8">
+              {suggestionPrompts.map((prompt, index) => (
                 <motion.button
-                  type="submit"
+                  key={index}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-sm shadow-md"
+                  onClick={() => setInput(prompt)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-300 shadow-md"
-                  disabled={isLoading || !input.trim()}
                 >
-                  <FiSend />
+                  {prompt}
                 </motion.button>
-              </div>
-            </form>
-          </>
-        ) : (
-          <Profile />
-        )}
+              ))}
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+        <form
+          onSubmit={handleSubmit}
+          className="p-4 bg-gray-800 border-t border-gray-700 shadow-lg"
+        >
+          <div className="flex items-center space-x-2 max-w-4xl mx-auto">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base shadow-inner"
+              placeholder="Type your message..."
+              disabled={isLoading}
+            />
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-300 shadow-md"
+              disabled={isLoading || !input.trim()}
+            >
+              <FiSend />
+            </motion.button>
+          </div>
+        </form>
       </div>
     </div>
   );

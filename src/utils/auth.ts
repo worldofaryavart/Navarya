@@ -30,7 +30,7 @@ export const checkAuthState = (callback: (user: User | null) => void) => {
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const auth = getAuthInstance();
@@ -38,11 +38,14 @@ export const useAuth = () => {
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      setLoading(false);
+      // setLoading(false);
     });
 
     return () => unsubscribe(); // Cleanup on unmount
   }, []);
 
-  return { user, loading };
+  
+
+  return { user };
 };
+
