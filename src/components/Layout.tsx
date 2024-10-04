@@ -10,7 +10,6 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'chat' | 'profile' | 'about' | 'vision'>('chat');
 
   return (
     <div className="flex h-screen">
@@ -19,7 +18,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <Sidebar
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
-          setCurrentView={setCurrentView}
         />
       )}
 
@@ -36,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </button>
           )}
           <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-            {currentView === 'chat' ? 'AaryaI Learning' : 'User Profile'}
+            AaryaI
           </h1>
           <div className="w-8"></div> {/* Placeholder for balance */}
         </header>

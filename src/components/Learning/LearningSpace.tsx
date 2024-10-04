@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import Image from "next/image";
-import { useAuth } from "@/utils/auth";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Message {
   type: "user" | "ai";

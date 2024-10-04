@@ -28,24 +28,4 @@ export const checkAuthState = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
-  // const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const auth = getAuthInstance();
-    if (!auth) return;
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      // setLoading(false);
-    });
-
-    return () => unsubscribe(); // Cleanup on unmount
-  }, []);
-
-  
-
-  return { user };
-};
 
