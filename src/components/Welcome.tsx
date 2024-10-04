@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSpring, animated } from 'react-spring';
 import Sparkles from 'react-sparkle';
 import confetti from 'canvas-confetti';
 import NewConversationModal from './NewConversationModal';
@@ -106,9 +105,9 @@ const WelcomeComponent = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-blue-900 min-h-screen w-full">
-      <div className="container mx-auto px-4 py-8 min-h-screen overflow-y-auto">
-        <div className="flex flex-col items-center justify-start space-y-8 pt-4 md:pt-12">
+    <div className="bg-gradient-to-br from-gray-900 to-blue-900 min-h-[100dvh] w-full">
+      <div className="w-full h-full px-4 pb-16 md:pb-24">
+        <div className="flex flex-col items-center justify-start w-full max-w-7xl mx-auto gap-8 pt-8 md:pt-12">
           <Sparkles
             color="#00FFFF"
             count={30}
@@ -123,7 +122,7 @@ const WelcomeComponent = () => {
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
-            className="text-4xl md:text-6xl lg:text-8xl font-extrabold text-center mb-4 md:mb-8"
+            className="text-4xl md:text-6xl lg:text-8xl font-extrabold text-center"
             style={{
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
@@ -139,7 +138,7 @@ const WelcomeComponent = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 1 }}
-            className="text-xl md:text-2xl lg:text-3xl text-center mb-8 md:mb-12 max-w-3xl font-light"
+            className="text-xl md:text-2xl lg:text-3xl text-center max-w-3xl font-light"
             style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
           >
             Empowering curiosity for{' '}
@@ -167,9 +166,9 @@ const WelcomeComponent = () => {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 1, duration: 0.5 }}
-            className="w-full max-w-4xl mb-8 md:mb-12"
+            className="w-full max-w-4xl"
           >
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-center" 
+            <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center" 
                 style={{ color: '#00FFFF', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
               Recent Topics
             </h2>
@@ -191,7 +190,7 @@ const WelcomeComponent = () => {
               setIsModalOpen(true);
               launchConfetti();
             }}
-            className="px-6 md:px-8 py-3 bg-gradient-to-r from-pink-600 to-blue-400 rounded-full text-base md:text-lg font-semibold transition-all duration-300 shadow-lg mb-8"
+            className="px-6 md:px-8 py-3 bg-gradient-to-r from-pink-600 to-blue-400 rounded-full text-base md:text-lg font-semibold transition-all duration-300 shadow-lg mt-4"
             style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
           >
             Start a New Topic
