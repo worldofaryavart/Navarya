@@ -13,7 +13,7 @@ const WelcomeComponent = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
-  const { conversations, loading: conversationsLoading, error,  setConversations } = useConversations(user);
+  const { conversations, loading: conversationsLoading, error, setConversations } = useConversations(user);
 
   const learnerTypes = [
     "a child curious about space",
@@ -23,35 +23,12 @@ const WelcomeComponent = () => {
     "a farmer innovating agriculture"
   ];
 
-  const mockConversations = [
-    { title: "AI Ethics", preview: "Discussing the implications of AI in society..." },
-    { title: "Quantum Computing", preview: "Exploring the fundamentals of quantum bits..." },
-    { title: "Climate Change Solutions", preview: "Analyzing innovative approaches to sustainability..." },
-  ];
-
-
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % learnerTypes.length);
     }, 3000);
     return () => clearInterval(interval);
   }, [learnerTypes.length]);
-
-  const animatedGradient = useSpring({
-    from: { backgroundPosition: '0% 50%' },
-    to: { backgroundPosition: '100% 50%' },
-    config: { duration: 7000 },
-    loop: { reverse: true },
-  });
-
-  const launchConfetti = () => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#FF1493', '#00FFFF', '#FFD700', '#FF4500', '#7B68EE']
-    });
-  };
 
   const handleNewConversation = async (topic: string, description: string) => {
     if (!user) {
@@ -60,21 +37,24 @@ const WelcomeComponent = () => {
     }
 
     try {
-      const newConversation = await createConversation(
-        user, 
-        description, 
-        topic,
-      );
-      console.log("New conversation created:", newConversation);
+      const newConversation = await createConversation(user, description, topic);
       if (newConversation) {
         setConversations(prevConversations => [...prevConversations, newConversation]);
-        // router.push(`/conversation/${newConversation.id}`);
       } else {
         console.log("Failed to create conversation");
       }
     } catch (error) {
       console.error("Failed to create conversation: ", error);
     }
+  };
+
+  const launchConfetti = () => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#FF1493', '#00FFFF', '#FFD700', '#FF4500', '#7B68EE']
+    });
   };
 
   const renderConversations = () => {
@@ -91,10 +71,10 @@ const WelcomeComponent = () => {
     if (!conversationsLoading && recentConversations.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
-        <div className="bg-gray-900 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500">
-          No conversations yet. Start a new one!
+          <div className="bg-gray-900 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500">
+            No conversations yet. Start a new one!
+          </div>
         </div>
-      </div>
       );
     }
   
@@ -124,107 +104,107 @@ const WelcomeComponent = () => {
       </>
     );
   };
-  
 
   return (
-    <animated.div 
-      style={{
-        ...animatedGradient,
-        backgroundSize: '400% 400%',
-        backgroundImage: 'linear-gradient(45deg, #000000, #1a0033, #000033, #1a0033, #000000)',
-      }}
-      className="min-h-screen flex flex-col items-center justify-center text-white p-4 relative overflow-hidden"
-    >
-      <Sparkles
-        color="#00FFFF"
-        count={30}
-        minSize={7}
-        maxSize={12}
-        overflowPx={0}
-        fadeOutSpeed={10}
-        flicker={true}
-      />
+    <div className="bg-gradient-to-br from-gray-900 to-blue-900 min-h-screen w-full">
+      <div className="container mx-auto px-4 py-8 min-h-screen overflow-y-auto">
+        <div className="flex flex-col items-center justify-start space-y-8 pt-4 md:pt-12">
+          <Sparkles
+            color="#00FFFF"
+            count={30}
+            minSize={7}
+            maxSize={12}
+            overflowPx={0}
+            fadeOutSpeed={10}
+            flicker={true}
+          />
 
-      <motion.h1 
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1 }}
-        className="text-6xl md:text-8xl font-extrabold mb-8 text-center"
-        style={{
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          color: 'transparent',
-          backgroundImage: 'linear-gradient(45deg, #FF1493, #00FFFF, #FFD700)',
-          textShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5), 0 0 40px rgba(255,215,0,0.5)',
-        }}
-      >
-        Welcome to AaryaI
-      </motion.h1>
-      
-      <motion.p 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5, duration: 1 }}
-        className="text-2xl md:text-3xl text-center mb-12 max-w-3xl font-light"
-        style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
-      >
-        Empowering curiosity for{' '}
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={currentIndex}
-            initial={{ opacity: 0, y: 20 }}
+          <motion.h1 
+            initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
-            className="font-semibold"
+            transition={{ duration: 1 }}
+            className="text-4xl md:text-6xl lg:text-8xl font-extrabold text-center mb-4 md:mb-8"
             style={{
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               color: 'transparent',
-              backgroundImage: 'linear-gradient(45deg, #FF1493, #00FFFF)',
+              backgroundImage: 'linear-gradient(45deg, #FF1493, #00FFFF, #FFD700)',
+              textShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5), 0 0 40px rgba(255,215,0,0.5)',
             }}
           >
-            {learnerTypes[currentIndex]}
-          </motion.span>
-        </AnimatePresence>
-      </motion.p>
+            Welcome to AaryaI
+          </motion.h1>
+          
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 1 }}
+            className="text-xl md:text-2xl lg:text-3xl text-center mb-8 md:mb-12 max-w-3xl font-light"
+            style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
+          >
+            Empowering curiosity for{' '}
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={currentIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+                className="font-semibold"
+                style={{
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                  backgroundImage: 'linear-gradient(45deg, #FF1493, #00FFFF)',
+                }}
+              >
+                {learnerTypes[currentIndex]}
+              </motion.span>
+            </AnimatePresence>
+          </motion.p>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
-        className="w-full max-w-4xl mb-12"
-      >
-        <h2 className="text-3xl font-bold mb-6 text-center" style={{ color: '#00FFFF', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>Recent Topics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {renderConversations()}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1, duration: 0.5 }}
+            className="w-full max-w-4xl mb-8 md:mb-12"
+          >
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-center" 
+                style={{ color: '#00FFFF', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
+              Recent Topics
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              {renderConversations()}
+            </div>
+          </motion.div>
+
+          <motion.button
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2, duration: 1 }}
+            whileHover={{ 
+              scale: 1.05, 
+              boxShadow: '0 0 20px rgba(255,20,147,0.8), 0 0 30px rgba(0,255,255,0.8)'
+            }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              setIsModalOpen(true);
+              launchConfetti();
+            }}
+            className="px-6 md:px-8 py-3 bg-gradient-to-r from-pink-600 to-blue-400 rounded-full text-base md:text-lg font-semibold transition-all duration-300 shadow-lg mb-8"
+            style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
+          >
+            Start a New Topic
+          </motion.button>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.button
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 2, duration: 1 }}
-        whileHover={{ 
-          scale: 1.05, 
-          boxShadow: '0 0 20px rgba(255,20,147,0.8), 0 0 30px rgba(0,255,255,0.8)'
-        }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => {
-          setIsModalOpen(true);
-          launchConfetti
-        }}
-        className="px-8 py-3 bg-gradient-to-r from-pink-600 to-blue-400 rounded-full text-lg font-semibold transition-all duration-300 shadow-lg"
-        style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
-      >
-        Start a New Topic
-      </motion.button>
       <NewConversationModal
-      isOpen = {isModalOpen}
-      onClose={() => setIsModalOpen(false)}
-      onCreateConversation={handleNewConversation}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreateConversation={handleNewConversation}
       />
-    </animated.div>
+    </div>
   );
 };
 
