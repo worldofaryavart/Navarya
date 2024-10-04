@@ -162,21 +162,6 @@ const WelcomeComponent = () => {
             </AnimatePresence>
           </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
-            className="w-full max-w-4xl"
-          >
-            <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center" 
-                style={{ color: '#00FFFF', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
-              Recent Topics
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              {renderConversations()}
-            </div>
-          </motion.div>
-
           <motion.button
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -195,6 +180,22 @@ const WelcomeComponent = () => {
           >
             Start a New Topic
           </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1, duration: 0.5 }}
+            className="w-full max-w-4xl"
+          >
+            <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center" 
+                style={{ color: '#00FFFF', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
+              Recent Topics
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              {renderConversations()}
+            </div>
+          </motion.div>
+
         </div>
       </div>
 
