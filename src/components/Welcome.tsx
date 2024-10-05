@@ -7,12 +7,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { createConversation } from '@/utils/topicService';
 import { useConversations } from '@/hooks/useConversations';
 import { Conversation } from '@/types/types';
+import { useRouter } from 'next/navigation';
 
 const WelcomeComponent = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
   const { conversations, loading: conversationsLoading, error, setConversations } = useConversations(user);
+  const router = useRouter();
 
   const learnerTypes = [
     "a child curious about space",
@@ -39,6 +41,9 @@ const WelcomeComponent = () => {
       const newConversation = await createConversation(user, description, topic);
       if (newConversation) {
         setConversations(prevConversations => [...prevConversations, newConversation]);
+        console.log("conversations is created: ", newConversation);
+        router.push(`/topic/${newConversation.id}`);
+        console.log("yes conversation created and opening topic page");
       } else {
         console.log("Failed to create conversation");
       }
@@ -76,6 +81,12 @@ const WelcomeComponent = () => {
         </div>
       );
     }
+
+    const handleConversationClick = (conversationId: string) => {
+      // In a real application, you would set the active conversation here
+      console.log(`Selecting conversation: ${conversationId}`);
+      router.push(`/topic/${conversationId}`);
+    };
   
     return (
       <>
@@ -91,6 +102,7 @@ const WelcomeComponent = () => {
               boxShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5)'
             }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleConversationClick(conv.id)} 
           >
             <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>
               {conv.conversationTitle}
@@ -128,7 +140,7 @@ const WelcomeComponent = () => {
               WebkitBackgroundClip: 'text',
               color: 'transparent',
               backgroundImage: 'linear-gradient(45deg, #FF1493, #00FFFF, #FFD700)',
-              textShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5), 0 0 40px rgba(255,215,0,0.5)',
+              // textShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5), 0 0 40px rgba(255,215,0,0.5)',
             }}
           >
             Welcome to AaryaI

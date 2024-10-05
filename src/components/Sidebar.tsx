@@ -173,6 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleConversationClick = (conversationId: string) => {
     // In a real application, you would set the active conversation here
     console.log(`Selecting conversation: ${conversationId}`);
+    router.push(`/topic/${conversationId}`);
   };
 
   const formatTimestamp = (timestamp: number) => {

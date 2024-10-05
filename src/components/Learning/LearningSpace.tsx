@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from "react";
 import { FiSend, FiPlus, FiMenu } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
