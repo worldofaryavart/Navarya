@@ -9,19 +9,51 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
+import { Message, MessageType, SenderType } from "@/types/types";
+import { addMessage, fetchExistingMessages } from "@/utils/topicService";
 
-interface Message {
-  type: "user" | "ai";
-  content: string;
+interface LearningSpaceProps {
+  currentConversationId: string;
 }
 
-const LearningSpace: React.FC = () => {
+
+const LearningSpace: React.FC<LearningSpaceProps> = ({ currentConversationId}) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { user } = useAuth();
+
+  // useEffect(() => {
+  //   loadExistingMessages();
+  // }, [currentConversationId]);
+
+  // const loadExistingMessages = async () => {
+  //   const loadedConversations = await fetchExistingMessages(currentConversationId);
+  //   setMessages(loadExistingMessages)
+  // };
+
+  useEffect(() => {
+    async function loadMessages() {
+        if (!currentConversationId){
+            setMessages([]);
+            // setLoading(false);
+            return;
+        }
+
+        try { 
+            const fetchedMessegess = await fetchExistingMessages(currentConversationId);
+            setMessages(fetchedMessegess);
+            // setError(null);
+        } catch (err) {
+            // setError('Failed to fetch conversations');
+            console.error(err);
+        } 
+    }
+
+    loadMessages();
+}, [currentConversationId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,7 +71,15 @@ const LearningSpace: React.FC = () => {
 
     try {
       // Save user message
-      setMessages((prev) => [...prev, { type: "user", content: input }]);
+
+      const userMessage = await addMessage(
+        user, 
+        currentConversationId,
+        input, 
+        MessageType.TEXT,
+        SenderType.USER
+      );
+      setMessages((prev) => [...prev, userMessage]);
 
       // Make API call
       const response = await fetch("/api/chat", {
@@ -59,7 +99,14 @@ const LearningSpace: React.FC = () => {
       }
 
       // Save AI response
-      setMessages((prev) => [...prev, { type: "ai", content: data.response }]);
+      const aiMessage = await addMessage(
+        user, 
+        currentConversationId,
+        data.response,
+        MessageType.TEXT,
+        SenderType.AI
+      )
+      setMessages((prev) => [...prev, aiMessage]);
 
       setInput("");
     } catch (error) {
@@ -119,15 +166,15 @@ const LearningSpace: React.FC = () => {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
                 className={`flex ${
-                  msg.type === "user" ? "justify-end" : "justify-start"
+                  msg.sender.type === SenderType.USER ? "justify-end" : "justify-start"
                 }`}
               >
                 <div
                   className={`flex items-start space-x-2 max-w-[85%] sm:max-w-[70%] p-3 rounded-lg ${
-                    msg.type === "user" ? "bg-blue-600" : "bg-gray-700"
+                    msg.sender.type === SenderType.USER ? "bg-blue-600" : "bg-gray-700"
                   } shadow-md`}
                 >
-                  {msg.type === "user" ? (
+                  {msg.sender.type === SenderType.USER ? (
                     <Image
                       src={user?.photoURL || "/default-profile.png"}
                       alt="User"

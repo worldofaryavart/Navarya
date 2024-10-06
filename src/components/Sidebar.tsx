@@ -162,6 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           ...prevConversations,
           newConversation,
         ]);
+        router.push(`/topic/${newConversation.id}`);
       } else {
         console.log("Failed to create");
       }

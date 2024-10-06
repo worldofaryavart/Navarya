@@ -132,4 +132,86 @@ async function fetchConversations(user: User, limitCount: number = 10): Promise<
     }
 }
 
-export { createConversation, fetchConversations };
+async function addMessage(
+    user: User,
+    conversationId: string,
+    content: string,
+    messageType: MessageType, 
+    senderType: SenderType
+): Promise<Message> {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    try {
+        // console.log("add message is running");
+        const messageRef = await addDoc(collection(db, 'messages'), {
+            conversationId,
+            messageType,
+            content,
+            sender: {
+                type: senderType,
+                id: senderType === SenderType.USER ? user.uid : 'AI',
+                name: senderType === SenderType.USER ? user.displayName || 'User' : 'AI Assistant',
+            },
+            timestamp: serverTimestamp(),
+        });
+
+        const messageSnapshot = await getDoc(messageRef);
+        const messageData = messageSnapshot.data() as Omit<Message,'id'>;
+        const message: Message = {
+            ...messageData, 
+            id: messageRef.id,
+            timestamp: messageData.timestamp || new Date(),
+        };
+
+        const conversationRef = doc(db, 'conversations', conversationId);
+
+        await updateDoc(conversationRef, {
+            conversationHistory: [...(await getConversationHistory(conversationId)), message.id],
+            updatedAt: serverTimestamp(),
+        });
+
+        return message;
+    } catch (error) {
+        console.log("Error adding message: ", error);
+        throw error;
+    }
+}
+
+async function getConversationHistory(conversationId: string):Promise<string[]> {
+    const conversationRef = doc(db!, 'conversations', conversationId);
+    const conversationSnapshot = await getDoc(conversationRef);
+    const conversationData = conversationSnapshot.data();
+    return conversationData?.conversationHistory || [];
+}
+
+const fetchExistingMessages = async (conversationId:string):Promise<Message[]> => {
+    if (!db) throw new Error('Firestore is not initialized');
+
+    try {
+        const messagesRef = collection(db, 'messages');
+        const q = query(
+            messagesRef, 
+            where('conversationId', '==', conversationId),
+            orderBy('timestamp','asc')
+        );
+
+        const querySnapshot = await getDocs(q);
+        const loadedMessages: Message[] = [];
+
+        querySnapshot.forEach((doc) => {
+            const messageData = doc.data() as Omit<Message, 'id'>;
+            loadedMessages.push({
+                ...messageData,
+                id: doc.id,
+                timestamp: messageData.timestamp || new Date(),
+            });
+        });
+
+        return loadedMessages;
+    } catch (error) {
+        console.error("Error loading messages:", error);
+        throw error;
+    }
+}
+
+export { createConversation, fetchConversations, addMessage, fetchExistingMessages };
