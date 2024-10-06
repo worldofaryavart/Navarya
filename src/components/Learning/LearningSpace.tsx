@@ -158,7 +158,7 @@ const LearningSpace: React.FC<LearningSpaceProps> = ({ currentConversationId}) =
       <div className="flex-1 flex flex-col">
         <div className="flex-grow overflow-y-auto p-4 space-y-4">
           <AnimatePresence>
-            {messages.map((msg, index) => (
+            {messages.slice(1).map((msg, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
