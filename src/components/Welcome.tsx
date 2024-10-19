@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Sparkles from 'react-sparkle';
-import confetti from 'canvas-confetti';
 import NewConversationModal from './NewConversationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { createConversation } from '@/utils/topicService';
@@ -52,14 +50,7 @@ const WelcomeComponent = () => {
     }
   };
 
-  const launchConfetti = () => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#FF1493', '#00FFFF', '#FFD700', '#FF4500', '#7B68EE']
-    });
-  };
+ 
 
   const renderConversations = () => {
     if (conversationsLoading) {
@@ -120,16 +111,6 @@ const WelcomeComponent = () => {
     <div className="bg-gradient-to-br from-gray-900 to-blue-900 min-h-[100dvh] w-full">
       <div className="w-full h-full px-4 pb-16 md:pb-24">
         <div className="flex flex-col items-center justify-start w-full max-w-7xl mx-auto gap-8 pt-8 md:pt-12">
-          <Sparkles
-            color="#00FFFF"
-            count={30}
-            minSize={7}
-            maxSize={12}
-            overflowPx={0}
-            fadeOutSpeed={10}
-            flicker={true}
-          />
-
           <motion.h1 
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -185,7 +166,6 @@ const WelcomeComponent = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => {
               setIsModalOpen(true);
-              launchConfetti();
             }}
             className="px-6 md:px-8 py-3 bg-gradient-to-r from-pink-600 to-blue-400 rounded-full text-base md:text-lg font-semibold transition-all duration-300 shadow-lg mt-4"
             style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
