@@ -25,29 +25,17 @@ const LearningSpace: React.FC<LearningSpaceProps> = ({ currentConversationId}) =
 
   const { user } = useAuth();
 
-  // useEffect(() => {
-  //   loadExistingMessages();
-  // }, [currentConversationId]);
-
-  // const loadExistingMessages = async () => {
-  //   const loadedConversations = await fetchExistingMessages(currentConversationId);
-  //   setMessages(loadExistingMessages)
-  // };
-
   useEffect(() => {
     async function loadMessages() {
         if (!currentConversationId){
             setMessages([]);
-            // setLoading(false);
             return;
         }
 
         try { 
             const fetchedMessegess = await fetchExistingMessages(currentConversationId);
             setMessages(fetchedMessegess);
-            // setError(null);
         } catch (err) {
-            // setError('Failed to fetch conversations');
             console.error(err);
         } 
     }
@@ -70,7 +58,6 @@ const LearningSpace: React.FC<LearningSpaceProps> = ({ currentConversationId}) =
     setIsLoading(true);
 
     try {
-      // Save user message
 
       const userMessage = await addMessage(
         user, 
@@ -81,7 +68,6 @@ const LearningSpace: React.FC<LearningSpaceProps> = ({ currentConversationId}) =
       );
       setMessages((prev) => [...prev, userMessage]);
 
-      // Make API call
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,7 +84,6 @@ const LearningSpace: React.FC<LearningSpaceProps> = ({ currentConversationId}) =
         throw new Error("No response content in API response");
       }
 
-      // Save AI response
       const aiMessage = await addMessage(
         user, 
         currentConversationId,
@@ -111,7 +96,6 @@ const LearningSpace: React.FC<LearningSpaceProps> = ({ currentConversationId}) =
       setInput("");
     } catch (error) {
       console.error("Error:", error);
-      // Handle error (e.g., display error message to user)
     } finally {
       setIsLoading(false);
     }
