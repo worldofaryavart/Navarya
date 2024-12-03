@@ -19,12 +19,24 @@ interface CalendarViewProps {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
-  const [date, setDate] = useState<Date>(new Date());
+  const [date, setDate] = useState<Date | null>(new Date());
+
+  // Type-safe onChange handler
+  const handleDateChange = (newDate: Date | null) => {
+    // Ensure newDate is not null and is a Date
+    if (newDate) {
+      setDate(newDate);
+    }
+  };
 
   // Filter tasks for the selected date
-  const tasksForSelectedDate = tasks.filter(
-    (task) => task.dueDate === date.toISOString().split("T")[0]
-  );
+  const tasksForSelectedDate = tasks.filter((task) => {
+    // Ensure date is a valid Date object before converting
+    if (date) {
+      return task.dueDate === date.toISOString().split("T")[0];
+    }
+    return false;
+  });
 
   // Helper function to determine task indicator color
   const getTaskIndicatorColor = (status: Task['status']) => {
@@ -58,11 +70,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
     return null;
   };
 
-  // Handle date change with proper type
-  const handleDateChange = (newDate: Date) => {
-    setDate(newDate);
-  };
-
   return (
     <div className="aarya-calendar-container">
       <div className="calendar-wrapper">
@@ -79,7 +86,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
       </div>
 
       <div className="task-list-section">
-        <h3 className="task-list-title">Tasks for {date.toLocaleDateString()}</h3>
+        <h3 className="task-list-title">
+          Tasks for {date ? date.toLocaleDateString() : 'Selected Date'}
+        </h3>
         {tasksForSelectedDate.length > 0 ? (
           <ul className="task-list">
             {tasksForSelectedDate.map((task) => (
