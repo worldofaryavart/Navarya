@@ -5,15 +5,21 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "../../css/AaryaCalendar.css";
 
-// Mock data for tasks (with due dates)
-const tasks = [
-  { id: 1, title: "Complete project report", dueDate: "2024-12-04", status: "Pending" },
-  { id: 2, title: "Fix bugs in Task Scheduler", dueDate: "2024-12-06", status: "In Progress" },
-  { id: 3, title: "Submit assignment", dueDate: "2024-12-04", status: "Completed" },
-];
+// Define Task interface
+interface Task {
+  id: number | string;
+  title: string;
+  dueDate: string;
+  status: 'Pending' | 'In Progress' | 'Completed';
+}
 
-const CalendarView = ({tasks}) => {
-  const [date, setDate] = useState(new Date());
+// Define props interface
+interface CalendarViewProps {
+  tasks: Task[];
+}
+
+const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
+  const [date, setDate] = useState<Date>(new Date());
 
   // Filter tasks for the selected date
   const tasksForSelectedDate = tasks.filter(
@@ -21,7 +27,7 @@ const CalendarView = ({tasks}) => {
   );
 
   // Helper function to determine task indicator color
-  const getTaskIndicatorColor = (status) => {
+  const getTaskIndicatorColor = (status: Task['status']) => {
     switch (status) {
       case "Completed": return "bg-green-500";
       case "In Progress": return "bg-blue-500";
@@ -31,7 +37,7 @@ const CalendarView = ({tasks}) => {
   };
 
   // Custom tile content to add task indicators
-  const tileContent = ({ date, view }) => {
+  const tileContent = ({ date, view }: { date: Date, view: string }) => {
     if (view === 'month') {
       const dateString = date.toISOString().split('T')[0];
       const dayTasks = tasks.filter(task => task.dueDate === dateString);
@@ -52,11 +58,16 @@ const CalendarView = ({tasks}) => {
     return null;
   };
 
+  // Handle date change with proper type
+  const handleDateChange = (newDate: Date) => {
+    setDate(newDate);
+  };
+
   return (
     <div className="aarya-calendar-container">
       <div className="calendar-wrapper">
         <Calendar
-          onChange={setDate}
+          onChange={handleDateChange}
           value={date}
           view="month"
           tileContent={tileContent}
