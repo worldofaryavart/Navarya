@@ -9,17 +9,10 @@ import {
   Clock, 
   Activity 
 } from 'lucide-react';
+import { Task } from "@/types/taskTypes";
 
 // Define Task interface
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: 'Pending' | 'In Progress' | 'Completed';
-  priority: 'Low' | 'Medium' | 'High';
-  dueDate?: string;
-  createdAt: Date;
-}
+
 
 interface TaskListProps {
   tasks: Task[];

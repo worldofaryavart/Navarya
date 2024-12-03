@@ -1,13 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import CalendarView from "@/components/TaskScheduler/CalendarView";
 import TaskFormModal from "@/components/TaskScheduler/TaskFormModal";
 import TaskList from "@/components/TaskScheduler/TaskList";
+import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks";
+import { NewTaskInput, Task } from "@/types/taskTypes";
 
 const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedTasks = await getTasks();
+        setTasks(fetchedTasks);
+      } catch (error) {
+        console.error("Failed to fetch tasks: ", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   const handleOpenTaskModal = () => {
     setIsModalOpen(true);
@@ -17,28 +36,62 @@ const Tasks = () => {
     setIsModalOpen(false);
   };
 
-  const handleAddTask = (newTask: any) => {
-    const taskWithId = {
-      ...newTask,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      status: 'Pending'
-    };
-    
-    setTasks(prevTasks => [...prevTasks, taskWithId]);
+  const handleAddTask = async (newTask: NewTaskInput) => {
+    try {
+      const taskToAdd = {
+        ...newTask,
+        createdAt: new Date(),
+        status: newTask.status || 'Pending',
+      } as Task;
+
+      const addedTask = await addTask(taskToAdd);
+      console.log("added task is ", addedTask);
+      setTasks((prevTasks) => [...prevTasks, addedTask]);
+      handleCloseTaskModal();
+    } catch (error) {
+      console.error("Failed to add task: ", error);
+    }
   };
 
-  const handleUpdateTask = (updatedTask: any) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === updatedTask.id ? updatedTask : task
-      )
-    );
+  const handleUpdateTask = async (updatedTask: Task) => {
+    try {
+      if (!updatedTask.id) throw new Error("Task ID is required");
+
+      const completeTask: Task = {
+        id: updatedTask.id,
+        title: updatedTask.title,
+        description: updatedTask.description,
+        status: updatedTask.status,
+        priority: updatedTask.priority,
+        dueDate: updatedTask.dueDate,
+        createdAt: updatedTask.createdAt || new Date()
+      };
+
+      const result = await updateTask(completeTask);
+
+      setTasks(prevTasks =>
+        prevTasks.map((task) => (task.id === updatedTask.id ? completeTask : task))
+      );
+    } catch (error) {
+      console.error("Failed to update task: ", error);
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+  const handleDeleteTask = async (taskId: string) => {
+    // setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    try {
+      await deleteTask(taskId);
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+    } catch (error) {
+      console.error("Failed to delete task: ", error);
+    }
   };
+
+  if (isLoading) {
+    return <div> Loading tasks...</div>;
+  }
+
+  console.log("tasks is : ", tasks);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -61,20 +114,21 @@ const Tasks = () => {
 
           {/* Task List - 1/3 width */}
           <div className="col-span-1">
-            <TaskList 
-              tasks={tasks} 
+            <TaskList
+              tasks={tasks}
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
             />
           </div>
         </div>
+        {isModalOpen && (
+          <TaskFormModal
+            isOpen={isModalOpen}
+            onClose={handleCloseTaskModal}
+            onAddTask={handleAddTask}
+          />
+        )}
       </div>
-
-      <TaskFormModal 
-        isOpen={isModalOpen}
-        onClose={handleCloseTaskModal}
-        onSubmit={handleAddTask}
-      />
     </div>
   );
 };

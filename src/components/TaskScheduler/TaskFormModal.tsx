@@ -2,32 +2,39 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { NewTaskInput, TaskPriority, TaskStatus } from '@/types/taskTypes';
 
 interface TaskFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (task: {
-    title: string;
-    description: string;
-    dueDate: string;
-    priority: string;
-  }) => void;
+  onAddTask: (task: NewTaskInput) => void;
 }
 
-const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSubmit }) => {
+const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onAddTask }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [priority, setPriority] = useState("medium");
+  const [priority, setPriority] = useState<TaskPriority>("Medium");
+  const [status, setStatus] = useState<TaskStatus>("Pending");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ title, description, dueDate, priority });
+
+    const newTask: NewTaskInput = {
+      title, 
+      description, 
+      dueDate,
+      priority,
+      status: "Pending"
+    };
+
+    onAddTask(newTask);
     // Reset form after submission
     setTitle("");
     setDescription("");
     setDueDate("");
-    setPriority("medium");
+    setPriority("Medium");
+    setStatus("Pending");
     onClose();
   };
 
@@ -105,7 +112,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSubmit
             <select
               id="priority"
               value={priority}
-              onChange={(e) => setPriority(e.target.value)}
+              onChange={(e) => setPriority(e.target.value as TaskPriority)}
               className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="low">Low</option>

@@ -64,13 +64,4 @@ interface TaskFormModalProps {
     }) => void;
   }
 
-interface Tasks {
-    task: {
-        id: Number,
-        title: string;
-        description: string;
-        dueDate: string;
-        priority: string;
-    }
-}
-export type { Conversation, Message, Sender, ConversationActionTypes, TaskFormModalProps, Tasks}
+export type { Conversation, Message, Sender, ConversationActionTypes, TaskFormModalProps}

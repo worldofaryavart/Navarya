@@ -4,14 +4,10 @@ import React, { useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "../../css/AaryaCalendar.css";
+import { Task } from "@/types/taskTypes";
 
 // Define Task interface
-interface Task {
-  id: number | string;
-  title: string;
-  dueDate: string;
-  status: "Pending" | "In Progress" | "Completed";
-}
+
 
 // Define props interface
 interface CalendarViewProps {
@@ -20,6 +16,8 @@ interface CalendarViewProps {
 
 const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
   const [date, setDate] = useState<Date | null>(new Date());
+
+  console.log("tasks in calendar viwe: ", tasks);
 
   // Modify the onChange handler to match the library's expected signature
   const handleDateChange = (
@@ -42,9 +40,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
 
   // Filter tasks for the selected date
   const tasksForSelectedDate = tasks.filter((task) => {
-    // Ensure date is a valid Date object before converting
     if (date) {
-      return task.dueDate === date.toISOString().split("T")[0];
+      // Create a new Date object from the task's dueDate to ensure correct date parsing
+      const taskDate = new Date(task.dueDate as Date);
+      const selectedDate = new Date(date);
+  
+      // Compare year, month, and day to avoid timezone issues
+      return (
+        taskDate.getFullYear() === selectedDate.getFullYear() &&
+        taskDate.getMonth() === selectedDate.getMonth() &&
+        taskDate.getDate() === selectedDate.getDate()
+      );
     }
     return false;
   });
@@ -64,28 +70,33 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
   };
 
   // Custom tile content to add task indicators
-  const tileContent = ({ date, view }: { date: Date; view: string }) => {
-    if (view === "month") {
-      const dateString = date.toISOString().split("T")[0];
-      const dayTasks = tasks.filter((task) => task.dueDate === dateString);
+  
+const tileContent = ({ date, view }: { date: Date; view: string }) => {
+  if (view === 'month') {
+    const dayTasks = tasks.filter((task) => {
+      const taskDate = new Date(task.dueDate as Date);
+      return (
+        taskDate.getFullYear() === date.getFullYear() &&
+        taskDate.getMonth() === date.getMonth() &&
+        taskDate.getDate() === date.getDate()
+      );
+    });
 
-      if (dayTasks.length > 0) {
-        return (
-          <div className="task-indicator-container">
-            {dayTasks.map((task) => (
-              <span
-                key={task.id}
-                className={`task-indicator ${getTaskIndicatorColor(
-                  task.status
-                )}`}
-              />
-            ))}
-          </div>
-        );
-      }
+    if (dayTasks.length > 0) {
+      return (
+        <div className="task-indicator-container">
+          {dayTasks.map((task) => (
+            <span
+              key={task.id}
+              className={`task-indicator ${getTaskIndicatorColor(task.status)}`}
+            />
+          ))}
+        </div>
+      );
     }
-    return null;
-  };
+  }
+  return null;
+};
 
   return (
     <div className="aarya-calendar-container">
