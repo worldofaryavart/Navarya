@@ -53,4 +53,24 @@ interface ConversationAction {
     payload: any;
 }
 
-export type { Conversation, Message, Sender, ConversationActionTypes}
+interface TaskFormModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (task: {
+      title: string;
+      description: string;
+      dueDate: string;
+      priority: string;
+    }) => void;
+  }
+
+interface Tasks {
+    task: {
+        id: Number,
+        title: string;
+        description: string;
+        dueDate: string;
+        priority: string;
+    }
+}
+export type { Conversation, Message, Sender, ConversationActionTypes, TaskFormModalProps, Tasks}

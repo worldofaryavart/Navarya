@@ -1,0 +1,181 @@
+.aarya-calendar-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #f9fafb; /* Soft, light background */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+  
+  .aarya-calendar {
+    width: 100%;
+    border: none;
+  }
+  
+  /* Ensure day numbers are always visible */
+  .react-calendar__tile abbr {
+    color: #2d3748; /* Dark gray for better readability */
+    font-weight: 500;
+  }
+  
+  /* Disabled dates */
+  .react-calendar__tile--disabled abbr {
+    color: #a0aec0; /* Lighter color for disabled dates */
+  }
+  
+  /* Calendar Header Styling */
+  .react-calendar__navigation {
+    display: flex;
+    height: 44px;
+    margin-bottom: 1em;
+    background-color: #4a5568; /* Dark indigo for header */
+    color: white;
+    border-radius: 4px;
+  }
+  
+  .react-calendar__navigation button {
+    color: white;
+    min-width: 44px;
+    background: none;
+    font-size: 16px;
+  }
+  
+  .react-calendar__navigation button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Weekday Labels */
+  .react-calendar__month-view__weekdays {
+    text-align: center;
+    text-transform: uppercase;
+    font-size: 0.75em;
+    font-weight: bold;
+    color: #718096; /* Lighter text color for weekday labels */
+  }
+  
+  /* Day Number Styling */
+  .react-calendar__tile {
+    position: relative;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    background: transparent;
+    border: none;
+    transition: all 0.2s ease;
+  }
+  
+  .react-calendar__tile:hover {
+    background-color: rgba(99, 102, 241, 0.1); /* Soft indigo hover effect */
+    border-radius: 8px;
+  }
+  
+  .react-calendar__tile--active {
+    background-color: #4a5568 !important; /* Dark indigo for selected date */
+  }
+  
+  .react-calendar__tile--active abbr {
+    color: white !important; /* Ensure white text on active tile */
+  }
+  
+  .react-calendar__tile--now {
+    background-color: #e6f2ff; /* Light blue for today's date */
+    border-radius: 8px;
+  }
+  
+  /* Ensure today's date text is visible */
+  .react-calendar__tile--now abbr {
+    color: #2d3748 !important;
+    font-weight: bold;
+  }
+  
+  /* Task Indicators */
+  .task-indicator-container {
+    position: absolute;
+    bottom: 5px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .task-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin: 0 2px;
+  }
+  
+  /* Task List Styling */
+  .task-list-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  .task-list-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #2d3748;
+  }
+  
+  .task-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #edf2f7;
+  }
+  
+  .task-title {
+    color: #4a5568;
+    font-weight: 500;
+  }
+  
+  .task-status {
+    font-size: 0.8em;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  
+  .status-completed {
+    background-color: rgba(72, 187, 120, 0.1);
+    color: #48bb78;
+  }
+  
+  .status-in-progress {
+    background-color: rgba(56, 161, 105, 0.1);
+    color: #3182ce;
+  }
+  
+  .status-pending {
+    background-color: rgba(237, 137, 54, 0.1);
+    color: #ed8936;
+  }
+  
+  .no-tasks-message {
+    color: #718096;
+    text-align: center;
+    padding: 15px;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 640px) {
+    .aarya-calendar-container {
+      padding: 10px;
+    }
+  
+    .react-calendar__tile {
+      height: 40px;
+    }
+  
+    .react-calendar__month-view__weekdays {
+      font-size: 0.6em;
+    }
+  }

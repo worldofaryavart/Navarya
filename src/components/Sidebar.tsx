@@ -60,82 +60,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [conversations]);
 
-  // const fetchConversations = async () => {
-  //   const mockConversations: Conversation[] = [
-  //     {
-  //       id: "conv1",
-  //       conversationTitle: "AI ethics",
-  //       conversationHistory: [
-  //         {
-  //           id: "msg1",
-  //           conversationId: "conv1",
-  //           messageType: MessageType.TEXT,
-  //           content: "Hello, how are you?",
-  //           sender: { type: SenderType.USER, id: "user1", name: "John Doe" },
-  //           timestamp: new Date("2024-09-30T10:00:00"),
-  //         },
-  //         {
-  //           id: "msg2",
-  //           conversationId: "conv1",
-  //           messageType: MessageType.TEXT,
-  //           content: "I'm doing great! How about you?",
-  //           sender: { type: SenderType.AI, id: "ai1", name: "Aarya AI" },
-  //           timestamp: new Date("2024-09-30T10:05:00"),
-  //         },
-  //       ],
-  //       createdAt: new Date("2024-09-30T09:00:00"),
-  //       updatedAt: new Date("2024-09-30T10:05:00"),
-  //     },
-  //     {
-  //       id: "conv2",
-  //       conversationTitle: "Quantum Computing",
-  //       conversationHistory: [
-  //         {
-  //           id: "msg3",
-  //           conversationId: "conv2",
-  //           messageType: MessageType.IMAGE,
-  //           content: "image-url-1.jpg",
-  //           sender: { type: SenderType.USER, id: "user2", name: "Alice" },
-  //           timestamp: new Date("2024-09-29T14:30:00"),
-  //         },
-  //         {
-  //           id: "msg4",
-  //           conversationId: "conv2",
-  //           messageType: MessageType.TEXT,
-  //           content: "Nice picture!",
-  //           sender: { type: SenderType.AI, id: "ai2", name: "Helper AI" },
-  //           timestamp: new Date("2024-09-29T14:35:00"),
-  //         },
-  //       ],
-  //       createdAt: new Date("2024-09-29T13:30:00"),
-  //       updatedAt: new Date("2024-09-29T14:35:00"),
-  //     },
-  //     {
-  //       id: "conv3",
-  //       conversationTitle: "Drug discovery",
-  //       conversationHistory: [
-  //         {
-  //           id: "msg5",
-  //           conversationId: "conv3",
-  //           messageType: MessageType.VIDEO,
-  //           content: "video-url-1.mp4",
-  //           sender: { type: SenderType.USER, id: "user3", name: "Bob" },
-  //           timestamp: new Date("2024-09-28T08:00:00"),
-  //         },
-  //         {
-  //           id: "msg6",
-  //           conversationId: "conv3",
-  //           messageType: MessageType.TEXT,
-  //           content: "Check out this cool video!",
-  //           sender: { type: SenderType.AI, id: "ai3", name: "Media AI" },
-  //           timestamp: new Date("2024-09-28T08:15:00"),
-  //         },
-  //       ],
-  //       createdAt: new Date("2024-09-28T07:30:00"),
-  //       updatedAt: new Date("2024-09-28T08:15:00"),
-  //     },
-  //   ];
-
   const handleLogout = async () => {
     try {
       await signOut(auth!);
@@ -261,6 +185,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setIsSidebarOpen(false)}
               >
                 <FiEye className="mr-2" /> Our Vision
+              </button>
+            </Link>
+            <Link href="/tasks" passHref>
+              <button
+                className="w-full p-2 text-left flex items-center hover:bg-gray-700 rounded transition-colors"
+                onClick={() => setIsSidebarOpen(false)}
+              >
+                <FiEye className="mr-2" /> Our Tasks
               </button>
             </Link>
           </div>
