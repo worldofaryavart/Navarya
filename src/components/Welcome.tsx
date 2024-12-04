@@ -66,7 +66,7 @@ const WelcomeComponent = () => {
     if (!conversationsLoading && recentConversations.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
-          <div className="bg-gray-900 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500">
+          <div className="bg-gray-700 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500">
             No conversations yet. Start a new one!
           </div>
         </div>
@@ -87,7 +87,7 @@ const WelcomeComponent = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.2 + index * 0.2 }}
-            className="bg-gray-900 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500"
+            className="bg-gray-700 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500"
             whileHover={{ 
               scale: 1.05, 
               boxShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5)'
@@ -108,7 +108,7 @@ const WelcomeComponent = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-blue-900 min-h-[100dvh] w-full">
+    <div className="bg-gradient-to-br from-gray-700 to-gray-900 min-h-[100dvh] w-full">
       <div className="w-full h-full px-4 pb-16 md:pb-24">
         <div className="flex flex-col items-center justify-start w-full max-w-7xl mx-auto gap-8 pt-8 md:pt-12">
           <motion.h1 
@@ -167,7 +167,7 @@ const WelcomeComponent = () => {
             onClick={() => {
               setIsModalOpen(true);
             }}
-            className="px-6 md:px-8 py-3 bg-gradient-to-r from-pink-600 to-blue-400 rounded-full text-base md:text-lg font-semibold transition-all duration-300 shadow-lg mt-4"
+            className="px-6 md:px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full text-base md:text-lg font-semibold transition-all duration-300 shadow-lg mt-4"
             style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
           >
             Start a New Topic
