@@ -21,7 +21,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   useEffect(() => {
     const currentReminders = reminderService.getReminders();
-    console.log("Current reminder in layout are: ", currentReminders);
     setActiveReminders(currentReminders);
   }, [reminderService]);
 

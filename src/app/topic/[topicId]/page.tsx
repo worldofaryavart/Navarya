@@ -8,7 +8,6 @@ interface TopicPageProps {
 
 export default async function TopicPage({ params }: TopicPageProps) {
   const {topicId } = params;
-  console.log("topic id is: ", topicId);
   
   if (!topicId) {
     notFound()

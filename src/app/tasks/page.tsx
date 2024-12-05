@@ -24,7 +24,6 @@ const Tasks = () => {
 
   useEffect(() => {
     const currentReminders = reminderService.getReminders();
-    console.log("Current reminder are: ", currentReminders);
     setActiveReminders(currentReminders);
   }, [reminderService]);
 
@@ -49,7 +48,6 @@ const Tasks = () => {
       } as Task;
 
       const addedTask = await addTask(taskToAdd);
-      console.log("added task is ", addedTask);
       setTasks((prevTasks) => [...prevTasks, addedTask]);
       handleCloseTaskModal();
     } catch (error) {
@@ -92,10 +90,6 @@ const Tasks = () => {
       console.error("Failed to delete task: ", error);
     }
   };
-
-  useEffect(() => {
-    console.log("tasks are: ", tasks);
-  })
 
   if (isLoading) {
     return <Loader />;

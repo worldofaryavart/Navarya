@@ -39,9 +39,7 @@ const WelcomeComponent = () => {
       const newConversation = await createConversation(user, description, topic);
       if (newConversation) {
         setConversations(prevConversations => [...prevConversations, newConversation]);
-        console.log("conversations is created: ", newConversation);
         router.push(`/topic/${newConversation.id}`);
-        console.log("yes conversation created and opening topic page");
       } else {
         console.log("Failed to create conversation");
       }
@@ -75,7 +73,6 @@ const WelcomeComponent = () => {
 
     const handleConversationClick = (conversationId: string) => {
       // In a real application, you would set the active conversation here
-      console.log(`Selecting conversation: ${conversationId}`);
       router.push(`/topic/${conversationId}`);
     };
   

@@ -59,9 +59,8 @@ const AIControlButton: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    console.log("inpput values is : ", inputValue);
     if (!inputValue.trim()) return;
-    console.log("input valu: ", inputValue);
+    console.log("input value: ", inputValue);
 
     setIsProcessing(true);
     try {
