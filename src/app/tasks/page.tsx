@@ -7,26 +7,28 @@ import TaskList from "@/components/TaskScheduler/TaskList";
 import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
 import Loader from "@/components/Loader";
+import { useReminderSystem } from "@/hooks/useReminderSystem";
+import Toast from "@/components/Toast";
+import { useTaskContext } from "@/context/TaskContext";
 
 const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeReminders, setActiveReminders] = useState<any[]>([]);
+
+  const { tasks, setTasks } = useTaskContext();
+
+  const reminderService = useReminderSystem(tasks);
+
+  // useEffect(() => {
+  //   const currentReminders = reminderService.getReminders();
+  //   console.log("current remindersare: ", currentReminders);
+  //   setActiveReminders(currentReminders);
+  // }, [reminderService]);
 
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setIsLoading(true);
-        const fetchedTasks = await getTasks();
-        setTasks(fetchedTasks);
-      } catch (error) {
-        console.error("Failed to fetch tasks: ", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTasks();
+    setIsLoading(false);
   }, []);
 
   const handleOpenTaskModal = () => {
@@ -91,10 +93,8 @@ const Tasks = () => {
   };
 
   if (isLoading) {
-    return <Loader/>;
+    return <Loader />;
   }
-
-  console.log("tasks is : ", tasks);
 
   return (
     <div className="container mx-auto px-4 py-12 bg-gray-900 text-white overflow-y-auto">
@@ -130,6 +130,19 @@ const Tasks = () => {
           onAddTask={handleAddTask}
         />
       )}
+
+      {activeReminders.map((reminder) => (
+        <Toast
+          key={reminder.id}
+          message={`Reminder: ${reminder.title}`}
+          type={reminder.reminderTime < new Date() ? "error" : "success"}
+          onClose={() => {
+            setActiveReminders((prev) =>
+              prev.filter((r) => r.id !== reminder.id)
+            );
+          }}
+        />
+      ))}
     </div>
   );
 };

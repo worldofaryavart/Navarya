@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Layout from "./Layout";
 import Loader from "./Loader";
+import { TaskProvider } from "@/context/TaskContext";
 
 const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true); 
@@ -28,7 +29,11 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
     return <main className="flex flex-col h-screen bg-gray-900 text-white">{children}</main>;
   }
 
-  return <Layout>{children}</Layout>;
+  return (
+    <TaskProvider>
+      <Layout>{children}</Layout>
+    </TaskProvider>
+);
 };
 
 export default AuthWrapper;

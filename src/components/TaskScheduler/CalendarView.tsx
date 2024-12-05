@@ -17,8 +17,6 @@ interface CalendarViewProps {
 const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
   const [date, setDate] = useState<Date | null>(new Date());
 
-  console.log("tasks in calendar viwe: ", tasks);
-
   // Modify the onChange handler to match the library's expected signature
   const handleDateChange = (
     value: Date | Date[] | null,

@@ -31,3 +31,16 @@ body {
     text-wrap: balance;
   }
 }
+
+ul::-webkit-scrollbar {
+  width: 6px; /* Make the scrollbar thin */
+}
+
+ul::-webkit-scrollbar-thumb {
+  background-color: #83878d; /* Tailwind gray-400 */
+  border-radius: 9999px; /* Make it rounded */
+}
+
+ul::-webkit-scrollbar-track {
+  background-color: #F3F4F6; /* Tailwind gray-100 */
+}
