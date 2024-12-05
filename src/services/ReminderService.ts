@@ -66,7 +66,7 @@ class ReminderService {
                     if (permission === 'granted') {
                         new Notification(reminder.title, {
                             body: `Reminder: ${reminder.description || 'No additional details'}`,
-                            icon: '/path/to/icon/png'
+                            // icon: '/path/to/icon/png'
                         });
                     }
                 });

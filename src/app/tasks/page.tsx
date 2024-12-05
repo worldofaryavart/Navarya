@@ -19,13 +19,14 @@ const Tasks = () => {
 
   const { tasks, setTasks } = useTaskContext();
 
+
   const reminderService = useReminderSystem(tasks);
 
-  // useEffect(() => {
-  //   const currentReminders = reminderService.getReminders();
-  //   console.log("current remindersare: ", currentReminders);
-  //   setActiveReminders(currentReminders);
-  // }, [reminderService]);
+  useEffect(() => {
+    const currentReminders = reminderService.getReminders();
+    console.log("Current reminder are: ", currentReminders);
+    setActiveReminders(currentReminders);
+  }, [reminderService]);
 
   useEffect(() => {
     setIsLoading(false);
@@ -91,6 +92,10 @@ const Tasks = () => {
       console.error("Failed to delete task: ", error);
     }
   };
+
+  useEffect(() => {
+    console.log("tasks are: ", tasks);
+  })
 
   if (isLoading) {
     return <Loader />;

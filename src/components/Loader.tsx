@@ -17,7 +17,7 @@ const Loader: React.FC<LoaderProps> = ({ action = "Loading" }) => {
           className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-400 mb-4"
           aria-hidden="true"
         ></div>
-        <h2 className="text-xl font-bold text-blue-400">{action}</h2>
+        {/* <h2 className="text-xl font-bold text-blue-400">{action}</h2> */}
       </div>
     </div>
   );
