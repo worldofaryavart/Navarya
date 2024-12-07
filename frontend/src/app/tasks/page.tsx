@@ -17,6 +17,7 @@ const Tasks = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { tasks, setTasks } = useTaskContext();
 
+  const { checkTaskForReminder } = useReminderSystem();
 
   useEffect(() => {
     setIsLoading(false);
@@ -40,6 +41,10 @@ const Tasks = () => {
 
       const addedTask = await addTask(taskToAdd);
       setTasks((prevTasks) => [...prevTasks, addedTask]);
+      
+      // Check for reminders in the task description
+      await checkTaskForReminder(newTask.description || '');
+      
       handleCloseTaskModal();
     } catch (error) {
       console.error("Failed to add task: ", error);
