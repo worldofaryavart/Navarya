@@ -6,9 +6,10 @@ interface newConversationProps {
     isOpen: boolean;
     onClose: () => void;
     onCreateConversation: (topic: string, description: string) => void;
+    onSubmit: (topic: string, description: string) => Promise<void>;
 }
 
-const NewConversationModal: React.FC<newConversationProps> = ({ isOpen, onClose, onCreateConversation }) => {
+const NewConversationModal: React.FC<newConversationProps> = ({ isOpen, onClose, onCreateConversation, onSubmit }) => {
     const [topic, setTopic] = useState('');
     const [description, setDescription] = useState('');
 

@@ -1,62 +1,120 @@
+'use client';
 import React from 'react';
+import { motion } from 'framer-motion';
+import { FiGlobe, FiTrendingUp, FiShield,FiAirplay } from 'react-icons/fi';
 
 const VisionPage: React.FC = () => {
+  const visionPoints = [
+    {
+      icon: <FiAirplay className="w-8 h-8" />,
+      title: "Cognitive Enhancement",
+      description: "Empowering individuals to reach their full intellectual potential through advanced AI assistance."
+    },
+    {
+      icon: <FiGlobe className="w-8 h-8" />,
+      title: "Global Access",
+      description: "Making advanced AI technology accessible to everyone, regardless of their location or background."
+    },
+    {
+      icon: <FiTrendingUp className="w-8 h-8" />,
+      title: "Continuous Innovation",
+      description: "Pushing the boundaries of AI technology to create more intelligent and capable systems."
+    },
+    {
+      icon: <FiShield className="w-8 h-8" />,
+      title: "Ethical AI",
+      description: "Developing AI systems that are transparent, fair, and aligned with human values."
+    }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-12 bg-gray-900 text-white overflow-y-auto">
-      <h1 className="text-4xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-        Aaryal - Empowering Minds, Expanding Horizons
-      </h1>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <p className="text-lg">
-          At Aaryal, we&apos;re on a mission to revolutionize the way humans learn, think, and innovate. Our vision is to create a world
-          where everyone has the power to unlock their full cognitive potential, accessing the collective knowledge of humanity at their
-          fingertips.
-        </p>
-        
-        <h2 className="text-2xl font-semibold mt-8 mb-4 text-blue-400">Reimagining Learning and Research</h2>
-        <p>
-          Imagine having a brilliant mentor who knows everything about your field of interest, understands your unique learning style,
-          and is available 24/7 to guide you. Now, imagine that this mentor can help you think faster, understand deeper, and make
-          connections you never thought possible. That&apos;s the essence of Aaryal.
-        </p>
-        <p>
-          Our platform seamlessly blends cutting-edge artificial intelligence with human cognition, creating a symbiotic relationship
-          that enhances our natural abilities. Whether you&apos;re a researcher pushing the boundaries of science, a student mastering
-          complex subjects, or a lifelong learner exploring new horizons, Aaryal is designed to empower you.
-        </p>
-        
-        <h2 className="text-2xl font-semibold mt-8 mb-4 text-blue-400">Key Features of Aaryal</h2>
-        <ul className="list-disc list-inside space-y-2 pl-4">
-          <li>Personalized Learning Paths: Tailored content delivery based on your unique learning style and goals.</li>
-          <li>AI-Powered Insights: Advanced algorithms that help you connect ideas and uncover new perspectives.</li>
-          <li>Interactive Knowledge Exploration: Engage with information through text, visuals, and interactive elements.</li>
-          <li>Progress Tracking: Monitor your learning journey with intuitive analytics and feedback.</li>
-        </ul>
-        
-        <h2 className="text-2xl font-semibold mt-8 mb-4 text-blue-400">Our Commitment to You</h2>
-        <p>
-          As we develop Aaryal, our focus is on creating a tool that not only provides information but truly enhances your cognitive
-          abilities. We&apos;re committed to:
-        </p>
-        <ul className="list-disc list-inside space-y-2 pl-4">
-          <li>Continuous Innovation: Staying at the forefront of AI and educational technology.</li>
-          <li>User-Centric Design: Ensuring that every feature serves to empower and inspire our users.</li>
-          <li>Ethical Development: Upholding the highest standards of data privacy and responsible AI use.</li>
-        </ul>
-        
-        <h2 className="text-2xl font-semibold mt-8 mb-4 text-blue-400">Join Us on This Journey</h2>
-        <p>
-          While the full capabilities of Aaryal are still in development, we&apos;re excited to share our vision with you. In the coming months,
-          we&apos;ll be rolling out early access to select features, giving you a glimpse into the future of learning and cognitive enhancement.
-        </p>
-        <p className="mt-4">
-          Stay tuned for updates, and get ready to unlock your cognitive superpowers with Aaryal. Together, we&apos;re not just changing
-          how we learn – we&apos;re expanding the boundaries of human potential.
-        </p>
-        
-        <p className="text-xl font-semibold mt-8 text-center text-purple-400">
-          *Aaryal: Where AI Meets Human Brilliance*
-        </p>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-16"
+        >
+          <h1 className="text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
+            Our Vision for the Future
+          </h1>
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            Reimagining the future of human-AI collaboration and pushing the boundaries of what's possible.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16"
+        >
+          {visionPoints.map((point, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 * index }}
+              className="bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl hover:bg-gray-700/50 transition-all duration-300"
+            >
+              <div className="text-blue-400 mb-4">{point.icon}</div>
+              <h3 className="text-xl font-semibold mb-3">{point.title}</h3>
+              <p className="text-gray-400">{point.description}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-gray-800/30 backdrop-blur-sm rounded-2xl p-8 mb-16"
+        >
+          <h2 className="text-3xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+            Reimagining Learning and Research
+          </h2>
+          <div className="text-lg text-gray-300 space-y-4 max-w-4xl mx-auto">
+            <p>
+              Imagine having a brilliant mentor who knows everything about your field of interest, understands your learning style, and is available 24/7 to guide you. That's what we're building at Aaryal.
+            </p>
+            <p>
+              Our AI systems are designed to adapt to your unique needs, providing personalized learning experiences that evolve with you. Whether you're a student, researcher, or professional, Aaryal is your partner in intellectual growth.
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="text-center"
+        >
+          <div className="inline-block p-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-xl mb-16">
+            <div className="bg-gray-900 rounded-lg p-8">
+              <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+                The Future is Here
+              </h2>
+              <p className="text-lg text-gray-300">
+                Join us in shaping the future of artificial intelligence and human potential.
+              </p>
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="flex justify-center gap-4"
+          >
+            <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full font-semibold hover:opacity-90 transition-opacity">
+              Start Your Journey
+            </button>
+            <button className="px-8 py-3 border-2 border-blue-400 rounded-full font-semibold hover:bg-blue-400/10 transition-colors">
+              Learn More
+            </button>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );

@@ -6,28 +6,13 @@ import { createConversation } from '@/utils/topicService';
 import { useConversations } from '@/hooks/useConversations';
 import { Conversation } from '@/types/types';
 import { useRouter } from 'next/navigation';
+import { FiPlus, FiClock, FiCalendar, FiMessageSquare, FiStar, FiTrello } from 'react-icons/fi';
 
 const WelcomeComponent = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
   const { conversations, loading: conversationsLoading, error, setConversations } = useConversations(user);
   const router = useRouter();
-
-  const learnerTypes = [
-    "a child curious about space",
-    "a teenager exploring AI",
-    "a researcher pioneering cures",
-    "a scientist making discovery",
-    "a farmer innovating agriculture"
-  ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % learnerTypes.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [learnerTypes.length]);
 
   const handleNewConversation = async (topic: string, description: string) => {
     if (!user) {
@@ -40,159 +25,154 @@ const WelcomeComponent = () => {
       if (newConversation) {
         setConversations(prevConversations => [...prevConversations, newConversation]);
         router.push(`/topic/${newConversation.id}`);
-      } else {
-        console.log("Failed to create conversation");
       }
     } catch (error) {
       console.error("Failed to create conversation: ", error);
     }
   };
 
- 
+  const upcomingFeatures = [
+    { title: "Voice Commands", description: "Control your AI assistant with voice" },
+    { title: "File Analysis", description: "Advanced document understanding" },
+    { title: "Multi-modal Support", description: "Interact with images and audio" },
+  ];
 
-  const renderConversations = () => {
-    if (conversationsLoading) {
-      return <div className="text-white text-center">Loading conversations...</div>;
-    }
-  
-    if (error) {
-      return <div className="text-red-500 text-center">Error loading conversations: {error}</div>;
-    }
-  
-    const recentConversations = conversations.slice(0, 3);
-  
-    if (!conversationsLoading && recentConversations.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <div className="bg-gray-700 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500">
-            No conversations yet. Start a new one!
-          </div>
-        </div>
-      );
-    }
-
-    const handleConversationClick = (conversationId: string) => {
-      // In a real application, you would set the active conversation here
-      router.push(`/topic/${conversationId}`);
-    };
-  
-    return (
-      <>
-        {recentConversations.map((conv: Conversation, index: number) => (
-          <motion.div
-            key={conv.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2 + index * 0.2 }}
-            className="bg-gray-700 bg-opacity-50 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 backdrop-filter backdrop-blur-sm border border-purple-500"
-            whileHover={{ 
-              scale: 1.05, 
-              boxShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5)'
-            }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleConversationClick(conv.id)} 
-          >
-            <h3 className="text-xl font-semibold mb-2" style={{ color: '#FFD700' }}>
-              {conv.conversationTitle}
-            </h3>
-            <p className="text-gray-300">
-              {conv.conversationHistory[0]?.content.substring(0, 50)}...
-            </p>
-          </motion.div>
-        ))}
-      </>
-    );
-  };
+  const DashboardCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; }) => (
+    <motion.div
+      className={`bg-gray-800/50 p-6 rounded-xl backdrop-blur-lg border border-purple-500/30 ${className}`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.02, borderColor: "rgba(147, 51, 234, 0.5)" }}
+      transition={{ duration: 0.2 }}
+    >
+      {children}
+    </motion.div>
+  );
 
   return (
-    <div className="bg-gradient-to-br from-gray-700 to-gray-900 min-h-[100dvh] w-full">
-      <div className="w-full h-full px-4 pb-16 md:pb-24">
-        <div className="flex flex-col items-center justify-start w-full max-w-7xl mx-auto gap-8 pt-8 md:pt-12">
-          <motion.h1 
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1 }}
-            className="text-4xl md:text-6xl lg:text-8xl font-extrabold text-center"
-            style={{
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              color: 'transparent',
-              backgroundImage: 'linear-gradient(45deg, #FF1493, #00FFFF, #FFD700)',
-              // textShadow: '0 0 20px rgba(255,20,147,0.5), 0 0 30px rgba(0,255,255,0.5), 0 0 40px rgba(255,215,0,0.5)',
-            }}
-          >
-            Welcome to AaryaI
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 1 }}
-            className="text-xl md:text-2xl lg:text-3xl text-center max-w-3xl font-light"
-            style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
-          >
-            Empowering curiosity for{' '}
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={currentIndex}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-                className="font-semibold"
-                style={{
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  color: 'transparent',
-                  backgroundImage: 'linear-gradient(45deg, #FF1493, #00FFFF)',
-                }}
+    <div className="min-h-screen p-6 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+            Your AI Command Center
+          </h1>
+          <p className="text-gray-400 mt-2">All your AI-powered tools in one place</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Tasks & Reminders Section */}
+          <DashboardCard className="lg:col-span-2">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                <FiCalendar className="text-purple-400" />
+                Tasks & Reminders
+              </h2>
+              <button
+                onClick={() => router.push('/tasks')}
+                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm transition-colors"
               >
-                {learnerTypes[currentIndex]}
-              </motion.span>
-            </AnimatePresence>
-          </motion.p>
-
-          <motion.button
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2, duration: 1 }}
-            whileHover={{ 
-              scale: 1.05, 
-              boxShadow: '0 0 20px rgba(255,20,147,0.8), 0 0 30px rgba(0,255,255,0.8)'
-            }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setIsModalOpen(true);
-            }}
-            className="px-6 md:px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full text-base md:text-lg font-semibold transition-all duration-300 shadow-lg mt-4"
-            style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
-          >
-            Start a New Topic
-          </motion.button>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
-            className="w-full max-w-4xl"
-          >
-            <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center" 
-                style={{ color: '#00FFFF', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
-              Recent Topics
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              {renderConversations()}
+                View All
+              </button>
             </div>
-          </motion.div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-700/50">
+                <FiClock className="text-purple-400" />
+                <div>
+                  <p className="text-white">Daily Review</p>
+                  <p className="text-sm text-gray-400">Today at 6:00 PM</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-700/50">
+                <FiTrello className="text-purple-400" />
+                <div>
+                  <p className="text-white">Project Planning</p>
+                  <p className="text-sm text-gray-400">Tomorrow at 10:00 AM</p>
+                </div>
+              </div>
+            </div>
+          </DashboardCard>
 
+          {/* Quick Actions */}
+          <DashboardCard>
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <FiMessageSquare className="text-purple-400" />
+              Quick Actions
+            </h2>
+            <div className="space-y-3">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="w-full p-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 transition-colors"
+              >
+                <FiPlus /> New Topic
+              </button>
+              <button
+                onClick={() => router.push('/conversations')}
+                className="w-full p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-2 transition-colors"
+              >
+                <FiMessageSquare /> Recent Chats
+              </button>
+            </div>
+          </DashboardCard>
+
+          {/* Recent Conversations */}
+          <DashboardCard>
+            <h2 className="text-xl font-semibold text-white mb-4">Recent Conversations</h2>
+            {conversationsLoading ? (
+              <div className="text-gray-400">Loading...</div>
+            ) : (
+              <div className="space-y-3">
+                {conversations.slice(0, 3).map((conv: Conversation) => (
+                  <div
+                    key={conv.id}
+                    onClick={() => router.push(`/topic/${conv.id}`)}
+                    className="p-3 rounded-lg bg-gray-700/50 hover:bg-gray-700 cursor-pointer transition-colors"
+                  >
+                    <p className="text-white font-medium">{conv.conversationTitle}</p>
+                    <p className="text-sm text-gray-400 truncate">
+                      {conv.conversationHistory[0]?.content.substring(0, 40)}...
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DashboardCard>
+
+          {/* Upcoming Features */}
+          <DashboardCard className="lg:col-span-2">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <FiStar className="text-purple-400" />
+              Coming Soon
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {upcomingFeatures.map((feature, index) => (
+                <div
+                  key={index}
+                  className="p-4 rounded-lg bg-gray-700/50 border border-purple-500/20"
+                >
+                  <h3 className="text-white font-medium mb-2">{feature.title}</h3>
+                  <p className="text-sm text-gray-400">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
         </div>
       </div>
 
-      <NewConversationModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onCreateConversation={handleNewConversation}
-      />
+      <AnimatePresence>
+        {isModalOpen && (
+          <NewConversationModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onCreateConversation={handleNewConversation}
+            onSubmit={handleNewConversation}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
