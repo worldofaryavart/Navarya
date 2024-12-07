@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Loader from "./Loader";
-import LayoutWrapper from "./Layout";
 
 const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
@@ -32,7 +31,7 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return <LayoutWrapper>{children}</LayoutWrapper>;
+  return children;
 };
 
 export default AuthWrapper;

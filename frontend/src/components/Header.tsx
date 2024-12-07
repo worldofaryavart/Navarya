@@ -1,3 +1,5 @@
+'use client';
+
 import React from "react";
 import { FaBell, FaTimes } from "react-icons/fa";
 import { useReminderSystem } from "@/hooks/useReminderSystem";

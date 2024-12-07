@@ -1,24 +1,26 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { useState } from "react";
-import Layout from "@/components/Layout";
 import AuthWrapper from "@/components/AuthWrapper";
+import Providers from "@/components/Providers";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "AaryaI",
-  description: "Empower Your Learning Journey",
+  description: "Your AI Assistant",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body>
+      <body className={inter.className}>
         <AuthWrapper>
-          {children}
+          <Providers>{children}</Providers>
         </AuthWrapper>
       </body>
     </html>
