@@ -17,41 +17,60 @@ interface CalendarViewProps {
 const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
   const [date, setDate] = useState<Date | null>(new Date());
 
+  // Helper function to check if a date is today
+  const isToday = (dateToCheck: Date) => {
+    const today = new Date();
+    return (
+      dateToCheck.getFullYear() === today.getFullYear() &&
+      dateToCheck.getMonth() === today.getMonth() &&
+      dateToCheck.getDate() === today.getDate()
+    );
+  };
+
+  // Get today's tasks and sort by priority
+  const getTodaysTasks = () => {
+    const priorityOrder = { High: 1, Medium: 2, Low: 3 };
+    return tasks
+      .filter((task) => {
+        const taskDate = new Date(task.dueDate as Date);
+        return isToday(taskDate);
+      })
+      .sort((a, b) => {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+  };
+
+  // Get tasks for selected date and sort by priority
+  const getTasksForDate = (selectedDate: Date | null) => {
+    if (!selectedDate) return [];
+    const priorityOrder = { High: 1, Medium: 2, Low: 3 };
+    return tasks
+      .filter((task) => {
+        const taskDate = new Date(task.dueDate as Date);
+        return (
+          taskDate.getFullYear() === selectedDate.getFullYear() &&
+          taskDate.getMonth() === selectedDate.getMonth() &&
+          taskDate.getDate() === selectedDate.getDate()
+        );
+      })
+      .sort((a, b) => {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+  };
+
   // Modify the onChange handler to match the library's expected signature
   const handleDateChange = (
     value: Date | Date[] | null,
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
-    // Handle single date selection
     if (value instanceof Date) {
       setDate(value);
-    }
-    // Optionally handle array of dates if your calendar supports multiple date selection
-    else if (Array.isArray(value) && value.length > 0) {
+    } else if (Array.isArray(value) && value.length > 0) {
       setDate(value[0]);
-    }
-    // Handle null case if needed
-    else {
+    } else {
       setDate(null);
     }
   };
-
-  // Filter tasks for the selected date
-  const tasksForSelectedDate = tasks.filter((task) => {
-    if (date) {
-      // Create a new Date object from the task's dueDate to ensure correct date parsing
-      const taskDate = new Date(task.dueDate as Date);
-      const selectedDate = new Date(date);
-  
-      // Compare year, month, and day to avoid timezone issues
-      return (
-        taskDate.getFullYear() === selectedDate.getFullYear() &&
-        taskDate.getMonth() === selectedDate.getMonth() &&
-        taskDate.getDate() === selectedDate.getDate()
-      );
-    }
-    return false;
-  });
 
   // Helper function to determine task indicator color
   const getTaskIndicatorColor = (status: Task["status"]) => {
@@ -67,58 +86,63 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
     }
   };
 
-  // Custom tile content to add task indicators
-  
-const tileContent = ({ date, view }: { date: Date; view: string }) => {
-  if (view === 'month') {
-    const dayTasks = tasks.filter((task) => {
-      const taskDate = new Date(task.dueDate as Date);
-      return (
-        taskDate.getFullYear() === date.getFullYear() &&
-        taskDate.getMonth() === date.getMonth() &&
-        taskDate.getDate() === date.getDate()
-      );
-    });
-
-    if (dayTasks.length > 0) {
-      return (
-        <div className="task-indicator-container">
-          {dayTasks.map((task) => (
-            <span
-              key={task.id}
-              className={`task-indicator ${getTaskIndicatorColor(task.status)}`}
-            />
-          ))}
-        </div>
-      );
+  // Helper function to get priority color
+  const getPriorityColor = (priority: Task["priority"]) => {
+    switch (priority) {
+      case "High":
+        return "text-red-500";
+      case "Medium":
+        return "text-yellow-500";
+      case "Low":
+        return "text-green-500";
+      default:
+        return "text-gray-500";
     }
-  }
-  return null;
-};
+  };
+
+  // Custom tile content to add task indicators
+  const tileContent = ({ date: tileDate, view }: { date: Date; view: string }) => {
+    if (view === 'month') {
+      const dayTasks = getTasksForDate(tileDate);
+      if (dayTasks.length > 0) {
+        return (
+          <div className="task-indicator-container">
+            {dayTasks.map((task) => (
+              <span
+                key={task.id}
+                className={`task-indicator ${getTaskIndicatorColor(task.status)}`}
+              />
+            ))}
+          </div>
+        );
+      }
+    }
+    return null;
+  };
+
+  const todaysTasks = getTodaysTasks();
+  const selectedDateTasks = date ? getTasksForDate(date) : [];
 
   return (
     <div className="aarya-calendar-container">
-      <div className="calendar-wrapper">
-        <Calendar
-          onChange={handleDateChange as any}
-          value={date}
-          view="month"
-          tileContent={tileContent}
-          className="aarya-calendar"
-          prevLabel={<span className="nav-icon">&#8592;</span>}
-          nextLabel={<span className="nav-icon">&#8594;</span>}
-        />
-      </div>
-
-      <div className="task-list-section">
-        <h3 className="task-list-title">
-          Tasks for {date ? date.toLocaleDateString() : "Selected Date"}
+      {/* Today's Tasks Section */}
+      <div className="task-list-section mb-6">
+        <h3 className="task-list-title flex items-center">
+          <span className="text-blue-500 mr-2">Today's Tasks</span>
+          <span className="text-sm text-gray-400">
+            ({new Date().toLocaleDateString()})
+          </span>
         </h3>
-        {tasksForSelectedDate.length > 0 ? (
+        {todaysTasks.length > 0 ? (
           <ul className="task-list">
-            {tasksForSelectedDate.map((task) => (
+            {todaysTasks.map((task) => (
               <li key={task.id} className="task-list-item">
-                <span className="task-title">{task.title}</span>
+                <div className="flex items-center space-x-2">
+                  <div className={`font-medium ${getPriorityColor(task.priority)}`}>
+                    {task.priority}
+                  </div>
+                  <span className="task-title">{task.title}</span>
+                </div>
                 <span
                   className={`task-status ${
                     task.status === "Completed"
@@ -134,8 +158,21 @@ const tileContent = ({ date, view }: { date: Date; view: string }) => {
             ))}
           </ul>
         ) : (
-          <p className="no-tasks-message">No tasks for this day.</p>
+          <p className="no-tasks-message">No tasks for today.</p>
         )}
+      </div>
+
+      {/* Calendar Section */}
+      <div className="calendar-wrapper">
+        <Calendar
+          onChange={handleDateChange as any}
+          value={date}
+          view="month"
+          tileContent={tileContent}
+          className="aarya-calendar"
+          prevLabel={<span className="nav-icon">←</span>}
+          nextLabel={<span className="nav-icon">→</span>}
+        />
       </div>
     </div>
   );
