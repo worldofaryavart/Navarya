@@ -24,6 +24,14 @@ const TaskList: React.FC<TaskListProps> = ({
 }) => {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Task["status"] | "All">("All");
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "All" || task.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   // Status change handler
   const handleStatusChange = (task: Task, newStatus: Task["status"]) => {
@@ -35,15 +43,15 @@ const TaskList: React.FC<TaskListProps> = ({
   const renderStatusBadge = (status: Task["status"]) => {
     const statusConfig = {
       Pending: {
-        icon: <Clock className="mr-2 text-yellow-500" />,
+        icon: <Clock className="text-yellow-500" />,
         color: "bg-yellow-100 text-yellow-800",
       },
       "In Progress": {
-        icon: <Activity className="mr-2 text-blue-500" />,
+        icon: <Activity className="text-blue-500" />,
         color: "bg-blue-100 text-blue-800",
       },
       Completed: {
-        icon: <CheckCircle className="mr-2 text-green-500" />,
+        icon: <CheckCircle className="text-green-500" />,
         color: "bg-green-100 text-green-800",
       },
     };
@@ -54,7 +62,7 @@ const TaskList: React.FC<TaskListProps> = ({
         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
       >
         {config.icon}
-        {status}
+        {/* {status} */}
       </div>
     );
   };
@@ -84,125 +92,96 @@ const TaskList: React.FC<TaskListProps> = ({
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      <div className="px-6 py-4 bg-gray-50 border-b">
-        <h2 className="text-xl font-bold text-gray-800">Task List</h2>
+    <div className="bg-gray-900 shadow-xl rounded-lg overflow-hidden border border-gray-800">
+      <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+        <h2 className="text-xl font-bold text-gray-100">Task List</h2>
+
+        {/* Search and Filter Section */}
+        <div className="mt-4 space-y-3">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 
+                placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                transition-all duration-200"
+            />
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {["All", "Pending", "In Progress", "Completed"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status as Task["status"] | "All")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                  ${statusFilter === status
+                    ? 'bg-blue-600 text-white shadow-lg transform scale-105'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                  }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {tasks.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No tasks available. Start adding tasks!
+      {filteredTasks.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          {tasks.length === 0 ? "No tasks available. Start adding tasks!" : "No tasks match your search criteria."}
         </div>
       ) : (
-        <ul className="divide-y divide-gray-200 overflow-y-auto" style={{ minHeight: '575px', maxHeight: '575px' }}>
-          {tasks.map((task) => (
+        <ul className="divide-y divide-gray-700 overflow-y-auto bg-gray-900"
+          style={{ minHeight: '575px', maxHeight: '575px' }}>
+          {filteredTasks.map((task) => (
             <li
               key={task.id}
-              className="px-6 py-4 hover:bg-gray-50 transition-colors duration-200"
+              className="px-6 py-4 hover:bg-gray-800 transition-colors duration-200"
             >
-              <div className="flex flex-col space-y-2">
-                {/* First row: Priority, Title, and Status */}
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center space-x-3">
-                    {renderPriorityIndicator(task.priority)}
-                    <span className="font-medium text-gray-800 truncate max-w-[200px]">
-                      {task.title}
-                    </span>
-                  </div>
+              {/* Top row: Title and Status/Edit icons */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-100">{task.title}</h3>
+                <div className="flex items-center space-x-3">
                   {renderStatusBadge(task.status)}
+                  <button
+                    onClick={() => setEditingTaskId(task.id)}
+                    className="p-2 hover:bg-gray-700 rounded-full transition-colors duration-200"
+                  >
+                    <Edit2 className="h-5 w-5 text-blue-500" />
+                  </button>
                 </div>
+              </div>
 
-                {/* Second row: Due Date and Actions */}
-                <div className="flex items-center justify-between w-full">
-                  {task.dueDate && (
-                    <div className="text-xs text-gray-500">
-                      Due: {formatDate(new Date(task.dueDate))}
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-2">
-                    <div className="dropdown dropdown-end">
-                      <div
-                        tabIndex={0}
-                        role="button"
-                        className="btn btn-ghost btn-sm relative"
-                      >
-                        <MoreVertical size={20} />
-                      </div>
-                      <ul
-                        tabIndex={0}
-                        className="dropdown-content flex flex-row p-2 shadow bg-gray-200 rounded-box space-x-2 items-center"
-                      >
-                        <li className="relative">
-                          <button
-                            onClick={() => handleStatusChange(task, "Pending")}
-                            className="text-yellow-500 p-2 rounded-full hover:bg-gray-300 transition-colors group"
-                          >
-                            <Clock size={16} />
-                            <span
-                              className="absolute z-10 -top-8 left-1/2 -translate-x-1/2 
-                bg-gray-700 text-white text-xs px-2 py-1 rounded 
-                opacity-0 group-hover:opacity-100 transition-opacity 
-                pointer-events-none whitespace-nowrap"
-                            >
-                              Set as Pending
-                            </span>
-                          </button>
-                        </li>
-                        <li className="relative">
-                          <button
-                            onClick={() =>
-                              handleStatusChange(task, "In Progress")
-                            }
-                            className="text-blue-500 p-2 rounded-full hover:bg-gray-300 transition-colors group"
-                          >
-                            <Activity size={16} />
-                            <span
-                              className="absolute z-10 -top-8 left-1/2 -translate-x-1/2 
-                bg-gray-700 text-white text-xs px-2 py-1 rounded 
-                opacity-0 group-hover:opacity-100 transition-opacity 
-                pointer-events-none whitespace-nowrap"
-                            >
-                              Set In Progress
-                            </span>
-                          </button>
-                        </li>
-                        <li className="relative">
-                          <button
-                            onClick={() =>
-                              handleStatusChange(task, "Completed")
-                            }
-                            className="text-green-500 p-2 rounded-full hover:bg-gray-300 transition-colors group"
-                          >
-                            <CheckCircle size={16} />
-                            <span
-                              className="absolute z-10 -top-8 left-1/2 -translate-x-1/2 
-                bg-gray-700 text-white text-xs px-2 py-1 rounded 
-                opacity-0 group-hover:opacity-100 transition-opacity 
-                pointer-events-none whitespace-nowrap"
-                            >
-                              Set as Completed
-                            </span>
-                          </button>
-                        </li>
-                        <li className="relative">
-                          <button
-                            onClick={() => onDeleteTask(task.id)}
-                            className="text-red-500 p-2 rounded-full hover:bg-gray-300 transition-colors group"
-                          >
-                            <Trash2 size={16} />
-                            <span
-                              className="absolute z-10 -top-8 left-1/2 -translate-x-1/2 
-                bg-gray-700 text-white text-xs px-2 py-1 rounded 
-                opacity-0 group-hover:opacity-100 transition-opacity 
-                pointer-events-none whitespace-nowrap"
-                            >
-                              Delete Task
-                            </span>
-                          </button>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
+              {/* Middle row: Description */}
+              <p className="text-sm text-gray-400 mt-2">
+                {task.description.length > 50
+                  ? `${task.description.substring(0, 50)}...`
+                  : task.description}
+              </p>
+
+              {/* Bottom row: Due date and Status dropdown */}
+              <div className="flex items-center justify-between mt-3">
+                <div className="text-sm text-gray-400">
+                  {task.dueDate ? `Due: ${formatDate(new Date(task.dueDate))}` : 'No due date'}
+                </div>
+                <div className="flex items-center space-x-3">
+                  <select
+                    value={task.status}
+                    onChange={(e) => handleStatusChange(task, e.target.value as Task["status"])}
+                    className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1 border border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                  <button
+                    onClick={() => onDeleteTask(task.id)}
+                    className="p-2 hover:bg-gray-700 rounded-full transition-colors duration-200"
+                  >
+                    <Trash2 className="h-5 w-5 text-red-500" />
+                  </button>
                 </div>
               </div>
             </li>
