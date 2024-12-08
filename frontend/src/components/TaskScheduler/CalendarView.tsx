@@ -17,13 +17,23 @@ interface CalendarViewProps {
 const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
   const [date, setDate] = useState<Date | null>(new Date());
 
+  // Helper function to convert any date format to Date object
+  const convertToDate = (date: any): Date => {
+    if (date && typeof date === 'object' && 'seconds' in date) {
+      // Handle Firestore Timestamp
+      return new Date(date.seconds * 1000);
+    }
+    return new Date(date);
+  };
+
   // Helper function to check if a date is today
-  const isToday = (dateToCheck: Date) => {
+  const isToday = (dateToCheck: any) => {
     const today = new Date();
+    const checkDate = convertToDate(dateToCheck);
     return (
-      dateToCheck.getFullYear() === today.getFullYear() &&
-      dateToCheck.getMonth() === today.getMonth() &&
-      dateToCheck.getDate() === today.getDate()
+      checkDate.getFullYear() === today.getFullYear() &&
+      checkDate.getMonth() === today.getMonth() &&
+      checkDate.getDate() === today.getDate()
     );
   };
 
@@ -32,7 +42,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
     const priorityOrder = { High: 1, Medium: 2, Low: 3 };
     return tasks
       .filter((task) => {
-        const taskDate = new Date(task.dueDate as Date);
+        const taskDate = convertToDate(task.dueDate);
         return isToday(taskDate);
       })
       .sort((a, b) => {
@@ -40,22 +50,21 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
       });
   };
 
-  // Get tasks for selected date and sort by priority
-  const getTasksForDate = (selectedDate: Date | null) => {
+  // Get tasks for a specific date and sort by priority
+  const getTasksForDate = (selectedDate: Date | null = new Date()) => {
     if (!selectedDate) return [];
     const priorityOrder = { High: 1, Medium: 2, Low: 3 };
     return tasks
       .filter((task) => {
-        const taskDate = new Date(task.dueDate as Date);
+        const taskDate = convertToDate(task.dueDate);
+        const compareDate = convertToDate(selectedDate);
         return (
-          taskDate.getFullYear() === selectedDate.getFullYear() &&
-          taskDate.getMonth() === selectedDate.getMonth() &&
-          taskDate.getDate() === selectedDate.getDate()
+          taskDate.getFullYear() === compareDate.getFullYear() &&
+          taskDate.getMonth() === compareDate.getMonth() &&
+          taskDate.getDate() === compareDate.getDate()
         );
       })
-      .sort((a, b) => {
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
-      });
+      .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
   };
 
   // Modify the onChange handler to match the library's expected signature
@@ -120,22 +129,39 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
     return null;
   };
 
-  const todaysTasks = getTodaysTasks();
-  const selectedDateTasks = date ? getTasksForDate(date) : [];
+  // Get the tasks to display based on selected date
+  const getDisplayTasks = () => {
+    if (date && !isToday(date)) {
+      return getTasksForDate(date);
+    }
+    return getTodaysTasks();
+  };
+
+  const getDisplayDate = () => {
+    if (date && !isToday(date)) {
+      return date;
+    }
+    return new Date();
+  };
+
+  const displayTasks = getDisplayTasks();
+  const displayDate = getDisplayDate();
 
   return (
     <div className="aarya-calendar-container">
-      {/* Today's Tasks Section */}
+      {/* Tasks Section */}
       <div className="task-list-section mb-6">
         <h3 className="task-list-title flex items-center">
-          <span className="text-blue-500 mr-2">Today's Tasks</span>
+          <span className="text-blue-500 mr-2">
+            {isToday(displayDate) ? "Today's Tasks" : "Tasks"}
+          </span>
           <span className="text-sm text-gray-400">
-            ({new Date().toLocaleDateString()})
+            ({displayDate.toLocaleDateString()})
           </span>
         </h3>
-        {todaysTasks.length > 0 ? (
+        {displayTasks.length > 0 ? (
           <ul className="task-list">
-            {todaysTasks.map((task) => (
+            {displayTasks.map((task) => (
               <li key={task.id} className="task-list-item">
                 <div className="flex items-center space-x-2">
                   <div className={`font-medium ${getPriorityColor(task.priority)}`}>
@@ -158,7 +184,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
             ))}
           </ul>
         ) : (
-          <p className="no-tasks-message">No tasks for today.</p>
+          <p className="no-tasks-message">
+            No tasks for {isToday(displayDate) ? "today" : "selected date"}.
+          </p>
         )}
       </div>
 

@@ -99,8 +99,6 @@ const Tasks = () => {
     return <Loader />;
   }
 
-  console.log("task are: ", tasks);
-
   return (
     <div className="container mx-auto px-4 py-12 bg-gray-900 text-white overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
