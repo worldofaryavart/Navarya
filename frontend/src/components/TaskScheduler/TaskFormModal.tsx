@@ -2,18 +2,22 @@
 
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { NewTaskInput, TaskPriority, TaskStatus } from "@/types/taskTypes";
+import { Task, NewTaskInput, TaskPriority, TaskStatus } from "@/types/taskTypes";
 
 interface TaskFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddTask: (task: NewTaskInput) => void;
+  onUpdateTask?: (task: Task) => void;
+  editTask?: Task | null;
 }
 
 const TaskFormModal: React.FC<TaskFormModalProps> = ({
   isOpen,
   onClose,
   onAddTask,
+  onUpdateTask,
+  editTask,
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -21,12 +25,35 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const [priority, setPriority] = useState<TaskPriority>("Medium");
   const [status, setStatus] = useState<TaskStatus>("Pending");
 
+  // Reset form when modal closes
   useEffect(() => {
-    if (isOpen) {
-      const today = new Date().toISOString().split('T')[0];
-      setDueDate(today);
+    if (!isOpen) {
+      setTitle("");
+      setDescription("");
+      setDueDate("");
+      setPriority("Medium");
+      setStatus("Pending");
     }
   }, [isOpen]);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editTask) {
+      setTitle(editTask.title);
+      setDescription(editTask.description || "");
+      // Handle Firestore Timestamp for dueDate
+      if (editTask.dueDate) {
+        const date = typeof editTask.dueDate === 'object' && ('seconds' in editTask.dueDate)
+          ? new Date(editTask.dueDate.seconds * 1000)
+          : new Date(editTask.dueDate);
+        setDueDate(date.toISOString().split('T')[0]);
+      } else {
+        setDueDate("");
+      }
+      setPriority(editTask.priority);
+      setStatus(editTask.status);
+    }
+  }, [editTask]);
 
   const capitalizeFirstLetter = (value: string) => {
     return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -35,28 +62,26 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newTask: NewTaskInput = {
+    const taskData = {
       title,
       description,
-      dueDate,
+      dueDate: dueDate ? new Date(dueDate) : null,
       priority: capitalizeFirstLetter(priority) as TaskPriority,
-      status: "Pending",
+      status,
     };
 
-    onAddTask(newTask);
-    // Reset form after submission
-    resetForm();
+    if (editTask && onUpdateTask) {
+      onUpdateTask({
+        ...taskData,
+        id: editTask.id,
+        createdAt: editTask.createdAt,
+      } as Task);
+    } else {
+      onAddTask(taskData as NewTaskInput);
+    }
+
     onClose();
   };
-
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    const today = new Date().toISOString().split('T')[0];
-    setDueDate(today);
-    setPriority("Medium");
-    setStatus("Pending");
-  }
 
   if (!isOpen) return null;
 
@@ -64,7 +89,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl text-gray-800 font-semibold">Add New Task</h2>
+          <h2 className="text-xl text-gray-800 font-semibold">{editTask ? "Edit Task" : "Add New Task"}</h2>
           <button
             onClick={onClose}
             className="text-gray-600 hover:text-gray-900"
@@ -149,7 +174,11 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                resetForm();
+                setTitle("");
+                setDescription("");
+                setDueDate("");
+                setPriority("Medium");
+                setStatus("Pending");
                 onClose();
               }}
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
@@ -160,7 +189,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Add Task
+              {editTask ? "Update Task" : "Add Task"}
             </button>
           </div>
         </form>

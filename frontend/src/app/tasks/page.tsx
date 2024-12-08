@@ -16,6 +16,7 @@ const Tasks = () => {
   // const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { tasks, setTasks } = useTaskContext();
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const { checkTaskForReminder } = useReminderSystem();
 
@@ -24,11 +25,18 @@ const Tasks = () => {
   }, []);
 
   const handleOpenTaskModal = () => {
+    setEditingTask(null);
     setIsModalOpen(true);
   };
 
   const handleCloseTaskModal = () => {
+    setEditingTask(null);
     setIsModalOpen(false);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsModalOpen(true);
   };
 
   const handleAddTask = async (newTask: NewTaskInput) => {
@@ -91,6 +99,8 @@ const Tasks = () => {
     return <Loader />;
   }
 
+  console.log("task are: ", tasks);
+
   return (
     <div className="container mx-auto px-4 py-12 bg-gray-900 text-white overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
@@ -115,6 +125,7 @@ const Tasks = () => {
             tasks={tasks}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
+            onEditTask={handleEditTask}
           />
         </div>
       </div>
@@ -123,6 +134,8 @@ const Tasks = () => {
           isOpen={isModalOpen}
           onClose={handleCloseTaskModal}
           onAddTask={handleAddTask}
+          onUpdateTask={handleUpdateTask}
+          editTask={editingTask}
         />
       )}
 

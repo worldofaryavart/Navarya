@@ -15,12 +15,14 @@ interface TaskListProps {
   tasks: Task[];
   onUpdateTask: (updatedTask: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask: (task: Task) => void;
 }
 
 const TaskList: React.FC<TaskListProps> = ({
   tasks,
   onUpdateTask,
   onDeleteTask,
+  onEditTask,
 }) => {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -91,47 +93,53 @@ const TaskList: React.FC<TaskListProps> = ({
   };
 
   // Format date
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-    }).format(date);
+  const formatDate = (date: any) => {
+    if (!date) return 'No due date';
+    
+    // Handle Firestore Timestamp
+    if (typeof date === 'object' && date.seconds) {
+      return new Date(date.seconds * 1000).toLocaleDateString();
+    }
+    
+    // Handle string date
+    return new Date(date).toLocaleDateString();
   };
 
   return (
     <div className="bg-gray-900 shadow-xl rounded-lg overflow-hidden border border-gray-800">
       <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
-        <h2 className="text-xl font-bold text-gray-100">Task List</h2>
-
-        {/* Search and Filter Section */}
-        <div className="mt-4 space-y-3">
-          <div className="relative">
+        {/* Header with Title and Search */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-100">Task List</h2>
+          <div className="relative w-64">
             <input
               type="text"
               placeholder="Search tasks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 
+              className="w-full px-3 py-1 text-sm bg-gray-700 border border-gray-600 rounded-lg text-gray-100 
                 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
                 transition-all duration-200"
             />
           </div>
+        </div>
 
-          <div className="flex gap-2 flex-wrap">
-            {["All", "Pending", "In Progress", "Completed"].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status as Task["status"] | "All")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                  ${statusFilter === status
+        {/* Filter Buttons */}
+        <div className="flex gap-1 flex-wrap">
+          {["All", "Pending", "In Progress", "Completed"].map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status as Task["status"] | "All")}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200
+                ${
+                  statusFilter === status
                     ? 'bg-blue-600 text-white shadow-lg transform scale-105'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                  }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
+                }`}
+            >
+              {status}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -156,10 +164,11 @@ const TaskList: React.FC<TaskListProps> = ({
                 <div className="flex items-center space-x-3">
                   {renderStatusBadge(task.status)}
                   <button
-                    onClick={() => setEditingTaskId(task.id)}
-                    className="p-2 hover:bg-gray-700 rounded-full transition-colors duration-200"
+                    onClick={() => onEditTask(task)}
+                    className="p-1 hover:bg-gray-700 rounded-full transition-colors duration-200"
+                    title="Edit task"
                   >
-                    <Edit2 className="h-5 w-5 text-blue-500" />
+                    <Edit2 className="w-4 h-4 text-blue-400" />
                   </button>
                 </div>
               </div>
@@ -174,7 +183,7 @@ const TaskList: React.FC<TaskListProps> = ({
               {/* Bottom row: Due date and Status dropdown */}
               <div className="flex items-center justify-between mt-3">
                 <div className="text-sm text-gray-400">
-                  {task.dueDate ? `Due: ${formatDate(new Date(task.dueDate))}` : 'No due date'}
+                {task.dueDate ? formatDate(task.dueDate) : 'No due date'}
                 </div>
                 <div className="flex items-center space-x-3">
                   <select
