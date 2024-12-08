@@ -27,11 +27,18 @@ const TaskList: React.FC<TaskListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Task["status"] | "All">("All");
 
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "All" || task.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredTasks = tasks
+    .sort((a, b) => {
+      // Sort by creation time (newest first)
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return timeB - timeA;
+    })
+    .filter((task) => {
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "All" || task.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
 
   // Status change handler
   const handleStatusChange = (task: Task, newStatus: Task["status"]) => {
@@ -134,7 +141,7 @@ const TaskList: React.FC<TaskListProps> = ({
         </div>
       ) : (
         <ul className="divide-y divide-gray-700 overflow-y-auto bg-gray-900"
-          style={{ minHeight: '575px', maxHeight: '575px' }}>
+          style={{ minHeight: '475px', maxHeight: '475px' }}>
           {filteredTasks.map((task) => (
             <li
               key={task.id}
@@ -142,7 +149,10 @@ const TaskList: React.FC<TaskListProps> = ({
             >
               {/* Top row: Title and Status/Edit icons */}
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-100">{task.title}</h3>
+                <div className="flex items-center space-x-2">
+                  {renderPriorityIndicator(task.priority)}
+                  <h3 className="text-lg font-medium text-gray-100">{task.title}</h3>
+                </div>
                 <div className="flex items-center space-x-3">
                   {renderStatusBadge(task.status)}
                   <button
