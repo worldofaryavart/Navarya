@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaTasks } from 'react-icons/fa';
+import { FaMailBulk, FaTasks } from 'react-icons/fa';
 import { FiUser, FiLogOut, FiInfo, FiEye, FiSettings } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -24,6 +24,11 @@ const Sidebar: React.FC = () => {
       label: "Task Schedule",
       href: "/tasks",
       icon: <FaTasks />,
+    },
+    {
+      label: "Mail Agent",
+      href: "/mailagent",
+      icon: <FaMailBulk />,
     },
     {
       label: "About Us",
