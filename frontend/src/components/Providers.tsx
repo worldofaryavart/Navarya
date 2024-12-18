@@ -1,15 +1,19 @@
 'use client';
 
-import { ToastProvider } from "@/context/ToastContext";
-import { TaskProvider } from "@/context/TaskContext";
+import React from 'react';
 import Layout from "./Layout";
+import ToastManager from './ToastManager';
+import { ToastProvider } from '@/context/ToastContext';
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
-    <TaskProvider>
-      <ToastProvider>
-        <Layout>{children}</Layout>
-      </ToastProvider>
-    </TaskProvider>
+    <ToastProvider>
+      <Layout>
+        {children}
+      </Layout>
+      <ToastManager />
+    </ToastProvider>
   );
-}
+};
+
+export default Providers;

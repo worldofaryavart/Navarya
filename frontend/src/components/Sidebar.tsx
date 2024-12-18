@@ -14,7 +14,15 @@ interface SidebarItem {
   icon: React.ReactNode;
 }
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  tasks: any[];
+}
+
+interface Task {
+  // Add task properties here if needed
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ tasks }) => {
   const router = useRouter();
   const pathname = usePathname();
   const user = auth?.currentUser;
