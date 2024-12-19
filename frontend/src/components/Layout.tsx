@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="flex h-screen">
       <Sidebar tasks={tasks} />
       <div className="flex flex-col flex-grow overflow-hidden ml-16">
-        {/* <Header /> */}
+        <Header />
         <main className="flex-grow bg-gray-900 overflow-auto p-0">
           {children}
         </main>

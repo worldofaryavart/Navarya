@@ -7,12 +7,14 @@ import { ToastProvider } from '@/context/ToastContext';
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
-    <ToastProvider>
-      <Layout>
-        {children}
-      </Layout>
-      <ToastManager />
-    </ToastProvider>
+    <>
+    {/* // <ToastProvider> */}
+        <Layout>
+          {children}
+        </Layout>
+      // <ToastManager />
+    {/* // </ToastProvider> */}
+    </>
   );
 };
 

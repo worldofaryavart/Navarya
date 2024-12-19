@@ -8,7 +8,6 @@ import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
 import Loader from "@/components/Loader";
 import { useReminderSystem } from "@/hooks/useReminderSystem";
-import Toast from "@/components/Toast";
 import { useTaskContext } from "@/context/TaskContext";
 
 const Tasks = () => {
