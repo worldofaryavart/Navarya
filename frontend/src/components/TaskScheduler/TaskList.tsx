@@ -65,13 +65,19 @@ const TaskList: React.FC<TaskListProps> = ({
       },
     };
 
-    const config = statusConfig[status];
+    // Default config if status doesn't match
+    const defaultConfig = {
+      icon: <Clock className="text-gray-500" />,
+      color: "bg-gray-100 text-gray-800",
+    };
+
+    const config = statusConfig[status] || defaultConfig;
     return (
       <div
         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
       >
         {config.icon}
-        {/* {status} */}
+        <span className="ml-1">{status}</span>
       </div>
     );
   };

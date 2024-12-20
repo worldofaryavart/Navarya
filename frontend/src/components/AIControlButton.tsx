@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useTaskContext } from '@/context/TaskContext';
 import { useLayout } from '@/context/LayoutContext';
 import AIChatSidebar from './AIChatSidebar';
+import { AICommandHandler } from "@/utils/aiCommandHandler";
+import { getTasks } from "@/utils/tasks";
 
 interface Message {
   role: 'user' | 'ai';
@@ -17,6 +19,15 @@ const AIControlButton: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const { tasks, setTasks } = useTaskContext();
   const { isSidebarOpen, setIsSidebarOpen } = useLayout();
+
+  const refreshTasks = async () => {
+    try {
+      const updatedTasks = await getTasks();
+      setTasks(updatedTasks);
+    } catch (error) {
+      console.error('Error refreshing tasks:', error);
+    }
+  };
 
   const handleSpeechRecognition = () => {
     if ("webkitSpeechRecognition" in window) {
@@ -55,29 +66,21 @@ const AIControlButton: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: inputValue }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.response) {
-        throw new Error("No response content in API response");
-      }
+      // Process the command
+      const result = await AICommandHandler.processCommand(inputValue);
 
       // Add AI response
       const aiMessage: Message = {
         role: 'ai',
-        content: data.response,
+        content: result.message,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
+
+      // If command was successful, refresh tasks
+      if (result.success) {
+        await refreshTasks();
+      }
 
       // Reset input
       setInputValue("");
