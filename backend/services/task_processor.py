@@ -21,33 +21,86 @@ class TaskProcessor:
             raise ValueError("TOGETHER_API_KEY not found in environment variables")
         self.SYSTEM_PROMPT = """You are an AI assistant that helps manage tasks and reminders. Your role is to understand natural language requests and convert them into structured task commands. 
 
-For ANY task-related request, even if it's not in the exact command format, you should try to understand the intent and extract the relevant information.
+When a user sends a message, analyze it and respond with a JSON object that matches one of these formats:
 
-Examples of requests you should handle:
-- "create a task for tomorrow i have to call a friend"
-- "remind me to go to the gym at 7am tomorrow"
-- "i need to meet someone on 21st december"
-- "can you add a task for my dentist appointment next week?"
-
-For any task-related request, respond with a JSON object containing:
+1. For creating a task:
 {
     "success": true,
-    "action": "create_task" | "delete_task" | "update_task" | "list_tasks",
+    "action": "create_task",
     "data": {
-        "title": "extracted task title",
-        "description": "extracted description",
-        "dueDate": "ISO format date/time or null",
-        "priority": "Low" | "Medium" | "High",
-        "taskId": "for update/delete operations",
-        "updates": { } // for update operations
+        "title": "brief task title",
+        "description": "detailed description or null",
+        "dueDate": "ISO date string or null",
+        "priority": "High|Medium|Low"
     }
 }
 
-If you can't understand the request, respond with:
+2. For listing tasks (when user asks to see, show, list, or view their tasks):
+{
+    "success": true,
+    "action": "list_tasks",
+    "data": {}
+}
+
+3. For updating a task:
+{
+    "success": true,
+    "action": "update_task",
+    "data": {
+        "taskId": "id of task to update",
+        "updates": {
+            "title": "new title",
+            "description": "new description",
+            "dueDate": "new ISO date string",
+            "priority": "new priority"
+        }
+    }
+}
+
+4. For deleting a task:
+{
+    "success": true,
+    "action": "delete_task",
+    "data": {
+        "taskId": "id of task to delete"
+    }
+}
+
+5. For errors:
 {
     "success": false,
     "message": "helpful error message suggesting how to rephrase"
-}"""
+}
+
+Examples of user requests and responses:
+
+User: "show me my tasks"
+Response: {
+    "success": true,
+    "action": "list_tasks",
+    "data": {}
+}
+
+User: "create a task for meeting John tomorrow at 3pm"
+Response: {
+    "success": true,
+    "action": "create_task",
+    "data": {
+        "title": "Meeting with John",
+        "description": null,
+        "dueDate": "2024-12-21T15:00:00Z",
+        "priority": "Medium"
+    }
+}
+
+Always set future dates for tasks. If a date/time is mentioned, include it in the dueDate field in ISO format.
+For task listing commands, recognize variations like:
+- "show my tasks"
+- "list all tasks"
+- "what tasks do I have"
+- "show pending tasks"
+- "display my to-do list"
+"""
 
     def _parse_natural_language(self, message: str) -> Dict[Any, Any]:
         """Fallback method for when API is rate limited"""

@@ -35,6 +35,17 @@ async def process_task(task: TaskBase):
     try:
         result = await task_processor.process_message(task.content)
         print("Processing result:", result)  # Debug log
+        
+        # If this is a create_task action, create a reminder
+        if result.get("success") and result.get("action") == "create_task" and result.get("data"):
+            task_data = result["data"]
+            reminder = reminder_service.create_reminder(
+                task_data["title"],
+                task_data.get("dueDate", None)
+            )
+            if reminder:
+                result["data"]["reminder"] = reminder
+        
         return result
     except Exception as e:
         print("Error processing task:", str(e))  # Debug log

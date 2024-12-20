@@ -96,24 +96,54 @@ export class AICommandHandler {
 
   private static async listTasks(): Promise<CommandResult> {
     try {
-      const tasks = await getTasks();
-      const taskList = tasks.map(task => 
-        `• ${task.title} (${task.status}) [ID: ${task.id}]`
-      ).join('\n');
+      const response = await fetch('http://localhost:8000/api/reminders');
+      const tasks = await response.json();
       
+      if (!Array.isArray(tasks)) {
+        throw new Error('Invalid response format');
+      }
+
+      if (tasks.length === 0) {
+        return {
+          success: true,
+          message: "You don't have any pending tasks.",
+          data: tasks
+        };
+      }
+
+      const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        if (date.toDateString() === now.toDateString()) {
+          return `today at ${date.toLocaleTimeString()}`;
+        } else if (date.toDateString() === tomorrow.toDateString()) {
+          return `tomorrow at ${date.toLocaleTimeString()}`;
+        } else {
+          return date.toLocaleString();
+        }
+      };
+
+      const taskList = tasks.map((task: any) => {
+        const dueText = task.reminder_time ? 
+          ` (Due: ${formatDate(task.reminder_time)}${task.is_due ? ' - OVERDUE' : ''})` : 
+          ' (No due date)';
+        
+        return `- ${task.task}${dueText}`;
+      }).join('\n');
+
       return {
         success: true,
-        message: tasks.length > 0 
-          ? `Current tasks:\n${taskList}`
-          : 'No tasks found',
+        message: `Here are your pending tasks:\n${taskList}`,
         data: tasks
       };
     } catch (error) {
       console.error('List tasks error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return {
         success: false,
-        message: `Failed to list tasks: ${errorMessage}`
+        message: 'Failed to fetch tasks'
       };
     }
   }
@@ -198,6 +228,9 @@ Example:
             data: task
           };
         }
+          
+        case 'list_tasks':
+          return this.listTasks();
           
         case 'delete_task':
           return this.deleteTask(result.data.taskId);
