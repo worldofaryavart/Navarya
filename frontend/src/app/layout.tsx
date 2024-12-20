@@ -4,11 +4,12 @@ import "./globals.css";
 import AuthWrapper from "@/components/AuthWrapper";
 import Layout from "@/components/Layout";
 import { TaskProvider } from "@/context/TaskContext";
+import { LayoutProvider } from "@/context/LayoutContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AaryaI",
+  title: "Aarya AI",
   description: "Your AI Assistant",
 };
 
@@ -20,13 +21,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthWrapper>
-          <TaskProvider>
-            <Layout>
-              {children}
-            </Layout>
-          </TaskProvider>
-        </AuthWrapper>
+        <LayoutProvider>
+          <AuthWrapper>
+            <TaskProvider>
+              <Layout>{children}</Layout>
+            </TaskProvider>
+          </AuthWrapper>
+        </LayoutProvider>
       </body>
     </html>
   );

@@ -6,6 +6,7 @@ import AIControlButton from "./AIControlButton";
 import Header from "./Header";
 import { Task } from "@/types/taskTypes";
 import { EVENTS, getTasks } from "@/utils/stateManager";
+import { useLayout } from "@/context/LayoutContext";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const { isSidebarOpen } = useLayout();
 
   useEffect(() => {
     // Initial load
@@ -33,7 +35,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen">
       <Sidebar tasks={tasks} />
-      <div className="flex flex-col flex-grow overflow-hidden ml-16">
+      <div 
+        className={`
+          flex flex-col flex-grow overflow-hidden ml-16
+          transition-all duration-300 ease-in-out
+          ${isSidebarOpen ? 'mr-96' : 'mr-0'}
+        `}
+      >
         <Header />
         <main className="flex-grow bg-gray-900 overflow-auto p-0">
           {children}
