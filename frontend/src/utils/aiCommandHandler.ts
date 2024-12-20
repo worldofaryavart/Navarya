@@ -18,49 +18,17 @@ interface CommandResult {
 export class AICommandHandler {
   private static async createTask(content: string): Promise<CommandResult> {
     try {
-      // Extract date and time information using regex
-      const dateTimeRegex = /tomorrow at (\d{1,2}(?::\d{2})?\s*(?:am|pm)|today at \d{1,2}(?::\d{2})?\s*(?:am|pm)|\d{1,2}\/\d{1,2}(?:\/\d{4})?\s*(?:at\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)/i;
-      const match = content.match(dateTimeRegex);
-      
-      let dueDate: Date | null = null;
-      let title = content;
-
-      if (match) {
-        const dateStr = match[0];
-        title = content.replace(dateStr, '').trim();
-        
-        // Parse the date
-        const now = new Date();
-        if (dateStr.toLowerCase().includes('tomorrow')) {
-          dueDate = new Date(now);
-          dueDate.setDate(dueDate.getDate() + 1);
-          
-          // Extract time
-          const timeMatch = dateStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
-          if (timeMatch) {
-            let hours = parseInt(timeMatch[1]);
-            const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-            const period = timeMatch[3].toLowerCase();
-            
-            if (period === 'pm' && hours < 12) hours += 12;
-            if (period === 'am' && hours === 12) hours = 0;
-            
-            dueDate.setHours(hours, minutes, 0, 0);
-          }
-        }
-      }
-
       const newTask: NewTaskInput = {
-        title,
+        title: content,
         description: '',
         priority: 'Medium',
-        dueDate: dueDate || null,
+        dueDate: null
       };
       
       const task = await addTask(newTask);
       return {
         success: true,
-        message: `Created task: ${title}${dueDate ? ` (Due: ${dueDate.toLocaleString()})` : ''}`,
+        message: `Created task: ${content}`,
         data: task
       };
     } catch (error) {
@@ -171,50 +139,85 @@ Example:
   }
 
   public static async processCommand(input: string): Promise<CommandResult> {
-    const lowercaseInput = input.toLowerCase().trim();
+    const lowercaseInput = input.toLowerCase();
 
-    // Help command
+    // Direct commands that don't need AI processing
     if (lowercaseInput === 'help' || lowercaseInput === 'show commands') {
       return this.getHelpMessage();
     }
 
-    // List tasks
-    if (lowercaseInput === 'list tasks' || lowercaseInput === 'show tasks') {
+    if (lowercaseInput === 'show tasks' || lowercaseInput === 'list tasks') {
       return this.listTasks();
     }
 
-    // Create task
-    if (lowercaseInput.startsWith('create task')) {
-      const taskContent = input.slice('create task'.length).trim();
-      if (!taskContent) {
-        return { success: false, message: 'Please provide task description' };
-      }
-      return this.createTask(taskContent);
-    }
+    try {
+      console.log("Sending request with input:", input);
+      
+      // Send all other commands to AI processor
+      const aiResponse = await fetch('http://localhost:8000/api/process-task', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: input })
+      });
 
-    // Delete task
-    if (lowercaseInput.startsWith('delete task')) {
-      const taskId = input.slice('delete task'.length).trim();
-      if (!taskId) {
-        return { success: false, message: 'Please provide task ID' };
-      }
-      return this.deleteTask(taskId);
-    }
+      const result = await aiResponse.json();
+      console.log("AI Response:", result);
 
-    // Update task
-    if (lowercaseInput.startsWith('update task')) {
-      const parts = input.slice('update task'.length).trim().split(' ');
-      if (parts.length < 3) {
-        return { success: false, message: 'Invalid update format. Use: update task [id] status [Pending/In Progress/Completed]' };
+      if (!aiResponse.ok) {
+        console.error("API Error:", result);
+        return {
+          success: false,
+          message: result.detail || "Failed to process the command. Please try again."
+        };
       }
-      const [taskId, field, ...valueArr] = parts;
-      const value = valueArr.join(' ');
-      return this.updateTask(taskId, { [field]: value });
-    }
+      
+      if (!result.success) {
+        return {
+          success: false,
+          message: result.message || "I couldn't understand that command. Try rephrasing or type 'help' to see available commands."
+        };
+      }
 
-    return {
-      success: false,
-      message: "I don't understand that command. Type 'help' to see available commands."
-    };
+      // Handle different actions based on AI response
+      switch (result.action) {
+        case 'create_task': {
+          console.log("Creating task with data:", result.data);
+          const newTask: NewTaskInput = {
+            title: result.data.title,
+            description: result.data.description || '',
+            priority: result.data.priority || 'Medium',
+            dueDate: result.data.dueDate ? new Date(result.data.dueDate) : null
+          };
+          
+          const task = await addTask(newTask);
+          return {
+            success: true,
+            message: `Created task: ${newTask.title}${newTask.dueDate ? ` (Due: ${newTask.dueDate.toLocaleString()})` : ''}`,
+            data: task
+          };
+        }
+          
+        case 'delete_task':
+          return this.deleteTask(result.data.taskId);
+          
+        case 'update_task':
+          return this.updateTask(result.data.taskId, result.data.updates);
+          
+        default:
+          console.log("Unknown action:", result.action);
+          return {
+            success: false,
+            message: "I couldn't understand that command. Try rephrasing or type 'help' to see available commands."
+          };
+      }
+    } catch (error) {
+      console.error('Command processing error:', error);
+      return {
+        success: false,
+        message: 'Sorry, there was an error processing your command. Please try again.'
+      };
+    }
   }
 }

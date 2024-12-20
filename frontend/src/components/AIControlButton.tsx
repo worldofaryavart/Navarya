@@ -68,6 +68,7 @@ const AIControlButton: React.FC = () => {
     try {
       // Process the command
       const result = await AICommandHandler.processCommand(inputValue);
+      console.log("result is : ", result);
 
       // Add AI response
       const aiMessage: Message = {
