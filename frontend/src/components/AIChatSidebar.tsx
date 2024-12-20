@@ -1,10 +1,11 @@
 import React from 'react';
-import { X, Send, Mic, Loader2 } from 'lucide-react';
+import { X, Send, Mic, Loader2, HelpCircle, List, CheckCircle, Clock, Activity } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'ai';
   content: string;
   timestamp: Date;
+  type?: 'help' | 'list' | 'success' | 'error';
 }
 
 interface AIChatSidebarProps {
@@ -30,6 +31,95 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   onSubmit,
   onSpeechRecognition,
 }) => {
+  const renderMessageContent = (message: Message) => {
+    if (message.role === 'user') {
+      return <p>{message.content}</p>;
+    }
+
+    // Help message
+    if (message.content.includes('Available commands:')) {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center text-purple-400 mb-2">
+            <HelpCircle size={18} className="mr-2" />
+            <span className="font-semibold">Available Commands</span>
+          </div>
+          {message.content.split('\n').map((line, i) => {
+            if (line.startsWith('Available commands:')) return null;
+            if (line.startsWith('Example:')) {
+              return (
+                <div key={i} className="mt-4">
+                  <div className="text-purple-400 font-semibold mb-2">Examples:</div>
+                  <div className="bg-gray-700 p-2 rounded">
+                    <code className="text-sm">
+                      {message.content
+                        .split('Example:')[1]
+                        .trim()
+                        .split('\n')
+                        .map((ex, j) => (
+                          <div key={j} className="text-gray-300">{ex.trim()}</div>
+                        ))}
+                    </code>
+                  </div>
+                </div>
+              );
+            }
+            if (line.trim().startsWith('-')) return null;
+            if (!line.trim()) return null;
+            return (
+              <div key={i} className="flex items-start">
+                <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center mr-2 mt-1">
+                  {i + 1}
+                </div>
+                <div className="flex-1">
+                  {line.replace(/^\d+\.\s*/, '')}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Task list
+    if (message.content.includes('Current tasks:')) {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center text-blue-400 mb-2">
+            <List size={18} className="mr-2" />
+            <span className="font-semibold">Task List</span>
+          </div>
+          <div className="space-y-2">
+            {message.content
+              .split('\n')
+              .slice(1) // Skip the "Current tasks:" line
+              .map((task, i) => {
+                const match = task.match(/^• (.*?) \((.*?)\) \[ID: (.*?)\]$/);
+                if (!match) return null;
+                const [_, title, status, id] = match;
+                return (
+                  <div key={i} className="bg-gray-800 p-2 rounded flex items-center">
+                    {status === 'Completed' && <CheckCircle size={16} className="text-green-500 mr-2" />}
+                    {status === 'Pending' && <Clock size={16} className="text-yellow-500 mr-2" />}
+                    {status === 'In Progress' && <Activity size={16} className="text-blue-500 mr-2" />}
+                    <div className="flex-1">
+                      <div className="text-sm">{title}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Status: {status} • ID: {id}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      );
+    }
+
+    // Default message
+    return <p>{message.content}</p>;
+  };
+
   return (
     <div 
       className={`
@@ -60,14 +150,14 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
             }`}
           >
             <div
-              className={`max-w-[80%] p-3 rounded-lg ${
+              className={`max-w-[90%] p-3 rounded-lg ${
                 message.role === 'user'
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-200'
               }`}
             >
-              <p>{message.content}</p>
-              <span className="text-xs opacity-50 mt-1 block">
+              {renderMessageContent(message)}
+              <span className="text-xs opacity-50 mt-2 block">
                 {new Date(message.timestamp).toLocaleTimeString()}
               </span>
             </div>
