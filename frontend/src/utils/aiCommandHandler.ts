@@ -1,4 +1,4 @@
-import { Task } from '@/types/taskTypes';
+import { Task, NewTaskInput } from '@/types/taskTypes';
 import { addTask, deleteTask, getTasks, updateTask } from './tasks';
 
 export type CommandType = 
@@ -18,26 +18,57 @@ interface CommandResult {
 export class AICommandHandler {
   private static async createTask(content: string): Promise<CommandResult> {
     try {
-      const newTask: Task = {
-        title: content,
+      // Extract date and time information using regex
+      const dateTimeRegex = /tomorrow at (\d{1,2}(?::\d{2})?\s*(?:am|pm)|today at \d{1,2}(?::\d{2})?\s*(?:am|pm)|\d{1,2}\/\d{1,2}(?:\/\d{4})?\s*(?:at\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?)/i;
+      const match = content.match(dateTimeRegex);
+      
+      let dueDate: Date | null = null;
+      let title = content;
+
+      if (match) {
+        const dateStr = match[0];
+        title = content.replace(dateStr, '').trim();
+        
+        // Parse the date
+        const now = new Date();
+        if (dateStr.toLowerCase().includes('tomorrow')) {
+          dueDate = new Date(now);
+          dueDate.setDate(dueDate.getDate() + 1);
+          
+          // Extract time
+          const timeMatch = dateStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+            const period = timeMatch[3].toLowerCase();
+            
+            if (period === 'pm' && hours < 12) hours += 12;
+            if (period === 'am' && hours === 12) hours = 0;
+            
+            dueDate.setHours(hours, minutes, 0, 0);
+          }
+        }
+      }
+
+      const newTask: NewTaskInput = {
+        title,
         description: '',
-        status: 'Pending',
         priority: 'Medium',
-        createdAt: new Date(),
-        dueDate: null
+        dueDate: dueDate || null,
       };
       
       const task = await addTask(newTask);
       return {
         success: true,
-        message: `Created task: ${content}`,
+        message: `Created task: ${title}${dueDate ? ` (Due: ${dueDate.toLocaleString()})` : ''}`,
         data: task
       };
     } catch (error) {
       console.error('Create task error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return {
         success: false,
-        message: `Failed to create task: ${error.message}`
+        message: `Failed to create task: ${errorMessage}`
       };
     }
   }
@@ -51,9 +82,10 @@ export class AICommandHandler {
       };
     } catch (error) {
       console.error('Delete task error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return {
         success: false,
-        message: `Failed to delete task: ${error.message}`
+        message: `Failed to delete task: ${errorMessage}`
       };
     }
   }
@@ -86,9 +118,10 @@ export class AICommandHandler {
       };
     } catch (error) {
       console.error('Update task error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return {
         success: false,
-        message: `Failed to update task: ${error.message}`
+        message: `Failed to update task: ${errorMessage}`
       };
     }
   }
@@ -109,9 +142,10 @@ export class AICommandHandler {
       };
     } catch (error) {
       console.error('List tasks error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return {
         success: false,
-        message: `Failed to list tasks: ${error.message}`
+        message: `Failed to list tasks: ${errorMessage}`
       };
     }
   }

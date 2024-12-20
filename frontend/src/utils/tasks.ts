@@ -1,19 +1,21 @@
-import { Task } from "@/types/taskTypes";
+import { Task, NewTaskInput } from "@/types/taskTypes";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
-export const addTask = async (task: Task) => {
+export const addTask = async (task: NewTaskInput): Promise<Task> => {
     try {
         const tasksCollection = collection(db!, 'tasks');
-        const docRef = await addDoc(tasksCollection, {
+        const createdAt = new Date();
+        const taskData = {
           title: task.title,
           description: task.description,
-          dueDate: task.dueDate,
+          dueDate: task.dueDate || null,
           priority: task.priority,
-          status: task.status,
-          createdAt: task.createdAt
-        });
-        return { ...task, id: docRef.id };
+          status: task.status || 'Pending',
+          createdAt
+        };
+        const docRef = await addDoc(tasksCollection, taskData);
+        return { ...taskData, id: docRef.id, createdAt };
       } catch (error) {
         console.error('Error adding task:', error);
         throw error;

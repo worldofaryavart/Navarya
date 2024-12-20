@@ -5,7 +5,7 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  dueDate?: string | Date | { seconds: number; nanoseconds: number };
+  dueDate?: string | Date | { seconds: number; nanoseconds: number } | null;
   status: TaskStatus;
   priority: TaskPriority;
   createdAt: Date;
