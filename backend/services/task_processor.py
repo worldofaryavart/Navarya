@@ -69,7 +69,7 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     "success": true,
     "action": "delete_task",
     "data": {
-        "taskId": "id of task to delete"
+        "description": "description of the task to delete"
     }
 }
 
@@ -107,6 +107,24 @@ Response: {
     }
 }
 
+User: "delete the task about meeting with John"
+Response: {
+    "success": true,
+    "action": "delete_task",
+    "data": {
+        "description": "meeting with John"
+    }
+}
+
+User: "cancel my college marksheet task"
+Response: {
+    "success": true,
+    "action": "delete_task",
+    "data": {
+        "description": "college marksheet"
+    }
+}
+
 Always set future dates for tasks. If a date/time is mentioned, include it in the dueDate field in ISO format.
 For task listing commands, recognize variations like:
 - "show my tasks"
@@ -114,6 +132,12 @@ For task listing commands, recognize variations like:
 - "what tasks do I have"
 - "show pending tasks"
 - "display my to-do list"
+
+For task deletion commands, recognize variations like:
+- "delete the task about [description]"
+- "remove the task for [description]"
+- "cancel my [description] task"
+- "delete [description]"
 """
 
     def _parse_natural_language(self, message: str) -> Dict[Any, Any]:

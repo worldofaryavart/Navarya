@@ -41,9 +41,71 @@ export class AICommandHandler {
     }
   }
 
-  private static async deleteTask(taskId: string): Promise<CommandResult> {
+  private static async findTaskByDescription(searchTerms: string[]): Promise<Task | null> {
     try {
-      await deleteTask(taskId);
+      const tasks = await getTasks();
+      if (!tasks || tasks.length === 0) return null;
+
+      // Convert search terms to lowercase for case-insensitive matching
+      const lowerSearchTerms = searchTerms.map(term => term.toLowerCase());
+      
+      // Find task that matches the most search terms
+      let bestMatch: Task | null = null;
+      let maxMatchCount = 0;
+
+      for (const task of tasks) {
+        if (!task || !task.title) continue;
+        
+        const taskTitle = task.title.toLowerCase();
+        const matchCount = lowerSearchTerms.filter(term => taskTitle.includes(term)).length;
+        
+        if (matchCount > maxMatchCount) {
+          maxMatchCount = matchCount;
+          bestMatch = task;
+        }
+      }
+
+      // Only return a match if it matches at least one search term
+      return maxMatchCount > 0 ? bestMatch : null;
+    } catch (error) {
+      console.error('Find task error:', error);
+      return null;
+    }
+  }
+
+  private static async deleteTask(taskId: string | { description: string }): Promise<CommandResult> {
+    try {
+      let targetTaskId: string | undefined;
+
+      if (typeof taskId === 'string') {
+        targetTaskId = taskId;
+      } else {
+        // Extract key terms from the description
+        const searchTerms = taskId.description
+          .toLowerCase()
+          .replace(/delete|remove|cancel/g, '')
+          .split(' ')
+          .filter(term => term.length > 2); // Filter out short words
+
+        const task = await this.findTaskByDescription(searchTerms);
+        if (!task) {
+          return {
+            success: false,
+            message: "I couldn't find a task matching that description. Please try being more specific or use 'show tasks' to see your task list."
+          };
+        }
+        targetTaskId = task.id;
+      }
+
+      // Check if we have a valid task ID
+      if (!targetTaskId) {
+        return {
+          success: false,
+          message: "No valid task ID found for deletion."
+        };
+      }
+
+      await deleteTask(targetTaskId);
       return {
         success: true,
         message: `Task deleted successfully`
@@ -278,7 +340,23 @@ Example:
           return this.listReminders();
           
         case 'delete_task':
-          return this.deleteTask(result.data.taskId);
+          if (!result.data) {
+            return {
+              success: false,
+              message: "Missing data for delete task operation"
+            };
+          }
+          
+          if (result.data.taskId) {
+            return this.deleteTask(result.data.taskId);
+          } else if (result.data.description) {
+            return this.deleteTask({ description: result.data.description });
+          } else {
+            return {
+              success: false,
+              message: "I couldn't determine which task to delete. Please try being more specific."
+            };
+          }
           
         case 'update_task':
           return this.updateTask(result.data.taskId, result.data.updates);
