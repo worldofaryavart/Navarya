@@ -54,12 +54,13 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     "success": true,
     "action": "update_task",
     "data": {
-        "taskId": "id of task to update",
+        "description": "description of the task to update",
         "updates": {
-            "title": "new title",
-            "description": "new description",
-            "dueDate": "new ISO date string",
-            "priority": "new priority"
+            "status": "Pending|In Progress|Completed",
+            "title": "new title (optional)",
+            "description": "new description (optional)",
+            "dueDate": "new ISO date string (optional)",
+            "priority": "new priority (optional)"
         }
     }
 }
@@ -81,47 +82,39 @@ When a user sends a message, analyze it and respond with a JSON object that matc
 
 Examples of user requests and responses:
 
-User: "show me my tasks"
+User: "update the aarya ai mvp task to in progress"
 Response: {
     "success": true,
-    "action": "list_tasks",
-    "data": {}
-}
-
-User: "show me my reminders"
-Response: {
-    "success": true,
-    "action": "list_reminders",
-    "data": {}
-}
-
-User: "create a task for meeting John tomorrow at 3pm"
-Response: {
-    "success": true,
-    "action": "create_task",
+    "action": "update_task",
     "data": {
-        "title": "Meeting with John",
-        "description": null,
-        "dueDate": "2024-12-21T15:00:00Z",
-        "priority": "Medium"
+        "description": "aarya ai mvp",
+        "updates": {
+            "status": "In Progress"
+        }
     }
 }
 
-User: "delete the task about meeting with John"
+User: "mark the college task as completed"
 Response: {
     "success": true,
-    "action": "delete_task",
+    "action": "update_task",
     "data": {
-        "description": "meeting with John"
+        "description": "college",
+        "updates": {
+            "status": "Completed"
+        }
     }
 }
 
-User: "cancel my college marksheet task"
+User: "change gym task priority to high"
 Response: {
     "success": true,
-    "action": "delete_task",
+    "action": "update_task",
     "data": {
-        "description": "college marksheet"
+        "description": "gym",
+        "updates": {
+            "priority": "High"
+        }
     }
 }
 
@@ -133,11 +126,11 @@ For task listing commands, recognize variations like:
 - "show pending tasks"
 - "display my to-do list"
 
-For task deletion commands, recognize variations like:
-- "delete the task about [description]"
-- "remove the task for [description]"
-- "cancel my [description] task"
-- "delete [description]"
+For task update commands, recognize variations like:
+- "update [task description] to [status]"
+- "mark [task description] as [status]"
+- "change [task description] status to [status]"
+- "set [task description] priority to [priority]"
 """
 
     def _parse_natural_language(self, message: str) -> Dict[Any, Any]:

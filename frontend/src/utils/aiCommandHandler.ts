@@ -120,30 +120,61 @@ export class AICommandHandler {
     }
   }
 
-  private static async updateTask(taskId: string, updates: Partial<Task>): Promise<CommandResult> {
+  private static async updateTask(taskId: string | { description: string, updates: Partial<Task> }, updates?: Partial<Task>): Promise<CommandResult> {
     try {
-      const existingTask = await getTasks();
-      const task = existingTask.find(t => t.id === taskId);
+      const existingTasks = await getTasks();
+      let targetTask: Task | undefined;
+
+      if (typeof taskId === 'string') {
+        targetTask = existingTasks.find(t => t.id === taskId);
+      } else {
+        // Extract key terms from the description
+        const searchTerms = taskId.description
+          .toLowerCase()
+          .split(' ')
+          .filter(term => term.length > 2); // Filter out short words
+
+        // Find task that matches the most search terms
+        let bestMatch: Task | null = null;
+        let maxMatchCount = 0;
+
+        for (const task of existingTasks) {
+          if (!task || !task.title) continue;
+          
+          const taskTitle = task.title.toLowerCase();
+          const matchCount = searchTerms.filter(term => taskTitle.includes(term)).length;
+          
+          if (matchCount > maxMatchCount) {
+            maxMatchCount = matchCount;
+            bestMatch = task;
+          }
+        }
+
+        if (maxMatchCount > 0 && bestMatch) {
+          targetTask = bestMatch;
+          updates = taskId.updates;
+        }
+      }
       
-      if (!task) {
+      if (!targetTask) {
         return {
           success: false,
-          message: `Task with ID ${taskId} not found`
+          message: `Couldn't find a task matching that description. Please try being more specific or use 'show tasks' to see your task list.`
         };
       }
 
       // Validate status if it's being updated
-      if (updates.status) {
+      if (updates?.status) {
         const validStatuses = ['Pending', 'In Progress', 'Completed'];
         if (!validStatuses.includes(updates.status)) {
           updates.status = 'Pending';
         }
       }
 
-      const updatedTask = await updateTask({ ...task, ...updates });
+      const updatedTask = await updateTask({ ...targetTask, ...updates });
       return {
         success: true,
-        message: `Task updated successfully`,
+        message: `Task "${targetTask.title}" updated successfully`,
         data: updatedTask
       };
     } catch (error) {
@@ -359,7 +390,26 @@ Example:
           }
           
         case 'update_task':
-          return this.updateTask(result.data.taskId, result.data.updates);
+          if (!result.data) {
+            return {
+              success: false,
+              message: "Missing data for update task operation"
+            };
+          }
+
+          if (result.data.taskId) {
+            return this.updateTask(result.data.taskId, result.data.updates);
+          } else if (result.data.description) {
+            return this.updateTask({ 
+              description: result.data.description,
+              updates: result.data.updates
+            });
+          } else {
+            return {
+              success: false,
+              message: "I couldn't determine which task to update. Please try being more specific."
+            };
+          }
           
         default:
           console.log("Unknown action:", result.action);
