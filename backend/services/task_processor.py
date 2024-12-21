@@ -193,6 +193,10 @@ For task update commands, recognize variations like:
             
             # Update last API call time
             self.last_api_call = current_time
+
+            # Add current date to system prompt for date-aware responses
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            date_aware_prompt = f"{self.SYSTEM_PROMPT}\nCurrent date: {current_date}\nFor date updates, always return a single JSON response with an ISO date string."
             
             # Call LLaMA model through Together API
             response = requests.post(
@@ -204,7 +208,7 @@ For task update commands, recognize variations like:
                 json={
                     "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
                     "messages": [
-                        {"role": "system", "content": self.SYSTEM_PROMPT},
+                        {"role": "system", "content": date_aware_prompt},
                         {"role": "user", "content": message}
                     ],
                     "max_tokens": 1024,
@@ -237,17 +241,36 @@ For task update commands, recognize variations like:
             # Clean up the content - remove markdown code blocks if present
             content = content.strip()
             if content.startswith('```') and content.endswith('```'):
-                # Remove the first line (```json or just ```) and the last line (```)
                 content = '\n'.join(content.split('\n')[1:-1])
-            
-            # Remove any remaining markdown indicators
             content = content.replace('```json', '').replace('```', '').strip()
-            
-            print("Cleaned content:", content)  # Debug log
 
             try:
-                parsed_response = json.loads(content)
+                # First try to parse the entire content
+                try:
+                    parsed_response = json.loads(content)
+                except json.JSONDecodeError:
+                    # If that fails, try to find the last complete JSON object
+                    import re
+                    json_matches = re.findall(r'\{[\s\S]*"success"[\s\S]*"action"[\s\S]*\}', content)
+                    if not json_matches:
+                        return {
+                            "success": False,
+                            "message": "No valid JSON found in response"
+                        }
+                    last_json = json_matches[-1]
+                    parsed_response = json.loads(last_json)
+
                 print("Parsed response:", parsed_response)  # Debug log
+                
+                # Handle date updates
+                if parsed_response.get('action') == 'update_task' and \
+                   parsed_response.get('data', {}).get('updates', {}).get('dueDate'):
+                    updates = parsed_response['data']['updates']
+                    if 'tomorrow' in updates['dueDate'].lower():
+                        # Set to tomorrow at midnight
+                        tomorrow = datetime.now() + timedelta(days=1)
+                        tomorrow = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+                        updates['dueDate'] = tomorrow.isoformat() + 'Z'
                 
                 # Ensure the response has the required fields
                 if not isinstance(parsed_response, dict):
@@ -255,9 +278,6 @@ For task update commands, recognize variations like:
                 
                 if "success" not in parsed_response or "action" not in parsed_response:
                     raise ValueError("Response missing required fields")
-                
-                if parsed_response["action"] == "create_task" and "data" not in parsed_response:
-                    raise ValueError("Create task response missing data field")
                 
                 return parsed_response
 
