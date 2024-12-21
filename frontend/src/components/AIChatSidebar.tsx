@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X, Send, Mic, Loader2, HelpCircle, List, CheckCircle, Clock, Activity } from 'lucide-react';
 
 interface Message {
@@ -31,6 +31,16 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   onSubmit,
   onSpeechRecognition,
 }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]); // Scroll when messages change
+
   const renderMessageContent = (message: Message) => {
     if (message.role === 'user') {
       return <p>{message.content}</p>;
@@ -163,6 +173,7 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} /> {/* Anchor element for scrolling */}
       </div>
 
       {/* Input Area */}
@@ -171,6 +182,20 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (e.shiftKey) {
+                  // Allow new line with Shift+Enter
+                  return;
+                }
+                // Prevent default to avoid new line
+                e.preventDefault();
+                // Only submit if there's input and not processing
+                if (inputValue.trim() && !isProcessing) {
+                  onSubmit();
+                }
+              }
+            }}
             placeholder="Type your message..."
             className="w-full bg-gray-800 text-white rounded-lg p-3 pr-24 min-h-[50px] max-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
             rows={1}

@@ -3,7 +3,14 @@ import { Task } from "@/types/taskTypes";
 // Custom event names
 export const EVENTS = {
   TASKS_UPDATED: 'TASKS_UPDATED',
+  SHOW_TOAST: 'SHOW_TOAST',
 } as const;
+
+export type ToastData = {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  duration?: number;
+};
 
 // Task management
 export const getTasks = async (): Promise<Task[]> => {
