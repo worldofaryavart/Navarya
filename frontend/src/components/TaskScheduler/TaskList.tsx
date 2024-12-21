@@ -24,8 +24,6 @@ const TaskList: React.FC<TaskListProps> = ({
   onDeleteTask,
   onEditTask,
 }) => {
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Task["status"] | "All">("All");
 

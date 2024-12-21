@@ -42,7 +42,14 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     "data": {}
 }
 
-3. For updating a task:
+3. For listing reminders (when user asks to see, show, list, or view their reminders):
+{
+    "success": true,
+    "action": "list_reminders",
+    "data": {}
+}
+
+4. For updating a task:
 {
     "success": true,
     "action": "update_task",
@@ -57,7 +64,7 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     }
 }
 
-4. For deleting a task:
+5. For deleting a task:
 {
     "success": true,
     "action": "delete_task",
@@ -66,7 +73,7 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     }
 }
 
-5. For errors:
+6. For errors:
 {
     "success": false,
     "message": "helpful error message suggesting how to rephrase"
@@ -78,6 +85,13 @@ User: "show me my tasks"
 Response: {
     "success": true,
     "action": "list_tasks",
+    "data": {}
+}
+
+User: "show me my reminders"
+Response: {
+    "success": true,
+    "action": "list_reminders",
     "data": {}
 }
 

@@ -96,18 +96,52 @@ export class AICommandHandler {
 
   private static async listTasks(): Promise<CommandResult> {
     try {
-      const response = await fetch('http://localhost:8000/api/reminders');
-      const tasks = await response.json();
+      const tasks = await getTasks();
       
-      if (!Array.isArray(tasks)) {
-        throw new Error('Invalid response format');
-      }
-
       if (tasks.length === 0) {
         return {
           success: true,
-          message: "You don't have any pending tasks.",
+          message: "You don't have any tasks.",
           data: tasks
+        };
+      }
+
+      const taskList = tasks.map((task: Task) => {
+        const dueText = task.dueDate ? 
+          ` (Due: ${task.dueDate.toLocaleString()}${new Date(task.dueDate) < new Date() ? ' - OVERDUE' : ''})` : 
+          ' (No due date)';
+        
+        return `- ${task.title}${dueText} - Status: ${task.status}`;
+      }).join('\n');
+
+      return {
+        success: true,
+        message: `Here are your tasks:\n${taskList}`,
+        data: tasks
+      };
+    } catch (error) {
+      console.error('List tasks error:', error);
+      return {
+        success: false,
+        message: 'Failed to fetch tasks'
+      };
+    }
+  }
+
+  private static async listReminders(): Promise<CommandResult> {
+    try {
+      const response = await fetch('http://localhost:8000/api/reminders');
+      const reminders = await response.json();
+      
+      if (!Array.isArray(reminders)) {
+        throw new Error('Invalid response format');
+      }
+
+      if (reminders.length === 0) {
+        return {
+          success: true,
+          message: "You don't have any reminders.",
+          data: reminders
         };
       }
 
@@ -126,24 +160,24 @@ export class AICommandHandler {
         }
       };
 
-      const taskList = tasks.map((task: any) => {
-        const dueText = task.reminder_time ? 
-          ` (Due: ${formatDate(task.reminder_time)}${task.is_due ? ' - OVERDUE' : ''})` : 
+      const reminderList = reminders.map((reminder: any) => {
+        const dueText = reminder.reminder_time ? 
+          ` (Due: ${formatDate(reminder.reminder_time)}${reminder.is_due ? ' - OVERDUE' : ''})` : 
           ' (No due date)';
         
-        return `- ${task.task}${dueText}`;
+        return `- ${reminder.task}${dueText}`;
       }).join('\n');
 
       return {
         success: true,
-        message: `Here are your pending tasks:\n${taskList}`,
-        data: tasks
+        message: `Here are your reminders:\n${reminderList}`,
+        data: reminders
       };
     } catch (error) {
-      console.error('List tasks error:', error);
+      console.error('List reminders error:', error);
       return {
         success: false,
-        message: 'Failed to fetch tasks'
+        message: 'Failed to fetch reminders'
       };
     }
   }
@@ -157,11 +191,13 @@ Available commands:
 2. Delete a task: "delete task [task id]"
 3. Update task status: "update task [task id] status [Pending/In Progress/Completed]"
 4. List tasks: "show tasks" or "list tasks"
-5. Help: "help" or "show commands"
+5. List reminders: "show reminders" or "list reminders"
+6. Help: "help" or "show commands"
 
 Example:
 - create task Buy groceries
 - show tasks
+- show reminders
 - update task abc123 status In Progress
 - delete task abc123
       `.trim()
@@ -177,7 +213,13 @@ Example:
     }
 
     if (lowercaseInput === 'show tasks' || lowercaseInput === 'list tasks') {
+      console.log("tasks is lited");
       return this.listTasks();
+    }
+
+    if (lowercaseInput === 'show reminders' || lowercaseInput === 'list reminders') {
+      console.log("reminder is listed");
+      return this.listReminders();
     }
 
     try {
@@ -231,6 +273,9 @@ Example:
           
         case 'list_tasks':
           return this.listTasks();
+
+        case 'list_reminders':
+          return this.listReminders();
           
         case 'delete_task':
           return this.deleteTask(result.data.taskId);
