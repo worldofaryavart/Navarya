@@ -433,6 +433,101 @@ export class AICommandHandler {
     }
   }
 
+  private static async processBatchOperations(operations: any[]): Promise<CommandResult> {
+    try {
+      const results: { type: string; success: boolean; message: string }[] = [];
+      
+      for (const operation of operations) {
+        let result;
+        switch (operation.type) {
+          case 'create_task':
+            try {
+              const newTask: NewTaskInput = {
+                title: operation.data.title,
+                description: operation.data.description || '',
+                priority: operation.data.priority || 'Medium',
+                dueDate: operation.data.dueDate ? new Date(operation.data.dueDate) : null
+              };
+              await addTask(newTask);
+              results.push({
+                type: 'create_task',
+                success: true,
+                message: `Created task: ${newTask.title}`
+              });
+            } catch (error) {
+              results.push({
+                type: 'create_task',
+                success: false,
+                message: `Failed to create task: ${operation.data.title}`
+              });
+            }
+            break;
+
+          case 'update_task':
+            try {
+              result = await this.updateTask({
+                description: operation.data.description,
+                updates: operation.data.updates
+              });
+              results.push({
+                type: 'update_task',
+                success: result.success,
+                message: result.message
+              });
+            } catch (error) {
+              results.push({
+                type: 'update_task',
+                success: false,
+                message: `Failed to update task: ${operation.data.description}`
+              });
+            }
+            break;
+
+          case 'delete_task':
+            try {
+              result = await this.deleteTask({
+                description: operation.data.description
+              });
+              results.push({
+                type: 'delete_task',
+                success: result.success,
+                message: result.message
+              });
+            } catch (error) {
+              results.push({
+                type: 'delete_task',
+                success: false,
+                message: `Failed to delete task: ${operation.data.description}`
+              });
+            }
+            break;
+        }
+      }
+
+      // Generate summary message
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.length - successCount;
+      
+      let summaryMessage = `Completed ${successCount} out of ${results.length} operations:\n`;
+      results.forEach(result => {
+        const icon = result.success ? '✓' : '✗';
+        summaryMessage += `${icon} ${result.message}\n`;
+      });
+
+      return {
+        success: failureCount === 0,
+        message: summaryMessage.trim(),
+        data: results
+      };
+    } catch (error) {
+      console.error('Batch operations error:', error);
+      return {
+        success: false,
+        message: 'Failed to process batch operations'
+      };
+    }
+  }
+
   private static getHelpMessage(): CommandResult {
     return {
       success: true,
@@ -501,6 +596,10 @@ Example:
           success: false,
           message: result.message || "I couldn't understand that command. Try rephrasing or type 'help' to see available commands."
         };
+      }
+
+      if (result.action === 'batch_operations' && result.data?.operations) {
+        return this.processBatchOperations(result.data.operations);
       }
 
       if (result.action === 'list_tasks' && result.data?.filter) {

@@ -106,6 +106,44 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     }
 }
 
+9. For batch operations:
+{
+    "success": true,
+    "action": "batch_operations",
+    "data": {
+        "operations": [
+            {
+                "type": "create_task",
+                "data": {
+                    "title": "task title",
+                    "description": "detailed description or null",
+                    "dueDate": "ISO date string or null",
+                    "priority": "High|Medium|Low"
+                }
+            },
+            {
+                "type": "update_task",
+                "data": {
+                    "description": "task to update",
+                    "updates": {
+                        "status": "Pending|In Progress|Completed",
+                        "title": "new title (optional)",
+                        "description": "new description (optional)",
+                        "dueDate": "new ISO date string (optional)",
+                        "priority": "new priority (optional)"
+                    }
+                }
+            },
+            {
+                "type": "delete_task",
+                "data": {
+                    "description": "task to delete"
+                }
+            }
+        ]
+    }
+}
+
 Examples of user requests and responses:
 
 User: "update the aarya ai mvp task to in progress"
@@ -251,6 +289,95 @@ Response: {
         "filter": {
             "status": "completed"
         }
+    }
+}
+
+User: "create 4 tasks for today: 1. call to client at 11pm 2. check your diary 3. watch agent video 4. go to mall"
+Response: {
+    "success": true,
+    "action": "batch_operations",
+    "data": {
+        "operations": [
+            {
+                "type": "create_task",
+                "data": {
+                    "title": "call to client",
+                    "description": "call to client at 11pm",
+                    "dueDate": "2024-12-22T23:00:00+05:30",
+                    "priority": "Medium"
+                }
+            },
+            {
+                "type": "create_task",
+                "data": {
+                    "title": "check your diary",
+                    "description": null,
+                    "dueDate": "2024-12-22T23:59:59+05:30",
+                    "priority": "Medium"
+                }
+            },
+            {
+                "type": "create_task",
+                "data": {
+                    "title": "watch agent video",
+                    "description": null,
+                    "dueDate": "2024-12-22T23:59:59+05:30",
+                    "priority": "Medium"
+                }
+            },
+            {
+                "type": "create_task",
+                "data": {
+                    "title": "go to mall",
+                    "description": null,
+                    "dueDate": "2024-12-22T23:59:59+05:30",
+                    "priority": "Medium"
+                }
+            }
+        ]
+    }
+}
+
+User: "create 2 tasks: 1. buy groceries 2. call mom, mark gym task as completed, and delete the meeting task"
+Response: {
+    "success": true,
+    "action": "batch_operations",
+    "data": {
+        "operations": [
+            {
+                "type": "create_task",
+                "data": {
+                    "title": "buy groceries",
+                    "description": null,
+                    "dueDate": null,
+                    "priority": "Medium"
+                }
+            },
+            {
+                "type": "create_task",
+                "data": {
+                    "title": "call mom",
+                    "description": null,
+                    "dueDate": null,
+                    "priority": "Medium"
+                }
+            },
+            {
+                "type": "update_task",
+                "data": {
+                    "description": "gym",
+                    "updates": {
+                        "status": "Completed"
+                    }
+                }
+            },
+            {
+                "type": "delete_task",
+                "data": {
+                    "description": "meeting"
+                }
+            }
+        ]
     }
 }
 
