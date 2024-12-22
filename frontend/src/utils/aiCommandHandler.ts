@@ -112,7 +112,10 @@ export class AICommandHandler {
         };
       }
 
-      await updateTask(taskToUpdate.id, data.updates);
+      await updateTask({
+        ...taskToUpdate,
+        ...data.updates
+      });
       return {
         success: true,
         message: data.message || `Task "${taskToUpdate.title}" updated successfully`
