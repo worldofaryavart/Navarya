@@ -175,7 +175,35 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       );
     }
 
-    // Default message (conversation)
+    // Task operation messages
+    if (message.content.includes('Task') && (
+      message.content.includes('created') || 
+      message.content.includes('updated') || 
+      message.content.includes('deleted')
+    )) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center text-green-400">
+            <CheckCircle size={18} className="mr-2" />
+            <span className="font-medium">{message.content}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // Handle error messages
+    if (message.content.includes('Failed') || message.content.includes('Error')) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center text-red-400">
+            <X size={18} className="mr-2" />
+            <span className="font-medium">{message.content}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // Default conversation message
     return (
       <div className="text-gray-300 leading-relaxed">
         {message.content}

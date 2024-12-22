@@ -391,6 +391,54 @@ Response: {
     }
 }
 
+User: "create task submit report by tomorrow"
+Response: {
+    "success": true,
+    "action": "create_task",
+    "data": {
+        "title": "submit report",
+        "dueDate": "2024-12-23T23:59:59+05:30",
+        "priority": "Medium",
+        "message": "Task \"submit report\" created successfully (Due: Tomorrow at 11:59 PM)"
+    }
+}
+
+User: "update report task to completed"
+Response: {
+    "success": true,
+    "action": "update_task",
+    "data": {
+        "description": "report",
+        "updates": {
+            "status": "Completed"
+        },
+        "message": "Task \"submit report\" updated successfully (Status: Completed)"
+    }
+}
+
+User: "delete the gym task"
+Response: {
+    "success": true,
+    "action": "delete_task",
+    "data": {
+        "description": "gym",
+        "message": "Task \"go to gym\" deleted successfully"
+    }
+}
+
+User: "mark the project task as in progress"
+Response: {
+    "success": true,
+    "action": "update_task",
+    "data": {
+        "description": "project",
+        "updates": {
+            "status": "In Progress"
+        },
+        "message": "Task \"Complete project\" updated successfully (Status: In Progress)"
+    }
+}
+
 Examples of conversational responses:
 
 User: "ok great"

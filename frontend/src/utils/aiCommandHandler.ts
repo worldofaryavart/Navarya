@@ -16,27 +16,24 @@ interface CommandResult {
 }
 
 export class AICommandHandler {
-  private static async createTask(content: string): Promise<CommandResult> {
+  private static async createTask(data: any): Promise<CommandResult> {
     try {
       const newTask: NewTaskInput = {
-        title: content,
-        description: '',
-        priority: 'Medium',
-        dueDate: null
+        title: data.title,
+        description: data.description || '',
+        priority: data.priority || 'Medium',
+        dueDate: data.dueDate ? new Date(data.dueDate) : null
       };
-      
-      const task = await addTask(newTask);
+      await addTask(newTask);
       return {
         success: true,
-        message: `Created task: ${content}`,
-        data: task
+        message: data.message || `Task "${newTask.title}" created successfully`
       };
     } catch (error) {
       console.error('Create task error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return {
         success: false,
-        message: `Failed to create task: ${errorMessage}`
+        message: 'Failed to create task'
       };
     }
   }
@@ -73,116 +70,58 @@ export class AICommandHandler {
     }
   }
 
-  private static async deleteTask(taskId: string | { description: string }): Promise<CommandResult> {
+  private static async deleteTask(data: any): Promise<CommandResult> {
     try {
-      let targetTaskId: string | undefined;
+      const tasks = await getTasks();
+      const taskToDelete = tasks.find(task => 
+        task.title.toLowerCase().includes(data.description.toLowerCase())
+      );
 
-      if (typeof taskId === 'string') {
-        targetTaskId = taskId;
-      } else {
-        // Extract key terms from the description
-        const searchTerms = taskId.description
-          .toLowerCase()
-          .replace(/delete|remove|cancel/g, '')
-          .split(' ')
-          .filter(term => term.length > 2); // Filter out short words
-
-        const task = await this.findTaskByDescription(searchTerms);
-        if (!task) {
-          return {
-            success: false,
-            message: "I couldn't find a task matching that description. Please try being more specific or use 'show tasks' to see your task list."
-          };
-        }
-        targetTaskId = task.id;
-      }
-
-      // Check if we have a valid task ID
-      if (!targetTaskId) {
+      if (!taskToDelete) {
         return {
           success: false,
-          message: "No valid task ID found for deletion."
+          message: `No task found matching "${data.description}"`
         };
       }
 
-      await deleteTask(targetTaskId);
+      await deleteTask(taskToDelete.id);
       return {
         success: true,
-        message: `Task deleted successfully`
+        message: data.message || `Task "${taskToDelete.title}" deleted successfully`
       };
     } catch (error) {
       console.error('Delete task error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return {
         success: false,
-        message: `Failed to delete task: ${errorMessage}`
+        message: 'Failed to delete task'
       };
     }
   }
 
-  private static async updateTask(taskId: string | { description: string, updates: Partial<Task> }, updates?: Partial<Task>): Promise<CommandResult> {
+  private static async updateTask(data: any): Promise<CommandResult> {
     try {
-      const existingTasks = await getTasks();
-      let targetTask: Task | undefined;
+      const tasks = await getTasks();
+      const taskToUpdate = tasks.find(task => 
+        task.title.toLowerCase().includes(data.description.toLowerCase())
+      );
 
-      if (typeof taskId === 'string') {
-        targetTask = existingTasks.find(t => t.id === taskId);
-      } else {
-        // Extract key terms from the description
-        const searchTerms = taskId.description
-          .toLowerCase()
-          .split(' ')
-          .filter(term => term.length > 2); // Filter out short words
-
-        // Find task that matches the most search terms
-        let bestMatch: Task | null = null;
-        let maxMatchCount = 0;
-
-        for (const task of existingTasks) {
-          if (!task || !task.title) continue;
-          
-          const taskTitle = task.title.toLowerCase();
-          const matchCount = searchTerms.filter(term => taskTitle.includes(term)).length;
-          
-          if (matchCount > maxMatchCount) {
-            maxMatchCount = matchCount;
-            bestMatch = task;
-          }
-        }
-
-        if (maxMatchCount > 0 && bestMatch) {
-          targetTask = bestMatch;
-          updates = taskId.updates;
-        }
-      }
-      
-      if (!targetTask) {
+      if (!taskToUpdate) {
         return {
           success: false,
-          message: `Couldn't find a task matching that description. Please try being more specific or use 'show tasks' to see your task list.`
+          message: `No task found matching "${data.description}"`
         };
       }
 
-      // Validate status if it's being updated
-      if (updates?.status) {
-        const validStatuses = ['Pending', 'In Progress', 'Completed'];
-        if (!validStatuses.includes(updates.status)) {
-          updates.status = 'Pending';
-        }
-      }
-
-      const updatedTask = await updateTask({ ...targetTask, ...updates });
+      await updateTask(taskToUpdate.id, data.updates);
       return {
         success: true,
-        message: `Task "${targetTask.title}" updated successfully`,
-        data: updatedTask
+        message: data.message || `Task "${taskToUpdate.title}" updated successfully`
       };
     } catch (error) {
       console.error('Update task error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return {
         success: false,
-        message: `Failed to update task: ${errorMessage}`
+        message: 'Failed to update task'
       };
     }
   }
@@ -222,21 +161,21 @@ export class AICommandHandler {
             case 'today':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
-                const dueDate = new Date(task.dueDate);
+                const dueDate = new Date(task.dueDate?.toString());
                 return dueDate >= startOfDay && dueDate < endOfDay;
               });
               break;
             case 'overdue':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
-                const dueDate = new Date(task.dueDate);
+                const dueDate = new Date(task.dueDate?.toString());
                 return dueDate < startOfDay;
               });
               break;
             case 'upcoming':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
-                const dueDate = new Date(task.dueDate);
+                const dueDate = new Date(task.dueDate?.toString());
                 return dueDate >= startOfDay;
               });
               break;
@@ -265,7 +204,7 @@ export class AICommandHandler {
 
       const taskList = filteredTasks.map((task: Task) => {
         const dueText = task.dueDate ? 
-          ` (Due: ${new Date(task.dueDate).toLocaleString()}${new Date(task.dueDate) < new Date() ? ' - OVERDUE' : ''})` : 
+          ` (Due: ${new Date(task.dueDate?.toString()).toLocaleString()}${new Date(task.dueDate?.toString()) < new Date() ? ' - OVERDUE' : ''})` : 
           ' (No due date)';
         
         return `- ${task.title}${dueText} - Status: ${task.status} - Priority: ${task.priority}`;
@@ -621,19 +560,7 @@ Example:
       switch (result.action) {
         case 'create_task': {
           console.log("Creating task with data:", result.data);
-          const newTask: NewTaskInput = {
-            title: result.data.title,
-            description: result.data.description || '',
-            priority: result.data.priority || 'Medium',
-            dueDate: result.data.dueDate ? new Date(result.data.dueDate) : null
-          };
-          
-          const task = await addTask(newTask);
-          return {
-            success: true,
-            message: `Created task: ${newTask.title}${newTask.dueDate ? ` (Due: ${newTask.dueDate.toLocaleString()})` : ''}`,
-            data: task
-          };
+          return this.createTask(result.data);
         }
           
         case 'list_tasks':
@@ -651,9 +578,9 @@ Example:
           }
           
           if (result.data.taskId) {
-            return this.deleteTask(result.data.taskId);
+            return this.deleteTask(result.data);
           } else if (result.data.description) {
-            return this.deleteTask({ description: result.data.description });
+            return this.deleteTask(result.data);
           } else {
             return {
               success: false,
@@ -670,12 +597,9 @@ Example:
           }
 
           if (result.data.taskId) {
-            return this.updateTask(result.data.taskId, result.data.updates);
+            return this.updateTask(result.data);
           } else if (result.data.description) {
-            return this.updateTask({ 
-              description: result.data.description,
-              updates: result.data.updates
-            });
+            return this.updateTask(result.data);
           } else {
             return {
               success: false,
