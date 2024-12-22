@@ -80,6 +80,20 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     "message": "helpful error message suggesting how to rephrase"
 }
 
+7. For task filtering queries:
+{
+    "success": true,
+    "action": "list_tasks",
+    "data": {
+        "filter": {
+            "status": "Pending|In Progress|Completed",
+            "priority": "High|Medium|Low",
+            "due": "today|overdue|upcoming",
+            "created": "today"
+        }
+    }
+}
+
 Examples of user requests and responses:
 
 User: "update the aarya ai mvp task to in progress"
@@ -114,6 +128,72 @@ Response: {
         "description": "gym",
         "updates": {
             "priority": "High"
+        }
+    }
+}
+
+User: "show pending tasks"
+Response: {
+    "success": true,
+    "action": "list_tasks",
+    "data": {
+        "filter": {
+            "status": "Pending"
+        }
+    }
+}
+
+User: "how many tasks are completed"
+Response: {
+    "success": true,
+    "action": "list_tasks",
+    "data": {
+        "filter": {
+            "status": "Completed"
+        }
+    }
+}
+
+User: "show high priority tasks"
+Response: {
+    "success": true,
+    "action": "list_tasks",
+    "data": {
+        "filter": {
+            "priority": "High"
+        }
+    }
+}
+
+User: "what tasks are due today"
+Response: {
+    "success": true,
+    "action": "list_tasks",
+    "data": {
+        "filter": {
+            "due": "today"
+        }
+    }
+}
+
+User: "show tasks created today"
+Response: {
+    "success": true,
+    "action": "list_tasks",
+    "data": {
+        "filter": {
+            "created": "today"
+        }
+    }
+}
+
+User: "list overdue tasks"
+Response: {
+    "success": true,
+    "action": "list_tasks",
+    "data": {
+        "filter": {
+            "due": "overdue"
         }
     }
 }

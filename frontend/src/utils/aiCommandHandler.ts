@@ -1,4 +1,4 @@
-import { Task, NewTaskInput } from '@/types/taskTypes';
+import { Task, NewTaskInput, TaskStatus, TaskPriority } from '@/types/taskTypes';
 import { addTask, deleteTask, getTasks, updateTask } from './tasks';
 
 export type CommandType = 
@@ -187,7 +187,12 @@ export class AICommandHandler {
     }
   }
 
-  private static async listTasks(): Promise<CommandResult> {
+  private static async listTasks(filter?: {
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    due?: 'today' | 'overdue' | 'upcoming';
+    created?: 'today';
+  }): Promise<CommandResult> {
     try {
       const tasks = await getTasks();
       
@@ -199,18 +204,87 @@ export class AICommandHandler {
         };
       }
 
-      const taskList = tasks.map((task: Task) => {
+      let filteredTasks = [...tasks];
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+
+      if (filter) {
+        if (filter.status) {
+          filteredTasks = filteredTasks.filter(task => task.status === filter.status);
+        }
+        if (filter.priority) {
+          filteredTasks = filteredTasks.filter(task => task.priority === filter.priority);
+        }
+        if (filter.due) {
+          switch (filter.due) {
+            case 'today':
+              filteredTasks = filteredTasks.filter(task => {
+                if (!task.dueDate) return false;
+                const dueDate = new Date(task.dueDate);
+                return dueDate >= startOfDay && dueDate < endOfDay;
+              });
+              break;
+            case 'overdue':
+              filteredTasks = filteredTasks.filter(task => {
+                if (!task.dueDate) return false;
+                const dueDate = new Date(task.dueDate);
+                return dueDate < startOfDay;
+              });
+              break;
+            case 'upcoming':
+              filteredTasks = filteredTasks.filter(task => {
+                if (!task.dueDate) return false;
+                const dueDate = new Date(task.dueDate);
+                return dueDate >= startOfDay;
+              });
+              break;
+          }
+        }
+        if (filter.created === 'today') {
+          filteredTasks = filteredTasks.filter(task => {
+            const createdDate = new Date(task.createdAt);
+            return createdDate >= startOfDay && createdDate < endOfDay;
+          });
+        }
+      }
+
+      if (filteredTasks.length === 0) {
+        let message = "No tasks found";
+        if (filter?.status) message += ` with status '${filter.status}'`;
+        if (filter?.priority) message += ` with priority '${filter.priority}'`;
+        if (filter?.due) message += ` that are ${filter.due}`;
+        if (filter?.created === 'today') message += " created today";
+        return {
+          success: true,
+          message: message + ".",
+          data: []
+        };
+      }
+
+      const taskList = filteredTasks.map((task: Task) => {
         const dueText = task.dueDate ? 
-          ` (Due: ${task.dueDate.toLocaleString()}${new Date(task.dueDate) < new Date() ? ' - OVERDUE' : ''})` : 
+          ` (Due: ${new Date(task.dueDate).toLocaleString()}${new Date(task.dueDate) < new Date() ? ' - OVERDUE' : ''})` : 
           ' (No due date)';
         
-        return `- ${task.title}${dueText} - Status: ${task.status}`;
+        return `- ${task.title}${dueText} - Status: ${task.status} - Priority: ${task.priority}`;
       }).join('\n');
+
+      const countMessage = filteredTasks.length === 1 ? 
+        "Found 1 task" : 
+        `Found ${filteredTasks.length} tasks`;
+
+      let filterDescription = "";
+      if (filter?.status) filterDescription += ` with status '${filter.status}'`;
+      if (filter?.priority) filterDescription += ` with priority '${filter.priority}'`;
+      if (filter?.due) filterDescription += ` that are ${filter.due}`;
+      if (filter?.created === 'today') filterDescription += " created today";
 
       return {
         success: true,
-        message: `Here are your tasks:\n${taskList}`,
-        data: tasks
+        message: `${countMessage}${filterDescription}:\n${taskList}`,
+        data: filteredTasks
       };
     } catch (error) {
       console.error('List tasks error:', error);
@@ -343,6 +417,10 @@ Example:
           success: false,
           message: result.message || "I couldn't understand that command. Try rephrasing or type 'help' to see available commands."
         };
+      }
+
+      if (result.action === 'list_tasks' && result.data?.filter) {
+        return this.listTasks(result.data.filter);
       }
 
       // Handle different actions based on AI response
