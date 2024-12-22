@@ -602,6 +602,13 @@ Example:
         return this.processBatchOperations(result.data.operations);
       }
 
+      if (result.action === 'conversation' && result.data?.response) {
+        return {
+          success: true,
+          message: result.data.response
+        };
+      }
+
       if (result.action === 'list_tasks' && result.data?.filter) {
         return this.listTasks(result.data.filter);
       }

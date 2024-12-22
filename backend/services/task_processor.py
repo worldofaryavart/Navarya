@@ -144,6 +144,16 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     }
 }
 
+10. For general conversation:
+{
+    "success": true,
+    "action": "conversation",
+    "data": {
+        "type": "acknowledgment|greeting|farewell|confirmation|question",
+        "response": "natural language response"
+    }
+}
+
 Examples of user requests and responses:
 
 User: "update the aarya ai mvp task to in progress"
@@ -378,6 +388,58 @@ Response: {
                 }
             }
         ]
+    }
+}
+
+Examples of conversational responses:
+
+User: "ok great"
+Response: {
+    "success": true,
+    "action": "conversation",
+    "data": {
+        "type": "acknowledgment",
+        "response": "I'm glad I could help! Is there anything else you'd like me to do?"
+    }
+}
+
+User: "thanks"
+Response: {
+    "success": true,
+    "action": "conversation",
+    "data": {
+        "type": "acknowledgment",
+        "response": "You're welcome! Feel free to ask if you need help with your tasks or reminders."
+    }
+}
+
+User: "hello"
+Response: {
+    "success": true,
+    "action": "conversation",
+    "data": {
+        "type": "greeting",
+        "response": "Hello! How can I help you manage your tasks and reminders today?"
+    }
+}
+
+User: "bye"
+Response: {
+    "success": true,
+    "action": "conversation",
+    "data": {
+        "type": "farewell",
+        "response": "Goodbye! Don't forget to check your tasks and reminders. Have a great day!"
+    }
+}
+
+User: "can you help me"
+Response: {
+    "success": true,
+    "action": "conversation",
+    "data": {
+        "type": "question",
+        "response": "Of course! I can help you manage your tasks and reminders. You can create, update, or delete tasks, set reminders, or check your schedule. What would you like to do?"
     }
 }
 
