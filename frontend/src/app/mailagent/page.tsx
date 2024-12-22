@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Email, EmailFolder, EmailLabel } from '@/types/mailTypes';
 import { Loader2, Search, Plus, Inbox, Send, Archive, Trash, Tag, Star } from 'lucide-react';
+import { getEmails, markAsRead } from '@/utils/mailService';
+import ComposeEmail from '@/components/mail/ComposeEmail';
 
 const defaultFolders: EmailFolder[] = [
   { id: 'inbox', name: 'Inbox', type: 'inbox', unreadCount: 0 },
@@ -31,8 +33,15 @@ const MailAgent = () => {
 
   useEffect(() => {
     const loadEmails = async () => {
-      // TODO: Implement email loading
-      setLoading(false);
+      try {
+        setLoading(true);
+        const fetchedEmails = await getEmails(currentFolder);
+        setEmails(fetchedEmails);
+      } catch (error) {
+        console.error('Error loading emails:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     if (user) {
@@ -42,11 +51,44 @@ const MailAgent = () => {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // TODO: Implement email search
+    // Filter emails locally for now
+    // TODO: Implement server-side search
   };
 
   const handleComposeClick = () => {
     setShowCompose(true);
+  };
+
+  const handleEmailClick = async (email: Email) => {
+    setSelectedEmail(email);
+    if (!email.read) {
+      try {
+        await markAsRead(email.id);
+        // Update email in state
+        setEmails(prevEmails =>
+          prevEmails.map(e =>
+            e.id === email.id ? { ...e, read: true } : e
+          )
+        );
+      } catch (error) {
+        console.error('Error marking email as read:', error);
+      }
+    }
+  };
+
+  const formatDate = (dateStr: string | Date) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
+    }
   };
 
   return (
@@ -131,14 +173,17 @@ const MailAgent = () => {
                 {emails.map((email) => (
                   <div
                     key={email.id}
-                    onClick={() => setSelectedEmail(email)}
+                    onClick={() => handleEmailClick(email)}
                     className={`p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-800/50 transition-colors duration-200 ${
                       selectedEmail?.id === email.id ? 'bg-gray-700/50' : ''
-                    }`}
+                    } ${!email.read ? 'font-semibold' : ''}`}
                   >
                     <div className="flex items-center gap-2">
                       {email.important && <Star size={16} className="text-yellow-400" />}
                       <span className="font-semibold">{email.from}</span>
+                      <span className="ml-auto text-sm text-gray-400">
+                        {formatDate(email.timestamp)}
+                      </span>
                     </div>
                     <div className="text-sm font-medium mt-1">{email.subject}</div>
                     <div className="text-sm text-gray-400 mt-1 truncate">
@@ -159,6 +204,9 @@ const MailAgent = () => {
                         <div className="text-sm text-gray-400">
                           To: {selectedEmail.to.join(', ')}
                         </div>
+                        <div className="text-sm text-gray-400 mt-1">
+                          {formatDate(selectedEmail.timestamp)}
+                        </div>
                       </div>
                     </div>
                     <div className="mt-6 whitespace-pre-wrap text-gray-300">{selectedEmail.body}</div>
@@ -173,6 +221,14 @@ const MailAgent = () => {
           )}
         </div>
       </div>
+
+      {/* Compose Email Modal */}
+      {showCompose && (
+        <ComposeEmail
+          onClose={() => setShowCompose(false)}
+          replyToEmail={selectedEmail?.id}
+        />
+      )}
     </div>
   );
 };

@@ -3,56 +3,166 @@ import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, updateDo
 import { Email, EmailDraft, Meeting } from '@/types/mailTypes';
 import { Task } from '@/types/taskTypes';
 import { addTask } from './tasks';
+import axios from 'axios';
 
-export const syncEmails = async () => {
-  // TODO: Implement Gmail API integration
-  // This will sync emails from Gmail to our Firestore database
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+export const syncEmails = async (): Promise<Email[]> => {
+  try {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    const response = await axios.get(`${API_BASE_URL}/api/mail/sync`, {
+      headers: {
+        Authorization: `Bearer ${await user.getIdToken()}`
+      }
+    });
+
+    const emails = response.data.emails;
+    
+    // Store emails in Firestore for offline access
+    const batch = [];
+    for (const email of emails) {
+      batch.push(
+        addDoc(collection(db, 'emails'), {
+          ...email,
+          timestamp: new Date(email.timestamp),
+          userId: user.uid
+        })
+      );
+    }
+    await Promise.all(batch);
+
+    return emails;
+  } catch (error) {
+    console.error('Error syncing emails:', error);
+    throw error;
+  }
 };
 
 export const sendEmail = async (draft: EmailDraft): Promise<boolean> => {
   try {
-    // TODO: Implement Gmail API send
-    // For now, just save to sent folder in Firestore
     const user = auth?.currentUser;
-    if (!user || !db) throw new Error('Not authenticated');
+    if (!user) throw new Error('Not authenticated');
 
-    const emailData = {
-      ...draft,
-      from: user.email,
-      timestamp: Timestamp.now(),
-      read: true,
-      important: false,
-      labels: ['sent'],
-    };
+    const response = await axios.post(
+      `${API_BASE_URL}/api/mail/send`,
+      draft,
+      {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`
+        }
+      }
+    );
 
-    await addDoc(collection(db, 'emails'), emailData);
-    return true;
+    if (response.data.success) {
+      // Save to sent folder in Firestore
+      const emailData = {
+        ...draft,
+        id: response.data.messageId,
+        from: user.email,
+        timestamp: Timestamp.now(),
+        read: true,
+        important: false,
+        labels: ['sent'],
+        userId: user.uid
+      };
+
+      await addDoc(collection(db, 'emails'), emailData);
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error('Error sending email:', error);
     return false;
   }
 };
 
+export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
+  try {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    // First try to get from Firestore for offline access
+    const emailsRef = collection(db, 'emails');
+    const q = query(
+      emailsRef,
+      where('userId', '==', user.uid),
+      where('labels', 'array-contains', folder),
+      orderBy('timestamp', 'desc')
+    );
+
+    const snapshot = await getDocs(q);
+    const emails = snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    })) as Email[];
+
+    // If online, sync with Gmail
+    if (navigator.onLine) {
+      await syncEmails();
+    }
+
+    return emails;
+  } catch (error) {
+    console.error('Error getting emails:', error);
+    throw error;
+  }
+};
+
+export const markAsRead = async (emailId: string): Promise<void> => {
+  try {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    // Update in Gmail
+    await axios.post(
+      `${API_BASE_URL}/api/mail/mark-read`,
+      { emailId },
+      {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`
+        }
+      }
+    );
+
+    // Update in Firestore
+    const emailRef = doc(db, 'emails', emailId);
+    await updateDoc(emailRef, {
+      read: true
+    });
+  } catch (error) {
+    console.error('Error marking email as read:', error);
+    throw error;
+  }
+};
+
 export const createMeetingFromEmail = async (email: Email): Promise<Meeting | null> => {
   try {
     const user = auth?.currentUser;
-    if (!user || !db) throw new Error('Not authenticated');
+    if (!user) throw new Error('Not authenticated');
 
-    // Extract meeting details from email using AI
-    // TODO: Implement AI extraction logic
+    // Extract meeting details using AI
+    const response = await axios.post(
+      `${API_BASE_URL}/api/mail/extract-meeting`,
+      { emailId: email.id },
+      {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`
+        }
+      }
+    );
 
-    const meeting = {
-      id: '', // Will be set by Firestore
-      title: email.subject,
-      description: email.body,
-      startTime: new Date(), // TODO: Extract from email
-      endTime: new Date(), // TODO: Extract from email
-      attendees: email.to,
-      relatedEmailId: email.id
-    };
-
-    const docRef = await addDoc(collection(db, 'meetings'), meeting);
-    return { ...meeting, id: docRef.id };
+    if (response.data.meeting) {
+      const meeting = response.data.meeting;
+      await addDoc(collection(db, 'meetings'), {
+        ...meeting,
+        userId: user.uid,
+        relatedEmailId: email.id
+      });
+      return meeting;
+    }
+    return null;
   } catch (error) {
     console.error('Error creating meeting:', error);
     return null;
@@ -61,41 +171,77 @@ export const createMeetingFromEmail = async (email: Email): Promise<Meeting | nu
 
 export const createTaskFromEmail = async (email: Email): Promise<Task | null> => {
   try {
-    // Create a task based on email content
-    const task = {
-      title: `Email Task: ${email.subject}`,
-      description: `Follow up on email from ${email.from}`,
-      priority: 'Medium',
-      status: 'Pending',
-      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Default to tomorrow
-      relatedEmailId: email.id
-    };
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
 
-    return await addTask(task);
+    // Extract task details using AI
+    const response = await axios.post(
+      `${API_BASE_URL}/api/mail/extract-task`,
+      { emailId: email.id },
+      {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`
+        }
+      }
+    );
+
+    if (response.data.task) {
+      const task = response.data.task;
+      return await addTask({
+        ...task,
+        source: {
+          type: 'email',
+          emailId: email.id
+        }
+      });
+    }
+    return null;
   } catch (error) {
-    console.error('Error creating task from email:', error);
+    console.error('Error creating task:', error);
     return null;
   }
 };
 
 export const generateEmailResponse = async (email: Email): Promise<string> => {
   try {
-    // TODO: Implement AI response generation
-    // This will use AI to generate appropriate email responses
-    return '';
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    const response = await axios.post(
+      `${API_BASE_URL}/api/mail/generate-response`,
+      { emailId: email.id },
+      {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`
+        }
+      }
+    );
+
+    return response.data.response;
   } catch (error) {
-    console.error('Error generating email response:', error);
-    return '';
+    console.error('Error generating response:', error);
+    throw error;
   }
 };
 
 export const analyzeEmailImportance = async (email: Email): Promise<boolean> => {
   try {
-    // TODO: Implement AI importance analysis
-    // This will use AI to determine if an email is important
-    return false;
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    const response = await axios.post(
+      `${API_BASE_URL}/api/mail/analyze-importance`,
+      { emailId: email.id },
+      {
+        headers: {
+          Authorization: `Bearer ${await user.getIdToken()}`
+        }
+      }
+    );
+
+    return response.data.important;
   } catch (error) {
-    console.error('Error analyzing email importance:', error);
+    console.error('Error analyzing importance:', error);
     return false;
   }
 };
