@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles } from "lucide-react";
 import { useTaskContext } from '@/context/TaskContext';
 import { useLayout } from '@/context/LayoutContext';
 import AIChatSidebar from './AIChatSidebar';
 import { AICommandHandler } from "@/utils/aiCommandHandler";
 import { getTasks } from "@/utils/tasks";
+import { saveMessage, getConversationHistory, startNewConversation } from "@/utils/conversationService";
 
 interface Message {
   role: 'user' | 'ai';
@@ -53,6 +54,23 @@ const AIControlButton: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const loadHistory = async () => {
+      const history = await getConversationHistory();
+      if (history.length > 0) {
+        setMessages(history.map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.timestamp
+        })));
+      } else {
+        // Start a new conversation if there's no history
+        await startNewConversation();
+      }
+    };
+    loadHistory();
+  }, []);
+
   const handleSubmit = async () => {
     if (!inputValue.trim()) return;
 
@@ -63,6 +81,9 @@ const AIControlButton: React.FC = () => {
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMessage]);
+
+    // Save user message to Firebase
+    await saveMessage(inputValue, 'user');
 
     setIsProcessing(true);
     try {
@@ -77,6 +98,9 @@ const AIControlButton: React.FC = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
+
+      // Save AI message to Firebase
+      await saveMessage(result.message, 'assistant');
 
       // If command was successful, refresh tasks
       if (result.success) {
@@ -94,6 +118,9 @@ const AIControlButton: React.FC = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      
+      // Save error message to Firebase
+      await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
     } finally {
       setIsProcessing(false);
     }
