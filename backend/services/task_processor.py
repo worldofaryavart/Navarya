@@ -94,6 +94,18 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     }
 }
 
+8. For reminder filtering queries:
+{
+    "success": true,
+    "action": "list_reminders",
+    "data": {
+        "filter": {
+            "status": "missed|today|upcoming|completed",
+            "timeframe": "today|tomorrow|week"
+        }
+    }
+}
+
 Examples of user requests and responses:
 
 User: "update the aarya ai mvp task to in progress"
@@ -194,6 +206,50 @@ Response: {
     "data": {
         "filter": {
             "due": "overdue"
+        }
+    }
+}
+
+User: "show missed reminders"
+Response: {
+    "success": true,
+    "action": "list_reminders",
+    "data": {
+        "filter": {
+            "status": "missed"
+        }
+    }
+}
+
+User: "what reminders do I have today"
+Response: {
+    "success": true,
+    "action": "list_reminders",
+    "data": {
+        "filter": {
+            "timeframe": "today"
+        }
+    }
+}
+
+User: "show upcoming reminders"
+Response: {
+    "success": true,
+    "action": "list_reminders",
+    "data": {
+        "filter": {
+            "status": "upcoming"
+        }
+    }
+}
+
+User: "list completed reminders"
+Response: {
+    "success": true,
+    "action": "list_reminders",
+    "data": {
+        "filter": {
+            "status": "completed"
         }
     }
 }

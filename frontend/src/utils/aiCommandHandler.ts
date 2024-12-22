@@ -295,7 +295,10 @@ export class AICommandHandler {
     }
   }
 
-  private static async listReminders(): Promise<CommandResult> {
+  private static async listReminders(filter?: {
+    status?: 'missed' | 'today' | 'upcoming' | 'completed';
+    timeframe?: 'today' | 'tomorrow' | 'week';
+  }): Promise<CommandResult> {
     try {
       const response = await fetch('http://localhost:8000/api/reminders');
       const reminders = await response.json();
@@ -312,33 +315,114 @@ export class AICommandHandler {
         };
       }
 
+      let filteredReminders = [...reminders];
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      const endOfTomorrow = new Date(endOfDay);
+      endOfTomorrow.setDate(endOfTomorrow.getDate() + 1);
+      const endOfWeek = new Date(startOfDay);
+      endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+      if (filter) {
+        if (filter.status) {
+          switch (filter.status) {
+            case 'missed':
+              filteredReminders = filteredReminders.filter(reminder => {
+                const reminderTime = new Date(reminder.reminder_time);
+                return reminderTime < now && !reminder.is_completed;
+              });
+              break;
+            case 'today':
+              filteredReminders = filteredReminders.filter(reminder => {
+                const reminderTime = new Date(reminder.reminder_time);
+                return reminderTime >= startOfDay && reminderTime < endOfDay && !reminder.is_completed;
+              });
+              break;
+            case 'upcoming':
+              filteredReminders = filteredReminders.filter(reminder => {
+                const reminderTime = new Date(reminder.reminder_time);
+                return reminderTime >= now && !reminder.is_completed;
+              });
+              break;
+            case 'completed':
+              filteredReminders = filteredReminders.filter(reminder => reminder.is_completed);
+              break;
+          }
+        }
+
+        if (filter.timeframe) {
+          switch (filter.timeframe) {
+            case 'today':
+              filteredReminders = filteredReminders.filter(reminder => {
+                const reminderTime = new Date(reminder.reminder_time);
+                return reminderTime >= startOfDay && reminderTime < endOfDay;
+              });
+              break;
+            case 'tomorrow':
+              filteredReminders = filteredReminders.filter(reminder => {
+                const reminderTime = new Date(reminder.reminder_time);
+                return reminderTime >= endOfDay && reminderTime < endOfTomorrow;
+              });
+              break;
+            case 'week':
+              filteredReminders = filteredReminders.filter(reminder => {
+                const reminderTime = new Date(reminder.reminder_time);
+                return reminderTime >= startOfDay && reminderTime < endOfWeek;
+              });
+              break;
+          }
+        }
+      }
+
+      if (filteredReminders.length === 0) {
+        let message = "No reminders found";
+        if (filter?.status) message += ` that are ${filter.status}`;
+        if (filter?.timeframe) message += ` for ${filter.timeframe}`;
+        return {
+          success: true,
+          message: message + ".",
+          data: []
+        };
+      }
+
       const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
-        const now = new Date();
-        const tomorrow = new Date(now);
+        const today = startOfDay;
+        const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        if (date.toDateString() === now.toDateString()) {
-          return `today at ${date.toLocaleTimeString()}`;
+        if (date < now) {
+          return `${date.toLocaleString()} (Missed)`;
+        } else if (date.toDateString() === today.toDateString()) {
+          return `Today at ${date.toLocaleTimeString()}`;
         } else if (date.toDateString() === tomorrow.toDateString()) {
-          return `tomorrow at ${date.toLocaleTimeString()}`;
+          return `Tomorrow at ${date.toLocaleTimeString()}`;
         } else {
           return date.toLocaleString();
         }
       };
 
-      const reminderList = reminders.map((reminder: any) => {
-        const dueText = reminder.reminder_time ? 
-          ` (Due: ${formatDate(reminder.reminder_time)}${reminder.is_due ? ' - OVERDUE' : ''})` : 
-          ' (No due date)';
-        
-        return `- ${reminder.task}${dueText}`;
+      const reminderList = filteredReminders.map(reminder => {
+        const status = reminder.is_completed ? "Completed" : 
+                      new Date(reminder.reminder_time) < now ? "Missed" : 
+                      "Pending";
+        return `- ${reminder.task} (${formatDate(reminder.reminder_time)}) - Status: ${status}`;
       }).join('\n');
+
+      const countMessage = filteredReminders.length === 1 ? 
+        "Found 1 reminder" : 
+        `Found ${filteredReminders.length} reminders`;
+
+      let filterDescription = "";
+      if (filter?.status) filterDescription += ` that are ${filter.status}`;
+      if (filter?.timeframe) filterDescription += ` for ${filter.timeframe}`;
 
       return {
         success: true,
-        message: `Here are your reminders:\n${reminderList}`,
-        data: reminders
+        message: `${countMessage}${filterDescription}:\n${reminderList}`,
+        data: filteredReminders
       };
     } catch (error) {
       console.error('List reminders error:', error);
@@ -421,6 +505,10 @@ Example:
 
       if (result.action === 'list_tasks' && result.data?.filter) {
         return this.listTasks(result.data.filter);
+      }
+
+      if (result.action === 'list_reminders' && result.data?.filter) {
+        return this.listReminders(result.data.filter);
       }
 
       // Handle different actions based on AI response
