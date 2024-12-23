@@ -9,35 +9,15 @@ import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-import json
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import firebase_admin
-from firebase_admin import auth, credentials
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
-
-app = FastAPI()
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Update with your frontend URL in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Initialize Firebase Admin
-cred = credentials.Certificate('path/to/your/serviceAccountKey.json')
-firebase_admin.initialize_app(cred)
 
 class MailProcessor:
     def __init__(self):
         self.creds = None
         self.service = None
+        self.authenticate()
 
     def authenticate(self):
         """Authenticate with Gmail API."""
@@ -161,74 +141,5 @@ class MailProcessor:
             print(f"Error marking email as read: {e}")
             return False
 
-# FastAPI models
-class EmailDraft(BaseModel):
-    to: List[str]
-    subject: str
-    body: str
-
-class EmailId(BaseModel):
-    emailId: str
-
-# Dependency to verify Firebase token
-async def verify_token(authorization: str = Depends()):
-    if not authorization or not authorization.startswith('Bearer '):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    
-    token = authorization.split('Bearer ')[1]
-    try:
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
 # Initialize mail processor
 mail_processor = MailProcessor()
-mail_processor.authenticate()
-
-# API endpoints
-@app.get("/api/mail/sync")
-async def sync_emails(user = Depends(verify_token)):
-    """Sync emails from Gmail."""
-    emails = await mail_processor.get_emails()
-    return {"emails": emails}
-
-@app.post("/api/mail/send")
-async def send_email(draft: EmailDraft, user = Depends(verify_token)):
-    """Send an email."""
-    result = await mail_processor.send_email(draft.to, draft.subject, draft.body)
-    return result
-
-@app.post("/api/mail/mark-read")
-async def mark_email_read(email: EmailId, user = Depends(verify_token)):
-    """Mark an email as read."""
-    success = await mail_processor.mark_as_read(email.emailId)
-    return {"success": success}
-
-@app.post("/api/mail/extract-meeting")
-async def extract_meeting(email: EmailId, user = Depends(verify_token)):
-    """Extract meeting details from email using AI."""
-    # TODO: Implement AI meeting extraction
-    return {"meeting": None}
-
-@app.post("/api/mail/extract-task")
-async def extract_task(email: EmailId, user = Depends(verify_token)):
-    """Extract task details from email using AI."""
-    # TODO: Implement AI task extraction
-    return {"task": None}
-
-@app.post("/api/mail/generate-response")
-async def generate_response(email: EmailId, user = Depends(verify_token)):
-    """Generate AI response for email."""
-    # TODO: Implement AI response generation
-    return {"response": ""}
-
-@app.post("/api/mail/analyze-importance")
-async def analyze_importance(email: EmailId, user = Depends(verify_token)):
-    """Analyze email importance using AI."""
-    # TODO: Implement AI importance analysis
-    return {"important": False}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
