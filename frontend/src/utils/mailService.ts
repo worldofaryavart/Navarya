@@ -5,26 +5,50 @@ import { Task } from '@/types/taskTypes';
 import { addTask } from './tasks';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/mail';
+
+// Helper function to get auth token
+const getAuthToken = async () => {
+  const user = auth?.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  return await user.getIdToken();
+};
+
+// Helper function for API calls
+const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' = 'GET', data?: any): Promise<T> => {
+  try {
+    const token = await getAuthToken();
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    };
+
+    const response = method === 'GET' 
+      ? await axios.get(`${API_BASE_URL}/${endpoint}`, config)
+      : await axios.post(`${API_BASE_URL}/${endpoint}`, data, config);
+
+    return response.data;
+  } catch (error: any) {
+    console.error(`Error in API call to ${endpoint}:`, error);
+    throw new Error(error.response?.data?.detail || error.message);
+  }
+};
 
 export const syncEmails = async (): Promise<Email[]> => {
   try {
     const user = auth?.currentUser;
     if (!user) throw new Error('Not authenticated');
 
-    const response = await axios.get(`${API_BASE_URL}/api/mail/sync`, {
-      headers: {
-        Authorization: `Bearer ${await user.getIdToken()}`
-      }
-    });
-
-    const emails = response.data.emails;
+    const response = await apiCall<{emails: Email[]}>('sync');
+    const emails = response.emails;
     
     // Store emails in Firestore for offline access
     const batch = [];
     for (const email of emails) {
       batch.push(
-        addDoc(collection(db, 'emails'), {
+        addDoc(collection(db!, 'emails'), {
           ...email,
           timestamp: new Date(email.timestamp),
           userId: user.uid
@@ -45,21 +69,13 @@ export const sendEmail = async (draft: EmailDraft): Promise<boolean> => {
     const user = auth?.currentUser;
     if (!user) throw new Error('Not authenticated');
 
-    const response = await axios.post(
-      `${API_BASE_URL}/api/mail/send`,
-      draft,
-      {
-        headers: {
-          Authorization: `Bearer ${await user.getIdToken()}`
-        }
-      }
-    );
+    const response = await apiCall<{success: boolean; messageId: string}>('send', 'POST', draft);
 
-    if (response.data.success) {
+    if (response.success) {
       // Save to sent folder in Firestore
       const emailData = {
         ...draft,
-        id: response.data.messageId,
+        id: response.messageId,
         from: user.email,
         timestamp: Timestamp.now(),
         read: true,
@@ -68,7 +84,7 @@ export const sendEmail = async (draft: EmailDraft): Promise<boolean> => {
         userId: user.uid
       };
 
-      await addDoc(collection(db, 'emails'), emailData);
+      await addDoc(collection(db!, 'emails'), emailData);
       return true;
     }
     return false;
@@ -84,7 +100,7 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
     if (!user) throw new Error('Not authenticated');
 
     // First try to get from Firestore for offline access
-    const emailsRef = collection(db, 'emails');
+    const emailsRef = collection(db!, 'emails');
     const q = query(
       emailsRef,
       where('userId', '==', user.uid),
@@ -112,22 +128,10 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
 
 export const markAsRead = async (emailId: string): Promise<void> => {
   try {
-    const user = auth?.currentUser;
-    if (!user) throw new Error('Not authenticated');
-
-    // Update in Gmail
-    await axios.post(
-      `${API_BASE_URL}/api/mail/mark-read`,
-      { emailId },
-      {
-        headers: {
-          Authorization: `Bearer ${await user.getIdToken()}`
-        }
-      }
-    );
+    await apiCall('mark-read', 'POST', { emailId });
 
     // Update in Firestore
-    const emailRef = doc(db, 'emails', emailId);
+    const emailRef = doc(db!, 'emails', emailId);
     await updateDoc(emailRef, {
       read: true
     });
@@ -139,28 +143,18 @@ export const markAsRead = async (emailId: string): Promise<void> => {
 
 export const createMeetingFromEmail = async (email: Email): Promise<Meeting | null> => {
   try {
-    const user = auth?.currentUser;
-    if (!user) throw new Error('Not authenticated');
+    const response = await apiCall<{meeting: Meeting | null}>('extract-meeting', 'POST', { emailId: email.id });
 
-    // Extract meeting details using AI
-    const response = await axios.post(
-      `${API_BASE_URL}/api/mail/extract-meeting`,
-      { emailId: email.id },
-      {
-        headers: {
-          Authorization: `Bearer ${await user.getIdToken()}`
-        }
-      }
-    );
+    if (response.meeting) {
+      const user = auth?.currentUser;
+      if (!user) throw new Error('Not authenticated');
 
-    if (response.data.meeting) {
-      const meeting = response.data.meeting;
-      await addDoc(collection(db, 'meetings'), {
-        ...meeting,
+      await addDoc(collection(db!, 'meetings'), {
+        ...response.meeting,
         userId: user.uid,
         relatedEmailId: email.id
       });
-      return meeting;
+      return response.meeting;
     }
     return null;
   } catch (error) {
@@ -171,24 +165,11 @@ export const createMeetingFromEmail = async (email: Email): Promise<Meeting | nu
 
 export const createTaskFromEmail = async (email: Email): Promise<Task | null> => {
   try {
-    const user = auth?.currentUser;
-    if (!user) throw new Error('Not authenticated');
+    const response = await apiCall<{task: Task | null}>('extract-task', 'POST', { emailId: email.id });
 
-    // Extract task details using AI
-    const response = await axios.post(
-      `${API_BASE_URL}/api/mail/extract-task`,
-      { emailId: email.id },
-      {
-        headers: {
-          Authorization: `Bearer ${await user.getIdToken()}`
-        }
-      }
-    );
-
-    if (response.data.task) {
-      const task = response.data.task;
+    if (response.task) {
       return await addTask({
-        ...task,
+        ...response.task,
         source: {
           type: 'email',
           emailId: email.id
@@ -204,20 +185,8 @@ export const createTaskFromEmail = async (email: Email): Promise<Task | null> =>
 
 export const generateEmailResponse = async (email: Email): Promise<string> => {
   try {
-    const user = auth?.currentUser;
-    if (!user) throw new Error('Not authenticated');
-
-    const response = await axios.post(
-      `${API_BASE_URL}/api/mail/generate-response`,
-      { emailId: email.id },
-      {
-        headers: {
-          Authorization: `Bearer ${await user.getIdToken()}`
-        }
-      }
-    );
-
-    return response.data.response;
+    const response = await apiCall<{response: string}>('generate-response', 'POST', { emailId: email.id });
+    return response.response;
   } catch (error) {
     console.error('Error generating response:', error);
     throw error;
@@ -226,20 +195,8 @@ export const generateEmailResponse = async (email: Email): Promise<string> => {
 
 export const analyzeEmailImportance = async (email: Email): Promise<boolean> => {
   try {
-    const user = auth?.currentUser;
-    if (!user) throw new Error('Not authenticated');
-
-    const response = await axios.post(
-      `${API_BASE_URL}/api/mail/analyze-importance`,
-      { emailId: email.id },
-      {
-        headers: {
-          Authorization: `Bearer ${await user.getIdToken()}`
-        }
-      }
-    );
-
-    return response.data.important;
+    const response = await apiCall<{important: boolean}>('analyze-importance', 'POST', { emailId: email.id });
+    return response.important;
   } catch (error) {
     console.error('Error analyzing importance:', error);
     return false;
