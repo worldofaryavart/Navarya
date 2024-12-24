@@ -23,22 +23,38 @@ const defaultLabels: EmailLabel[] = [
 const MailAgent = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
-  const [folders] = useState<EmailFolder[]>(defaultFolders);
+  const [folders, setFolders] = useState<EmailFolder[]>(defaultFolders);
   const [labels] = useState<EmailLabel[]>(defaultLabels);
   const [currentFolder, setCurrentFolder] = useState<string>('inbox');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showCompose, setShowCompose] = useState(false);
 
+  console.log("emails are : ", emails);
+
   useEffect(() => {
     const loadEmails = async () => {
       try {
         setLoading(true);
+        setError(null);
         const fetchedEmails = await getEmails(currentFolder);
+        console.log('fetchedEmails: ', fetchedEmails);
         setEmails(fetchedEmails);
-      } catch (error) {
+        
+        // Update unread count
+        const unreadCount = fetchedEmails.filter(email => !email.read).length;
+        const updatedFolders = folders.map(folder => 
+          folder.id === currentFolder 
+            ? { ...folder, unreadCount } 
+            : folder
+        );
+        setFolders(updatedFolders);
+      } catch (error: any) {
         console.error('Error loading emails:', error);
+        setError(error.message || 'Failed to load emails');
+        setEmails([]);
       } finally {
         setLoading(false);
       }
@@ -165,6 +181,10 @@ const MailAgent = () => {
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 className="animate-spin text-purple-500" size={32} />
+            </div>
+          ) : error ? (
+            <div className="flex-1 flex items-center justify-center text-gray-500">
+              {error}
             </div>
           ) : (
             <div className="flex-1 flex">

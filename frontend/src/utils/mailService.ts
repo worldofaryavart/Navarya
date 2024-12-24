@@ -1,5 +1,5 @@
 import { db, auth } from './firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { Email, EmailDraft, Meeting } from '@/types/mailTypes';
 import { Task } from '@/types/taskTypes';
 import { addTask } from './tasks';
@@ -44,22 +44,80 @@ export const syncEmails = async (): Promise<Email[]> => {
     const response = await apiCall<{emails: Email[]}>('sync');
     const emails = response.emails;
     
-    // Store emails in Firestore for offline access
-    const batch = [];
-    for (const email of emails) {
-      batch.push(
+    // Clear existing emails for this user before adding new ones
+    const emailsRef = collection(db!, 'emails');
+    const existingEmails = await getDocs(
+      query(emailsRef, where('userId', '==', user.uid))
+    );
+    
+    // Delete existing emails using deleteDoc
+    await Promise.all(
+      existingEmails.docs.map((doc) => deleteDoc(doc.ref))
+    );
+    
+    // Add new emails
+    await Promise.all(
+      emails.map((email) => 
         addDoc(collection(db!, 'emails'), {
           ...email,
           timestamp: new Date(email.timestamp),
-          userId: user.uid
+          userId: user.uid,
+          labels: email.labels || ['inbox'] // Ensure labels exist
         })
-      );
-    }
-    await Promise.all(batch);
-
+      )
+    );
+    
     return emails;
   } catch (error) {
     console.error('Error syncing emails:', error);
+    throw error;
+  }
+};
+
+export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
+  try {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    let emails: Email[] = [];
+
+    // If online, sync with Gmail first
+    if (navigator.onLine) {
+      try {
+        emails = await syncEmails();
+        // Filter emails for the requested folder
+        emails = emails.filter(email => 
+          email.labels?.includes(folder) || 
+          (folder === 'inbox' && (!email.labels || email.labels.length === 0))
+        );
+      } catch (error) {
+        console.error('Error syncing with Gmail:', error);
+      }
+    }
+
+    // If no emails from sync or offline, get from Firestore
+    if (emails.length === 0) {
+      const emailsRef = collection(db!, 'emails');
+      const q = query(
+        emailsRef,
+        where('userId', '==', user.uid),
+        where('labels', 'array-contains', folder),
+        orderBy('timestamp', 'desc')
+      );
+
+      const snapshot = await getDocs(q);
+      emails = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+        timestamp: doc.data().timestamp.toDate() // Convert Firestore timestamp to Date
+      })) as Email[];
+    }
+
+    return emails.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  } catch (error) {
+    console.error('Error getting emails:', error);
     throw error;
   }
 };
@@ -91,38 +149,6 @@ export const sendEmail = async (draft: EmailDraft): Promise<boolean> => {
   } catch (error) {
     console.error('Error sending email:', error);
     return false;
-  }
-};
-
-export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
-  try {
-    const user = auth?.currentUser;
-    if (!user) throw new Error('Not authenticated');
-
-    // First try to get from Firestore for offline access
-    const emailsRef = collection(db!, 'emails');
-    const q = query(
-      emailsRef,
-      where('userId', '==', user.uid),
-      where('labels', 'array-contains', folder),
-      orderBy('timestamp', 'desc')
-    );
-
-    const snapshot = await getDocs(q);
-    const emails = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    })) as Email[];
-
-    // If online, sync with Gmail
-    if (navigator.onLine) {
-      await syncEmails();
-    }
-
-    return emails;
-  } catch (error) {
-    console.error('Error getting emails:', error);
-    throw error;
   }
 };
 

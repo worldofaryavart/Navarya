@@ -9,6 +9,11 @@ import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
@@ -21,67 +26,90 @@ class MailProcessor:
 
     def authenticate(self):
         """Authenticate with Gmail API."""
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
-                self.creds = pickle.load(token)
-        
-        if not self.creds or not self.creds.valid:
-            if self.creds and self.creds.expired and self.creds.refresh_token:
-                self.creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', SCOPES)
-                self.creds = flow.run_local_server(port=0)
+        try:
+            if os.path.exists('token.pickle'):
+                logger.info("Found existing token.pickle")
+                with open('token.pickle', 'rb') as token:
+                    self.creds = pickle.load(token)
+                    logger.info("Loaded credentials from token.pickle")
             
-            with open('token.pickle', 'wb') as token:
-                pickle.dump(self.creds, token)
+            if not self.creds or not self.creds.valid:
+                logger.info("Credentials invalid or missing, refreshing...")
+                if self.creds and self.creds.expired and self.creds.refresh_token:
+                    logger.info("Refreshing expired credentials")
+                    self.creds.refresh(Request())
+                else:
+                    logger.info("Getting new credentials from credentials.json")
+                    if not os.path.exists('credentials.json'):
+                        raise FileNotFoundError("credentials.json not found in the current directory")
+                    
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        'credentials.json', SCOPES)
+                    self.creds = flow.run_local_server(port=0)
+                    logger.info("Got new credentials")
+                
+                logger.info("Saving credentials to token.pickle")
+                with open('token.pickle', 'wb') as token:
+                    pickle.dump(self.creds, token)
 
-        self.service = build('gmail', 'v1', credentials=self.creds)
+            self.service = build('gmail', 'v1', credentials=self.creds)
+            logger.info("Gmail service built successfully")
+        except Exception as e:
+            logger.error(f"Authentication error: {str(e)}")
+            raise
 
     async def get_emails(self, query: str = '') -> List[Dict[str, Any]]:
         """Get emails matching the query."""
         try:
+            logger.info(f"Fetching emails with query: {query}")
             results = self.service.users().messages().list(
                 userId='me', q=query).execute()
             messages = results.get('messages', [])
+            logger.info(f"Found {len(messages)} messages")
 
             emails = []
             for message in messages:
-                msg = self.service.users().messages().get(
-                    userId='me', id=message['id']).execute()
-                
-                headers = msg['payload']['headers']
-                subject = next(h['value'] for h in headers if h['name'] == 'Subject')
-                from_email = next(h['value'] for h in headers if h['name'] == 'From')
-                to_email = next(h['value'] for h in headers if h['name'] == 'To')
-                date = next(h['value'] for h in headers if h['name'] == 'Date')
+                try:
+                    msg = self.service.users().messages().get(
+                        userId='me', id=message['id']).execute()
+                    
+                    headers = msg['payload']['headers']
+                    subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
+                    from_email = next((h['value'] for h in headers if h['name'] == 'From'), 'No Sender')
+                    to_email = next((h['value'] for h in headers if h['name'] == 'To'), '')
+                    date = next((h['value'] for h in headers if h['name'] == 'Date'), '')
 
-                # Get email body
-                if 'parts' in msg['payload']:
-                    body = self._get_body_from_parts(msg['payload']['parts'])
-                else:
-                    body = base64.urlsafe_b64decode(
-                        msg['payload']['body']['data']
-                    ).decode('utf-8')
+                    # Get email body
+                    if 'parts' in msg['payload']:
+                        body = self._get_body_from_parts(msg['payload']['parts'])
+                    else:
+                        body = base64.urlsafe_b64decode(
+                            msg['payload']['body'].get('data', '')
+                        ).decode('utf-8') if 'data' in msg['payload']['body'] else ''
 
-                email = {
-                    'id': message['id'],
-                    'threadId': msg['threadId'],
-                    'subject': subject,
-                    'from': from_email,
-                    'to': [to.strip() for to in to_email.split(',')],
-                    'body': body,
-                    'timestamp': date,
-                    'read': 'UNREAD' not in msg['labelIds'],
-                    'important': 'IMPORTANT' in msg['labelIds'],
-                    'labels': msg['labelIds']
-                }
-                emails.append(email)
+                    email = {
+                        'id': message['id'],
+                        'threadId': msg['threadId'],
+                        'subject': subject,
+                        'from': from_email,
+                        'to': [to.strip() for to in to_email.split(',') if to.strip()],
+                        'body': body,
+                        'timestamp': date,
+                        'read': 'UNREAD' not in msg['labelIds'],
+                        'important': 'IMPORTANT' in msg['labelIds'],
+                        'labels': msg['labelIds']
+                    }
+                    emails.append(email)
+                    logger.info(f"Processed email: {subject}")
+                except Exception as e:
+                    logger.error(f"Error processing individual email {message['id']}: {str(e)}")
+                    continue
 
+            logger.info(f"Successfully processed {len(emails)} emails")
             return emails
         except Exception as e:
-            print(f"Error getting emails: {e}")
-            return []
+            logger.error(f"Error getting emails: {str(e)}")
+            raise
 
     def _get_body_from_parts(self, parts: List[Dict[str, Any]]) -> str:
         """Extract email body from message parts."""
@@ -122,7 +150,7 @@ class MailProcessor:
                 'messageId': sent_message['id']
             }
         except Exception as e:
-            print(f"Error sending email: {e}")
+            logger.error(f"Error sending email: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
@@ -138,7 +166,7 @@ class MailProcessor:
             ).execute()
             return True
         except Exception as e:
-            print(f"Error marking email as read: {e}")
+            logger.error(f"Error marking email as read: {str(e)}")
             return False
 
 # Initialize mail processor
