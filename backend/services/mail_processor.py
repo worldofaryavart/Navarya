@@ -10,6 +10,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import logging
+from email.utils import parsedate_to_datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -87,6 +88,21 @@ class MailProcessor:
                             msg['payload']['body'].get('data', '')
                         ).decode('utf-8') if 'data' in msg['payload']['body'] else ''
 
+                    # Convert Gmail labels to frontend labels
+                    label_map = {
+                        'INBOX': 'inbox',
+                        'SENT': 'sent',
+                        'DRAFT': 'drafts',
+                        'TRASH': 'trash'
+                    }
+                    frontend_labels = [label_map.get(label, label.lower()) for label in msg['labelIds']]
+
+                    # Parse the date string into a proper timestamp
+                    try:
+                        timestamp = parsedate_to_datetime(date).isoformat()
+                    except:
+                        timestamp = datetime.now().isoformat()
+
                     email = {
                         'id': message['id'],
                         'threadId': msg['threadId'],
@@ -94,10 +110,10 @@ class MailProcessor:
                         'from': from_email,
                         'to': [to.strip() for to in to_email.split(',') if to.strip()],
                         'body': body,
-                        'timestamp': date,
+                        'timestamp': timestamp,
                         'read': 'UNREAD' not in msg['labelIds'],
                         'important': 'IMPORTANT' in msg['labelIds'],
-                        'labels': msg['labelIds']
+                        'labels': frontend_labels
                     }
                     emails.append(email)
                     logger.info(f"Processed email: {subject}")

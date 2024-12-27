@@ -25,9 +25,11 @@ const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' = 'GET', data
       },
     };
 
+    console.log(`Making API call to ${endpoint}...`);
     const response = method === 'GET' 
       ? await axios.get(`${API_BASE_URL}/${endpoint}`, config)
       : await axios.post(`${API_BASE_URL}/${endpoint}`, data, config);
+    console.log(`API call response:`, response.data);
 
     return response.data;
   } catch (error: any) {
@@ -41,8 +43,11 @@ export const syncEmails = async (): Promise<Email[]> => {
     const user = auth?.currentUser;
     if (!user) throw new Error('Not authenticated');
 
+    console.log('Starting email sync...');
     const response = await apiCall<{emails: Email[]}>('sync');
+    console.log('Sync response:', response);
     const emails = response.emails;
+    console.log('Received emails:', emails);
     
     // Clear existing emails for this user before adding new ones
     const emailsRef = collection(db!, 'emails');
@@ -79,17 +84,21 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
     const user = auth?.currentUser;
     if (!user) throw new Error('Not authenticated');
 
+    console.log('Getting emails for folder:', folder);
     let emails: Email[] = [];
 
     // If online, sync with Gmail first
     if (navigator.onLine) {
       try {
+        console.log('Online - syncing with Gmail...');
         emails = await syncEmails();
+        console.log('Synced emails:', emails);
         // Filter emails for the requested folder
         emails = emails.filter(email => 
           email.labels?.includes(folder) || 
           (folder === 'inbox' && (!email.labels || email.labels.length === 0))
         );
+        console.log('Filtered emails for folder:', emails);
       } catch (error) {
         console.error('Error syncing with Gmail:', error);
       }
