@@ -17,6 +17,33 @@ export default function EmailListItem({ email, onClick }: EmailListItemProps) {
     .join('')
     .toUpperCase()
     .slice(0, 2);
+
+  // Clean the email body of code and styling
+  const cleanBody = email.body
+    // Remove style tags and their contents
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    // Remove script tags and their contents
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    // Remove all HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove CSS-like content
+    .replace(/\{[^}]+\}/g, '')
+    // Remove @media queries
+    .replace(/@media[^{]+\{([^}]+\})+/g, '')
+    // Remove common HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    // Remove multiple spaces and clean up
+    .replace(/\s+/g, ' ')
+    // Remove any remaining CSS properties
+    .replace(/[a-z-]+:[^;]+;/g, '')
+    // Remove any remaining special characters and cleanup
+    .replace(/[^\w\s.,!?@-]/g, ' ')
+    .trim();
   
   return (
     <div 
@@ -45,7 +72,7 @@ export default function EmailListItem({ email, onClick }: EmailListItemProps) {
             {email.subject}
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-            {email.body.substring(0, 100)}
+            {cleanBody.substring(0, 100)}
           </p>
         </div>
       </div>
