@@ -113,10 +113,10 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
       </div>
 
       {/* Email Content - Scrollable */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="p-4 max-w-[900px] min-w-[600px]">
+      <div className="flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
+        <div className="p-4 max-w-[900px] mx-auto">
           {/* Main Content */}
-          <div className="bg-white dark:bg-gray-900 rounded-lg">
+          <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
             {renderEmailContent()}
           </div>
 

@@ -188,17 +188,17 @@ const MailAgent = () => {
                 {error}
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto">
+              // <div className="flex-1 overflow-y-auto">
                 <EmailList
                   emails={emails}
                   onEmailSelect={handleEmailClick}
                 />
-              </div>
+              // </div>
             )}
           </div>
 
           {/* Email View */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden ">
             {selectedEmail ? (
               <EmailView
                 email={selectedEmail}

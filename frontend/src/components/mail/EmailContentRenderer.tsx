@@ -61,18 +61,23 @@ const EmailContentRenderer: React.FC<EmailContentRendererProps> = ({
         "email-content",
         "prose dark:prose-invert max-w-none",
         // Base styles
-        "text-base leading-relaxed",
+        "text-base leading-relaxed px-6 py-4",
+        // Content wrapping
+        "break-words overflow-hidden",
         // Link styles
-        "[&_a]:text-blue-600 [&_a]:hover:text-blue-800 dark:[&_a]:text-blue-400 dark:[&_a]:hover:text-blue-300",
+        "[&_a]:text-blue-600 [&_a]:hover:text-blue-800 dark:[&_a]:text-blue-400 dark:[&_a]:hover:text-blue-300 [&_a]:break-all",
         // Image styles
         "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg",
         // Table styles
-        "[&_table]:w-full [&_table]:border-collapse [&_table]:my-4",
-        "[&_td,&_th]:border [&_td,&_th]:border-gray-300 dark:[&_td,&_th]:border-gray-700 [&_td,&_th]:p-2",
+        "[&_table]:w-full [&_table]:border-collapse [&_table]:my-4 [&_table]:table-auto [&_table]:overflow-x-auto",
+        "[&_td,&_th]:border [&_td,&_th]:border-gray-300 dark:[&_td,&_th]:border-gray-700 [&_td,&_th]:p-2 [&_td,&_th]:break-words",
         // Quote styles
         "[&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 dark:[&_blockquote]:border-gray-700 [&_blockquote]:pl-4 [&_blockquote]:italic",
         // List styles
         "[&_ul]:list-disc [&_ol]:list-decimal [&_ul,&_ol]:pl-6",
+        // Pre/Code styles
+        "[&_pre]:overflow-x-auto [&_pre]:whitespace-pre-wrap [&_pre]:break-words",
+        "[&_code]:break-words [&_code]:whitespace-pre-wrap",
         className
       )}
       dangerouslySetInnerHTML={{ __html: processedContent }}
