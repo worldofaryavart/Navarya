@@ -193,11 +193,13 @@ const MailAgent = () => {
               {/* Email List */}
               <div className={`${
                 selectedEmail ? 'hidden md:block w-[400px]' : 'w-full'
-              } flex-shrink-0 border-r border-gray-700`}>
-                <EmailList 
-                  emails={emails} 
-                  onEmailSelect={handleEmailClick} 
-                />
+              } flex-shrink-0 border-r border-gray-700 flex flex-col`}>
+                <div className="flex-1 overflow-hidden">
+                  <EmailList 
+                    emails={emails} 
+                    onEmailSelect={handleEmailClick} 
+                  />
+                </div>
               </div>
 
               {/* Email Content */}

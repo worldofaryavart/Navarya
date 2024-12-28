@@ -21,7 +21,7 @@ export default function EmailListItem({ email, onClick }: EmailListItemProps) {
   return (
     <div 
       onClick={onClick}
-      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 ${
+      className={`py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200 ${
         !email.read ? 'bg-blue-50/10 dark:bg-blue-900/10 font-medium' : ''
       }`}
     >
