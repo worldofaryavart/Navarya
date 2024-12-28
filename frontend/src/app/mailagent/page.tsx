@@ -6,6 +6,8 @@ import { Email, EmailFolder, EmailLabel } from '@/types/mailTypes';
 import { Loader2, Search, Plus, Inbox, Send, Archive, Trash, Tag, Star } from 'lucide-react';
 import { getEmails, markAsRead } from '@/utils/mailService';
 import ComposeEmail from '@/components/mail/ComposeEmail';
+import EmailList from '@/components/mail/EmailList';
+import EmailView from '@/components/mail/EmailView';
 
 const defaultFolders: EmailFolder[] = [
   { id: 'inbox', name: 'Inbox', type: 'inbox', unreadCount: 0 },
@@ -109,9 +111,9 @@ const MailAgent = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
-      <div className="flex h-screen">
+      <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
-        <div className="w-64 bg-gray-800/50 border-r border-gray-700">
+        <div className="w-64 flex-shrink-0 bg-gray-800/50 border-r border-gray-700 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
           <div className="p-4">
             <button
               onClick={handleComposeClick}
@@ -137,9 +139,9 @@ const MailAgent = () => {
                 {folder.type === 'sent' && <Send size={20} />}
                 {folder.type === 'drafts' && <Archive size={20} />}
                 {folder.type === 'trash' && <Trash size={20} />}
-                {folder.name}
+                <span className="truncate">{folder.name}</span>
                 {folder.unreadCount > 0 && (
-                  <span className="ml-auto bg-purple-600 text-white text-xs rounded-full px-2">
+                  <span className="ml-auto flex-shrink-0 bg-purple-600 text-white text-xs rounded-full px-2">
                     {folder.unreadCount}
                   </span>
                 )}
@@ -155,22 +157,22 @@ const MailAgent = () => {
                 className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-700/50 px-2 rounded transition-colors duration-200"
               >
                 <Tag size={16} style={{ color: label.color }} />
-                {label.name}
+                <span className="truncate">{label.name}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Search Bar */}
-          <div className="bg-gray-800/50 border-b border-gray-700 p-4">
+          <div className="flex-shrink-0 bg-gray-800/50 border-b border-gray-700 p-4">
             <div className="max-w-xl flex items-center gap-2 bg-gray-700/50 rounded-lg px-4 py-2">
-              <Search size={20} className="text-gray-400" />
+              <Search size={20} className="flex-shrink-0 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search emails..."
-                className="bg-transparent border-none outline-none flex-1 text-white placeholder-gray-400"
+                className="bg-transparent border-none outline-none flex-1 min-w-0 text-white placeholder-gray-400"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
               />
@@ -187,56 +189,26 @@ const MailAgent = () => {
               {error}
             </div>
           ) : (
-            <div className="flex-1 flex">
+            <div className="flex-1 flex min-w-0">
               {/* Email List */}
-              <div className="w-1/3 border-r border-gray-700 overflow-y-auto">
-                {emails.map((email) => (
-                  <div
-                    key={email.id}
-                    onClick={() => handleEmailClick(email)}
-                    className={`p-4 border-b border-gray-700 cursor-pointer hover:bg-gray-800/50 transition-colors duration-200 ${
-                      selectedEmail?.id === email.id ? 'bg-gray-700/50' : ''
-                    } ${!email.read ? 'font-semibold' : ''}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {email.important && <Star size={16} className="text-yellow-400" />}
-                      <span className="font-semibold">{email.from}</span>
-                      <span className="ml-auto text-sm text-gray-400">
-                        {formatDate(email.timestamp)}
-                      </span>
-                    </div>
-                    <div className="text-sm font-medium mt-1">{email.subject}</div>
-                    <div className="text-sm text-gray-400 mt-1 truncate">
-                      {email.body}
-                    </div>
-                  </div>
-                ))}
+              <div className={`${
+                selectedEmail ? 'hidden md:block w-[400px]' : 'w-full'
+              } flex-shrink-0 border-r border-gray-700`}>
+                <EmailList 
+                  emails={emails} 
+                  onEmailSelect={handleEmailClick} 
+                />
               </div>
 
               {/* Email Content */}
-              <div className="flex-1 p-6 bg-gray-800/30">
-                {selectedEmail ? (
-                  <div>
-                    <h2 className="text-2xl font-semibold">{selectedEmail.subject}</h2>
-                    <div className="mt-4 flex items-center gap-4">
-                      <div>
-                        <div className="font-medium">{selectedEmail.from}</div>
-                        <div className="text-sm text-gray-400">
-                          To: {selectedEmail.to.join(', ')}
-                        </div>
-                        <div className="text-sm text-gray-400 mt-1">
-                          {formatDate(selectedEmail.timestamp)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-6 whitespace-pre-wrap text-gray-300">{selectedEmail.body}</div>
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-500">
-                    Select an email to read
-                  </div>
-                )}
-              </div>
+              {selectedEmail && (
+                <div className="flex-1 min-w-0">
+                  <EmailView 
+                    email={selectedEmail} 
+                    onClose={() => setSelectedEmail(null)} 
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
