@@ -72,14 +72,14 @@ const VisionPage: React.FC = () => {
           className="bg-gray-800/30 backdrop-blur-sm rounded-2xl p-8 mb-16"
         >
           <h2 className="text-3xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-            Reimagining Learning and Research
+            Reimagining Learning and Research to grow faster than ever
           </h2>
           <div className="text-lg text-gray-300 space-y-4 max-w-4xl mx-auto">
             <p>
-              Imagine having a brilliant mentor who knows everything about your field of interest, understands your learning style, and is available 24/7 to guide you. That's what we're building at Aaryal.
+              Imagine having a brilliant mentor who knows everything about your field of interest, understands your learning style, and is available 24/7 to guide you. That's what we're building at NavArya.
             </p>
             <p>
-              Our AI systems are designed to adapt to your unique needs, providing personalized learning experiences that evolve with you. Whether you're a student, researcher, or professional, Aaryal is your partner in intellectual growth.
+              Our AI systems are designed to adapt to your unique needs, providing personalized growth metrics that evolve with you. Whether you're a startup, researcher, or professional, NavAarya is your partner in invovative growth.
             </p>
           </div>
         </motion.div>

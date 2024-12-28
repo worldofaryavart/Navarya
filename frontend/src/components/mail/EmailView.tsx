@@ -44,7 +44,7 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
       </div>
 
       {/* Email Content */}
-      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
+      <div className=" h-[calc(100vh-8rem)] flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
         <div className="p-6">
           {/* Sender Info */}
           <div className="flex items-start gap-4 mb-6">

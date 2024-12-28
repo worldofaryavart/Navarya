@@ -43,7 +43,7 @@ const AboutPage: React.FC = () => {
           className="text-center mb-16"
         >
           <h1 className="text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
-            About Aaryal
+            About NavArya
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
             We are at the forefront of AI innovation, dedicated to revolutionizing the way people interact with and leverage artificial intelligence.
@@ -81,7 +81,7 @@ const AboutPage: React.FC = () => {
             Our Mission
           </h2>
           <p className="text-lg text-gray-300 text-center max-w-4xl mx-auto">
-            At Aaryal, we're on a mission to empower minds and expand horizons. We believe in creating a world where everyone has the power to unlock their full cognitive potential, accessing the collective knowledge of humanity at their fingertips.
+            At NavArya, we're on a mission to empower minds and expand horizons. We believe in creating a world where everyone has the power to unlock innovation and creativity to grow faster than ever.
           </p>
         </motion.div>
 
@@ -98,7 +98,7 @@ const AboutPage: React.FC = () => {
             We're building the future of AI, and we'd love for you to be part of it. Together, we can create something extraordinary.
           </p>
           <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full font-semibold hover:opacity-90 transition-opacity">
-            Get Started with Aaryal
+            Get Started with NavArya
           </button>
         </motion.div>
       </div>

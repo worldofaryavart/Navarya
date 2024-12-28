@@ -71,7 +71,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         transition={{ duration: 0.5, delay: 0.2 }}
         className="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 max-w-md w-full mx-auto relative"
       >
-        <p className="text-xl mb-6 text-white font-semibold drop-shadow-md">Start your journey with AaryaI</p>
+        <p className="text-xl mb-6 text-white font-semibold drop-shadow-md">Start your journey with NavArya</p>
         <AnimatePresence>
           {errorMessage && (
             <motion.div
