@@ -8,7 +8,7 @@ import axios from 'axios';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/mail';
 
 // Helper function to get auth token
-const getAuthToken = async () => {
+export const getAuthToken = async () => {
   const user = auth?.currentUser;
   if (!user) throw new Error('Not authenticated');
   return await user.getIdToken();

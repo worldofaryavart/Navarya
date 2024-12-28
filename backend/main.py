@@ -114,7 +114,11 @@ async def sync_emails(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/mail/attachment/{message_id}/{attachment_id}")
-async def get_attachment(message_id: str, attachment_id: str, request: Request):
+async def get_attachment(
+    message_id: str, 
+    attachment_id: str, 
+    user_token: dict = Depends(verify_token)
+):
     """Download an email attachment."""
     try:
         print(f"Attempting to download attachment: {attachment_id} from message: {message_id}")

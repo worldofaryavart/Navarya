@@ -3,6 +3,7 @@ import { Email } from '@/types/mailTypes';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { getAuthToken } from '@/utils/mailService';
 import { ChevronLeft, Star, Reply, MoreVertical, Download, Trash, Forward, Mail, FileText, Calendar, Link } from 'lucide-react';
 import EmailContentRenderer from './EmailContentRenderer';
 import { isJobAlertEmail, formatJobAlertEmail } from '@/utils/emailContentFormatter';
@@ -37,8 +38,21 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
 
   const handleDownload = async (attachment: any) => {
     try {
-      const response = await fetch(`/api/mail/attachment/${email.id}/${attachment.id}`);
-      if (!response.ok) throw new Error('Download failed');
+      console.log('Downloading attachment:', attachment);
+      const token = await getAuthToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/mail'}/attachment/${email.id}/${attachment.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        console.error('Download failed:', response.status, response.statusText);
+        throw new Error(`Download failed: ${response.statusText}`);
+      }
       
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -51,7 +65,7 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading attachment:', error);
-      // You might want to show a toast notification here
+      throw error;
     }
   };
 
