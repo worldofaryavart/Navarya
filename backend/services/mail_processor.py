@@ -82,7 +82,7 @@ class MailProcessor:
 
                     # Get email body
                     if 'parts' in msg['payload']:
-                        body = self._get_body_from_parts(msg['payload']['parts'])
+                        body = self._get_body_from_parts(msg['payload']['parts'], message['id'])
                     else:
                         body = base64.urlsafe_b64decode(
                             msg['payload']['body'].get('data', '')
@@ -127,20 +127,60 @@ class MailProcessor:
             logger.error(f"Error getting emails: {str(e)}")
             raise
 
-    def _get_body_from_parts(self, parts: List[Dict[str, Any]]) -> str:
+    def _get_body_from_parts(self, parts: List[Dict[str, Any]], msg_id: str) -> str:
         """Extract email body from message parts."""
-        body = ''
+        html_body = ''
+        plain_body = ''
+        embedded_images = {}
+
+        def process_part(part):
+            nonlocal html_body, plain_body
+            
+            # Handle embedded images
+            if part.get('mimeType', '').startswith('image/'):
+                if 'body' in part and 'attachmentId' in part['body']:
+                    cid = next((h['value'] for h in part.get('headers', []) if h['name'].lower() == 'content-id'), '')
+                    if cid:
+                        # Remove < and > from CID if present
+                        cid = cid.strip('<>')
+                        attachment = self.service.users().messages().attachments().get(
+                            userId='me',
+                            messageId=msg_id,
+                            id=part['body']['attachmentId']
+                        ).execute()
+                        
+                        if attachment.get('data'):
+                            image_data = base64.urlsafe_b64decode(attachment['data'])
+                            image_b64 = base64.b64encode(image_data).decode('utf-8')
+                            embedded_images[f'cid:{cid}'] = f'data:{part["mimeType"]};base64,{image_b64}'
+
+            # Handle text parts
+            if part.get('mimeType') == 'text/html':
+                data = part.get('body', {}).get('data', '')
+                if data:
+                    html_body = base64.urlsafe_b64decode(data).decode('utf-8')
+            elif part.get('mimeType') == 'text/plain':
+                data = part.get('body', {}).get('data', '')
+                if data:
+                    plain_body = base64.urlsafe_b64decode(data).decode('utf-8')
+            
+            # Process nested parts
+            if 'parts' in part:
+                for p in part['parts']:
+                    process_part(p)
+
+        # Process all parts
         for part in parts:
-            if part['mimeType'] == 'text/plain':
-                body = base64.urlsafe_b64decode(
-                    part['body']['data']
-                ).decode('utf-8')
-                break
-            elif 'parts' in part:
-                body = self._get_body_from_parts(part['parts'])
-                if body:
-                    break
-        return body
+            process_part(part)
+
+        # Replace CID references with actual image data
+        if html_body:
+            for cid, data_url in embedded_images.items():
+                html_body = html_body.replace(f'src="{cid}"', f'src="{data_url}"')
+                html_body = html_body.replace(f"src='{cid}'", f"src='{data_url}'")
+
+        # Return HTML if available, otherwise plain text
+        return html_body if html_body else plain_body
 
     async def send_email(self, to: List[str], subject: str, body: str) -> Dict[str, Any]:
         """Send an email."""

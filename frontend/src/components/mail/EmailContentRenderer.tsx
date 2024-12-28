@@ -11,76 +11,96 @@ const EmailContentRenderer: React.FC<EmailContentRendererProps> = ({
   content,
   className
 }) => {
+  // Extract and process styles from the content
+  const processStyles = React.useCallback((htmlContent: string) => {
+    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+    const styles: string[] = [];
+    let match;
+    let processedContent = htmlContent;
+
+    // Extract all style tags
+    while ((match = styleRegex.exec(htmlContent)) !== null) {
+      styles.push(match[1]);
+      // Remove style tag from content as we'll add it properly later
+      processedContent = processedContent.replace(match[0], '');
+    }
+
+    return {
+      styles: styles.join('\n'),
+      content: processedContent
+    };
+  }, []);
+
   // Sanitize and prepare the HTML content
   const sanitizedContent = React.useMemo(() => {
-    // Configure DOMPurify to allow certain tags and attributes
+    const { styles, content: processedContent } = processStyles(content);
+
+    // Configure DOMPurify to allow more tags and attributes
     DOMPurify.setConfig({
       ALLOWED_TAGS: [
         'a', 'b', 'br', 'div', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'i', 'img', 'li', 'ol', 'p', 'span', 'strong', 'table', 'tbody',
-        'td', 'th', 'thead', 'tr', 'u', 'ul'
+        'td', 'th', 'thead', 'tr', 'u', 'ul', 'style', 'link', 'center',
+        'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
+        'figure', 'figcaption', 'picture', 'source', 'button', 'meta',
+        'html', 'body', 'head', 'title', 'script', 'style', 'link',
+        'form', 'input', 'select', 'option', 'label', 'iframe'
       ],
       ALLOWED_ATTR: [
-        'href', 'src', 'alt', 'title', 'style', 'class', 'target',
-        'data-*', 'aria-*'
+        'href', 'src', 'alt', 'title', 'style', 'class', 'target', 'id',
+        'width', 'height', 'align', 'valign', 'bgcolor', 'border',
+        'cellpadding', 'cellspacing', 'color', 'data-*', 'aria-*',
+        'role', 'type', 'xmlns', 'background', 'name', 'content',
+        'http-equiv', 'charset', 'property', 'lang', 'xml:lang',
+        'frameborder', 'allowfullscreen', 'rel', 'disabled', 'checked',
+        'selected', 'value', 'placeholder', 'for', 'media'
       ],
       ALLOW_DATA_ATTR: true,
-      ADD_ATTR: ['target'], // Allow target="_blank" for links
+      ADD_ATTR: ['target'],
+      WHOLE_DOCUMENT: true,
+      ALLOW_UNKNOWN_PROTOCOLS: true,
+      ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data|blob):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+      ADD_TAGS: ['style'],
+      KEEP_CONTENT: true,
     });
 
-    // Clean the HTML
-    const clean = DOMPurify.sanitize(content, {
-      USE_PROFILES: { html: true }
-    });
+    // Clean the HTML while preserving structure
+    const clean = DOMPurify.sanitize(
+      `<div class="email-wrapper">
+        <style>${styles}</style>
+        ${processedContent}
+      </div>`,
+      {
+        USE_PROFILES: { html: true },
+        SANITIZE_DOM: true,
+        ALLOW_ARIA_ATTR: true,
+      }
+    );
 
     return clean;
-  }, [content]);
-
-  // Process the content to handle special cases
-  const processedContent = React.useMemo(() => {
-    let processed = sanitizedContent;
-
-    // Convert plain URLs to clickable links
-    processed = processed.replace(
-      /(https?:\/\/[^\s<]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">$1</a>'
-    );
-
-    // Handle email addresses
-    processed = processed.replace(
-      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-      '<a href="mailto:$1" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">$1</a>'
-    );
-
-    return processed;
-  }, [sanitizedContent]);
+  }, [content, processStyles]);
 
   return (
     <div 
       className={cn(
-        "email-content",
-        "prose dark:prose-invert max-w-none",
-        // Base styles
-        "text-base leading-relaxed px-6 py-4",
-        // Content wrapping
-        "break-words overflow-hidden",
-        // Link styles
-        "[&_a]:text-blue-600 [&_a]:hover:text-blue-800 dark:[&_a]:text-blue-400 dark:[&_a]:hover:text-blue-300 [&_a]:break-all",
+        "email-content relative",
+        // Base container styles
+        "w-full max-w-full overflow-x-hidden",
+        // Content styles
+        "text-base leading-relaxed",
         // Image styles
-        "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg",
+        "[&_img]:max-w-full [&_img]:h-auto",
         // Table styles
-        "[&_table]:w-full [&_table]:border-collapse [&_table]:my-4 [&_table]:table-auto [&_table]:overflow-x-auto",
-        "[&_td,&_th]:border [&_td,&_th]:border-gray-300 dark:[&_td,&_th]:border-gray-700 [&_td,&_th]:p-2 [&_td,&_th]:break-words",
-        // Quote styles
-        "[&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 dark:[&_blockquote]:border-gray-700 [&_blockquote]:pl-4 [&_blockquote]:italic",
-        // List styles
-        "[&_ul]:list-disc [&_ol]:list-decimal [&_ul,&_ol]:pl-6",
-        // Pre/Code styles
-        "[&_pre]:overflow-x-auto [&_pre]:whitespace-pre-wrap [&_pre]:break-words",
-        "[&_code]:break-words [&_code]:whitespace-pre-wrap",
+        "[&_table]:w-full [&_table]:border-collapse",
+        // Link styles
+        "[&_a]:text-blue-600 hover:[&_a]:text-blue-800 dark:[&_a]:text-blue-400 dark:hover:[&_a]:text-blue-300",
+        // Fix common email rendering issues
+        "[&_*]:max-w-full [&_.email-wrapper]:!w-full",
+        // Preserve original email styles while ensuring dark mode compatibility
+        "dark:text-gray-100 [&_.email-wrapper]:text-gray-900 dark:[&_.email-wrapper]:text-inherit",
         className
       )}
-      dangerouslySetInnerHTML={{ __html: processedContent }}
+      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
     />
   );
 };

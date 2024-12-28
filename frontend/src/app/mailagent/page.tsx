@@ -94,21 +94,6 @@ const MailAgent = () => {
     }
   };
 
-  const formatDate = (dateStr: string | Date) => {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
       <div className="flex h-screen overflow-hidden">
