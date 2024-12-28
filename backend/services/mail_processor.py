@@ -72,7 +72,7 @@ class MailProcessor:
             for message in messages:
                 try:
                     msg = self.service.users().messages().get(
-                        userId='me', id=message['id']).execute()
+                        userId='me', id=message['id'], format='full').execute()
                     
                     headers = msg['payload']['headers']
                     subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
@@ -80,13 +80,18 @@ class MailProcessor:
                     to_email = next((h['value'] for h in headers if h['name'] == 'To'), '')
                     date = next((h['value'] for h in headers if h['name'] == 'Date'), '')
 
-                    # Get email body
+                    # Get email body and attachments
+                    body = ''
+                    attachments = []
                     if 'parts' in msg['payload']:
                         body = self._get_body_from_parts(msg['payload']['parts'], message['id'])
+                        attachments = self._get_attachments(msg['payload']['parts'], message['id'])
                     else:
                         body = base64.urlsafe_b64decode(
                             msg['payload']['body'].get('data', '')
                         ).decode('utf-8') if 'data' in msg['payload']['body'] else ''
+                        if msg['payload'].get('mimeType', '').startswith(('application/', 'image/', 'video/', 'audio/')):
+                            attachments = self._get_attachments([msg['payload']], message['id'])
 
                     # Convert Gmail labels to frontend labels
                     label_map = {
@@ -113,10 +118,11 @@ class MailProcessor:
                         'timestamp': timestamp,
                         'read': 'UNREAD' not in msg['labelIds'],
                         'important': 'IMPORTANT' in msg['labelIds'],
-                        'labels': frontend_labels
+                        'labels': frontend_labels,
+                        'attachments': attachments
                     }
                     emails.append(email)
-                    logger.info(f"Processed email: {subject}")
+                    logger.info(f"Processed email: {subject} with {len(attachments)} attachments")
                 except Exception as e:
                     logger.error(f"Error processing individual email {message['id']}: {str(e)}")
                     continue
@@ -182,6 +188,56 @@ class MailProcessor:
         # Return HTML if available, otherwise plain text
         return html_body if html_body else plain_body
 
+    def _get_attachments(self, message_parts, message_id):
+        """Extract attachments from message parts."""
+        attachments = []
+        
+        def process_part(part):
+            """Process a message part for attachments."""
+            if part.get('filename') or part.get('mimeType', '').startswith(('application/', 'image/', 'video/', 'audio/')):
+                attachment = {
+                    'id': part['body'].get('attachmentId'),
+                    'name': part.get('filename', 'unnamed_attachment'),
+                    'mimeType': part['mimeType'],
+                    'size': part['body'].get('size', 0),
+                }
+                
+                # Determine attachment type
+                mime_type = part['mimeType'].lower()
+                if mime_type.startswith('application/pdf'):
+                    attachment['type'] = 'document'
+                elif mime_type.startswith('image/'):
+                    attachment['type'] = 'image'
+                elif mime_type.startswith('video/'):
+                    attachment['type'] = 'video'
+                elif mime_type.startswith('audio/'):
+                    attachment['type'] = 'audio'
+                elif mime_type in ['text/calendar', 'application/ics']:
+                    attachment['type'] = 'calendar'
+                else:
+                    attachment['type'] = 'document'
+                
+                # Format size
+                size_bytes = int(attachment['size'])
+                if size_bytes < 1024:
+                    attachment['size'] = f"{size_bytes} B"
+                elif size_bytes < 1024 * 1024:
+                    attachment['size'] = f"{size_bytes/1024:.1f} KB"
+                else:
+                    attachment['size'] = f"{size_bytes/(1024*1024):.1f} MB"
+                
+                attachments.append(attachment)
+            
+            # Recursively process parts
+            if 'parts' in part:
+                for p in part['parts']:
+                    process_part(p)
+        
+        for part in message_parts:
+            process_part(part)
+        
+        return attachments
+
     async def send_email(self, to: List[str], subject: str, body: str) -> Dict[str, Any]:
         """Send an email."""
         try:
@@ -224,6 +280,29 @@ class MailProcessor:
         except Exception as e:
             logger.error(f"Error marking email as read: {str(e)}")
             return False
+
+    async def get_attachment(self, message_id: str, attachment_id: str) -> Optional[Dict[str, Any]]:
+        """Download an attachment."""
+        try:
+            logger.info(f"Fetching attachment {attachment_id} from message {message_id}")
+            attachment = self.service.users().messages().attachments().get(
+                userId='me',
+                messageId=message_id,
+                id=attachment_id
+            ).execute()
+
+            if attachment.get('data'):
+                file_data = base64.urlsafe_b64decode(attachment['data'])
+                logger.info(f"Successfully retrieved attachment data, size: {len(file_data)} bytes")
+                return {
+                    'data': file_data,
+                    'size': len(file_data)
+                }
+            logger.warning(f"No data found in attachment {attachment_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting attachment: {str(e)}")
+            return None
 
 # Initialize mail processor
 mail_processor = MailProcessor()

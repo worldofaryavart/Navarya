@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
@@ -7,6 +8,9 @@ from firebase_admin import auth, credentials
 from services.reminder_service import ReminderService
 from services.task_processor import TaskProcessor
 from services.mail_processor import mail_processor
+import io
+import mimetypes
+from io import BytesIO
 
 app = FastAPI()
 reminder_service = ReminderService()
@@ -99,9 +103,50 @@ async def complete_reminder(reminder_id: int):
 @app.get("/api/mail/sync")
 async def sync_emails(request: Request):
     """Sync emails from Gmail."""
-    user = await verify_token(request)
-    emails = await mail_processor.get_emails()
-    return {"emails": emails}
+    try:
+        emails = await mail_processor.get_emails()
+        # Ensure we're returning a list
+        if not isinstance(emails, list):
+            emails = []
+        return {"emails": emails}  # Return as an object with emails array
+    except Exception as e:
+        print(f"Error in sync_emails: {str(e)}")  # Debug log
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/mail/attachment/{message_id}/{attachment_id}")
+async def get_attachment(message_id: str, attachment_id: str, request: Request):
+    """Download an email attachment."""
+    try:
+        print(f"Attempting to download attachment: {attachment_id} from message: {message_id}")
+        attachment = await mail_processor.get_attachment(message_id, attachment_id)
+        if not attachment:
+            print(f"Attachment not found: {attachment_id}")
+            raise HTTPException(status_code=404, detail="Attachment not found")
+
+        print(f"Successfully retrieved attachment: {attachment_id}, size: {attachment['size']} bytes")
+        
+        # Create a BytesIO object from the attachment data
+        file_obj = BytesIO(attachment['data'])
+        
+        # Guess the mime type (default to application/octet-stream if unknown)
+        mime_type, _ = mimetypes.guess_type(attachment_id)
+        if not mime_type:
+            mime_type = 'application/octet-stream'
+        
+        print(f"Sending attachment with mime type: {mime_type}")
+
+        # Return the file as a streaming response
+        return StreamingResponse(
+            file_obj,
+            media_type=mime_type,
+            headers={
+                'Content-Disposition': f'attachment; filename="{attachment_id}"',
+                'Content-Length': str(attachment['size'])
+            }
+        )
+    except Exception as e:
+        print(f"Error downloading attachment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/mail/send")
 async def send_email(draft: EmailDraft, request: Request):

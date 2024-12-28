@@ -40,71 +40,15 @@ const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' = 'GET', data
 
 export const syncEmails = async (): Promise<Email[]> => {
   try {
-    const user = auth?.currentUser;
-    if (!user) throw new Error('Not authenticated');
-
-    console.log('Starting email sync...');
+    console.log('Syncing emails with Gmail...');
     const response = await apiCall<{emails: Email[]}>('sync');
-    console.log('Sync response:', response);
-    const emails = response.emails;
-    console.log('Received emails:', emails);
-    
-    // Get reference to emails collection
-    const emailsRef = collection(db!, 'emails');
-    
-    // Get existing emails
-    const existingEmails = await getDocs(
-      query(emailsRef, where('userId', '==', user.uid))
-    );
-    
-    // Create a map of existing email IDs to their documents
-    const existingEmailMap = new Map();
-    existingEmails.forEach(doc => {
-      existingEmailMap.set(doc.id, doc);
-    });
-    
-    // Batch operations for better performance and atomicity
-    const batch = writeBatch(db!);
-    
-    // Process each email
-    for (const email of emails) {
-      const emailDoc = existingEmailMap.get(email.id);
-      const emailRef = doc(emailsRef, email.id);
-      
-      const emailData = {
-        ...email,
-        userId: user.uid,
-        updatedAt: Timestamp.now(),
-        syncedAt: Timestamp.now()
-      };
-      
-      if (emailDoc) {
-        // Update existing email
-        batch.update(emailRef, emailData);
-      } else {
-        // Add new email
-        batch.set(emailRef, {
-          ...emailData,
-          createdAt: Timestamp.now()
-        });
-      }
+    if (!response || !response.emails || !Array.isArray(response.emails)) {
+      console.error('Invalid response format:', response);
+      return [];
     }
-    
-    // Delete emails that no longer exist
-    const emailIds = new Set(emails.map(e => e.id));
-    existingEmails.forEach(doc => {
-      if (!emailIds.has(doc.id)) {
-        batch.delete(doc.ref);
-      }
-    });
-    
-    // Commit all changes
-    await batch.commit();
-    console.log('Email sync completed successfully');
-    
-    return emails;
+    return response.emails;
   } catch (error) {
-    console.error('Error syncing emails:', error);
+    console.error('Error syncing with Gmail:', error);
     throw error;
   }
 };
@@ -145,16 +89,42 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
       );
 
       const snapshot = await getDocs(q);
-      emails = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id,
-        timestamp: doc.data().timestamp.toDate() // Convert Firestore timestamp to Date
-      })) as Email[];
+      emails = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          timestamp: data.timestamp instanceof Timestamp 
+            ? data.timestamp.toDate() 
+            : new Date(data.timestamp)
+        };
+      }) as Email[];
     }
 
     return emails.sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
+  } catch (error) {
+    console.error('Error getting emails:', error);
+    throw error;
+  }
+};
+
+export const getEmailsFromFirestore = async (): Promise<Email[]> => {
+  try {
+    // Get emails from Firestore
+    const emailsRef = collection(db, 'emails');
+    const q = query(emailsRef, orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+      };
+    });
   } catch (error) {
     console.error('Error getting emails:', error);
     throw error;

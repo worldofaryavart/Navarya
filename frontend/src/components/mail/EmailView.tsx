@@ -35,6 +35,26 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
     );
   };
 
+  const handleDownload = async (attachment: any) => {
+    try {
+      const response = await fetch(`/api/mail/attachment/${email.id}/${attachment.id}`);
+      if (!response.ok) throw new Error('Download failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      // You might want to show a toast notification here
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Email Header - Fixed */}
@@ -115,7 +135,12 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
                     <p className="text-sm font-medium truncate">{attachment.name}</p>
                     <p className="text-xs text-gray-500">{attachment.size}</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="shrink-0">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="shrink-0"
+                    onClick={() => handleDownload(attachment)}
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
