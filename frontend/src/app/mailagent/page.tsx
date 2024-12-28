@@ -44,12 +44,12 @@ const MailAgent = () => {
         const fetchedEmails = await getEmails(currentFolder);
         console.log('fetchedEmails: ', fetchedEmails);
         setEmails(fetchedEmails);
-        
+
         // Update unread count
         const unreadCount = fetchedEmails.filter(email => !email.read).length;
-        const updatedFolders = folders.map(folder => 
-          folder.id === currentFolder 
-            ? { ...folder, unreadCount } 
+        const updatedFolders = folders.map(folder =>
+          folder.id === currentFolder
+            ? { ...folder, unreadCount }
             : folder
         );
         setFolders(updatedFolders);
@@ -129,11 +129,10 @@ const MailAgent = () => {
               <button
                 key={folder.id}
                 onClick={() => setCurrentFolder(folder.id)}
-                className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-colors duration-200 ${
-                  currentFolder === folder.id 
-                    ? 'bg-purple-600/20 text-purple-400' 
+                className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-colors duration-200 ${currentFolder === folder.id
+                    ? 'bg-purple-600/20 text-purple-400'
                     : 'hover:bg-gray-700/50'
-                }`}
+                  }`}
               >
                 {folder.type === 'inbox' && <Inbox size={20} />}
                 {folder.type === 'sent' && <Send size={20} />}
@@ -163,66 +162,64 @@ const MailAgent = () => {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Search Bar */}
-          <div className="flex-shrink-0 bg-gray-800/50 border-b border-gray-700 p-4">
-            <div className="max-w-xl flex items-center gap-2 bg-gray-700/50 rounded-lg px-4 py-2">
-              <Search size={20} className="flex-shrink-0 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search emails..."
-                className="bg-transparent border-none outline-none flex-1 min-w-0 text-white placeholder-gray-400"
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-              />
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Email List */}
+          <div className="w-[400px] flex-shrink-0 border-r border-gray-700 overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-700">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search emails..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full bg-gray-800 text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
             </div>
+
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="animate-spin text-purple-500" size={32} />
+              </div>
+            ) : error ? (
+              <div className="flex-1 flex items-center justify-center text-gray-500">
+                {error}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                <EmailList
+                  emails={emails}
+                  onEmailSelect={handleEmailClick}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Email List and Content */}
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="animate-spin text-purple-500" size={32} />
-            </div>
-          ) : error ? (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-              {error}
-            </div>
-          ) : (
-            <div className="flex-1 flex min-w-0">
-              {/* Email List */}
-              <div className={`${
-                selectedEmail ? 'hidden md:block w-[400px]' : 'w-full'
-              } flex-shrink-0 border-r border-gray-700 flex flex-col`}>
-                <div className="flex-1 overflow-hidden">
-                  <EmailList 
-                    emails={emails} 
-                    onEmailSelect={handleEmailClick} 
-                  />
-                </div>
+          {/* Email View */}
+          <div className="flex-1 overflow-hidden">
+            {selectedEmail ? (
+              <EmailView
+                email={selectedEmail}
+                onClose={() => setSelectedEmail(null)}
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400">
+                <p>Select an email to view</p>
               </div>
-
-              {/* Email Content */}
-              {selectedEmail && (
-                <div className="flex-1 min-w-0">
-                  <EmailView 
-                    email={selectedEmail} 
-                    onClose={() => setSelectedEmail(null)} 
-                  />
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Compose Email Modal */}
-      {showCompose && (
-        <ComposeEmail
-          onClose={() => setShowCompose(false)}
-          replyToEmail={selectedEmail?.id}
-        />
-      )}
+        {/* Compose Email Modal */}
+        {showCompose && (
+          <ComposeEmail
+            onClose={() => setShowCompose(false)}
+            replyToEmail={selectedEmail?.id}
+          />
+        )}
+      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { db, auth } from './firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, updateDoc, doc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { Email, EmailDraft, Meeting } from '@/types/mailTypes';
 import { Task } from '@/types/taskTypes';
 import { addTask } from './tasks';
@@ -49,28 +49,58 @@ export const syncEmails = async (): Promise<Email[]> => {
     const emails = response.emails;
     console.log('Received emails:', emails);
     
-    // Clear existing emails for this user before adding new ones
+    // Get reference to emails collection
     const emailsRef = collection(db!, 'emails');
+    
+    // Get existing emails
     const existingEmails = await getDocs(
       query(emailsRef, where('userId', '==', user.uid))
     );
     
-    // Delete existing emails using deleteDoc
-    await Promise.all(
-      existingEmails.docs.map((doc) => deleteDoc(doc.ref))
-    );
+    // Create a map of existing email IDs to their documents
+    const existingEmailMap = new Map();
+    existingEmails.forEach(doc => {
+      existingEmailMap.set(doc.id, doc);
+    });
     
-    // Add new emails
-    await Promise.all(
-      emails.map((email) => 
-        addDoc(collection(db!, 'emails'), {
-          ...email,
-          timestamp: new Date(email.timestamp),
-          userId: user.uid,
-          labels: email.labels || ['inbox'] // Ensure labels exist
-        })
-      )
-    );
+    // Batch operations for better performance and atomicity
+    const batch = writeBatch(db!);
+    
+    // Process each email
+    for (const email of emails) {
+      const emailDoc = existingEmailMap.get(email.id);
+      const emailRef = doc(emailsRef, email.id);
+      
+      const emailData = {
+        ...email,
+        userId: user.uid,
+        updatedAt: Timestamp.now(),
+        syncedAt: Timestamp.now()
+      };
+      
+      if (emailDoc) {
+        // Update existing email
+        batch.update(emailRef, emailData);
+      } else {
+        // Add new email
+        batch.set(emailRef, {
+          ...emailData,
+          createdAt: Timestamp.now()
+        });
+      }
+    }
+    
+    // Delete emails that no longer exist
+    const emailIds = new Set(emails.map(e => e.id));
+    existingEmails.forEach(doc => {
+      if (!emailIds.has(doc.id)) {
+        batch.delete(doc.ref);
+      }
+    });
+    
+    // Commit all changes
+    await batch.commit();
+    console.log('Email sync completed successfully');
     
     return emails;
   } catch (error) {
@@ -162,18 +192,39 @@ export const sendEmail = async (draft: EmailDraft): Promise<boolean> => {
 };
 
 export const markAsRead = async (emailId: string): Promise<void> => {
-  try {
-    await apiCall('mark-read', 'POST', { emailId });
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      // First check if the document exists
+      const emailRef = doc(db!, 'emails', emailId);
+      const emailDoc = await getDoc(emailRef);
+      
+      if (!emailDoc.exists()) {
+        console.log(`Email document ${emailId} not found, waiting for sync...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        retries--;
+        continue;
+      }
 
-    // Update in Firestore
-    const emailRef = doc(db!, 'emails', emailId);
-    await updateDoc(emailRef, {
-      read: true
-    });
-  } catch (error) {
-    console.error('Error marking email as read:', error);
-    throw error;
+      // Update in backend
+      await apiCall('mark-read', 'POST', { emailId });
+
+      // Update in Firestore
+      await updateDoc(emailRef, {
+        read: true,
+        updatedAt: Timestamp.now()
+      });
+      
+      console.log(`Successfully marked email ${emailId} as read`);
+      return;
+    } catch (error) {
+      console.error('Error marking email as read:', error);
+      retries--;
+      if (retries === 0) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+    }
   }
+  throw new Error(`Failed to mark email ${emailId} as read after 3 retries`);
 };
 
 export const createMeetingFromEmail = async (email: Email): Promise<Meeting | null> => {
