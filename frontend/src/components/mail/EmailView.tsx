@@ -72,7 +72,7 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Email Header - Fixed */}
-      <div className="flex-none p-4 border-b dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-none p-4 border-b dark:border-gray-800 bg-white dark:bg-gray-800">
         <div className="flex items-center gap-4 mb-4">
           <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
             <ChevronLeft className="h-5 w-5" />
