@@ -3,8 +3,8 @@ import { Email } from '@/types/mailTypes';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { getAuthToken, toggleImportant, deleteEmail } from '@/utils/mailService';
-import { ChevronLeft, Star, Reply, MoreVertical, Download, Trash, Forward, Mail, FileText, Calendar, Link } from 'lucide-react';
+import { getAuthToken, toggleImportant, deleteEmail, handleReply, handleForward, sendReply, ReplyDraft } from '@/utils/mailService';
+import { ChevronLeft, Star, Reply, MoreVertical, Download, Trash, Forward, Mail, FileText, Calendar, Link, Send } from 'lucide-react';
 import EmailContentRenderer from './EmailContentRenderer';
 import { isJobAlertEmail, formatJobAlertEmail } from '@/utils/emailContentFormatter';
 import { useState } from 'react';
@@ -98,18 +98,71 @@ export default function EmailView({ email, onClose, onEmailUpdate, onReply, onFo
     }
   };
 
-  const handleReply = () => {
-    if (onReply) {
-      onReply(email);
-    }
+  const handleReplyClick = async () => {
+    setReplyData({
+      to: [email.from],
+      subject: email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`,
+      body: ''
+    });
+    setShowReplyBox(true);
   };
 
-  const handleForward = () => {
+  const handleForwardClick = () => {
     if (onForward) {
-      onForward(email);
+      const forwardData = handleForward(email);
+      onForward({
+        ...email,
+        to: [],
+        subject: forwardData.subject,
+        body: forwardData.body
+      });
     }
   };
 
+  const handleAddRecipient = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const input = e.currentTarget;
+      const email = input.value.trim();
+      if (email && !replyData.to.includes(email)) {
+        setReplyData(prev => ({
+          ...prev,
+          to: [...prev.to, email]
+        }));
+      }
+      input.value = '';
+    }
+  };
+
+  const removeRecipient = (emailToRemove: string) => {
+    setReplyData(prev => ({
+      ...prev,
+      to: prev.to.filter(email => email !== emailToRemove)
+    }));
+  };
+
+  const handleSendReply = async (replyData: { to: string[], subject: string, body: string }) => {
+    try {
+      await sendReply({
+        to: replyData.to,
+        subject: replyData.subject,
+        body: replyData.body
+      });
+      setShowReplyBox(false);
+      setReplyText('');
+      // Optionally refresh the email thread
+    } catch (error) {
+      console.error('Error sending reply:', error);
+    }
+  };
+
+  const [showReplyBox, setShowReplyBox] = useState(false);
+  const [replyData, setReplyData] = useState({
+    to: [] as string[],
+    subject: '',
+    body: ''
+  });
+  const [replyText, setReplyText] = useState('');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   return (
@@ -147,10 +200,10 @@ export default function EmailView({ email, onClose, onEmailUpdate, onReply, onFo
             <Button variant="ghost" size="icon" onClick={handleToggleImportant}>
               <Star className={`h-5 w-5 ${email.important ? 'fill-yellow-400 text-yellow-400' : ''}`} />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleReply}>
+            <Button variant="ghost" size="icon" onClick={handleReplyClick}>
               <Reply className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleForward}>
+            <Button variant="ghost" size="icon" onClick={handleForwardClick}>
               <Forward className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleDelete} className="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400">
@@ -185,6 +238,89 @@ export default function EmailView({ email, onClose, onEmailUpdate, onReply, onFo
       {/* Email Content - Scrollable */}
       <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-900 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent dark:[&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
         {renderEmailContent()}
+
+        {/* Reply Thread */}
+        {showReplyBox && (
+          <div className="mx-auto max-w-[800px] px-4 py-6 border-t dark:border-gray-700">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              {/* From Section */}
+              <div className="flex items-center gap-3 mb-4 border-b dark:border-gray-700 pb-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400 w-16">From:</div>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback>ME</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">{/* Add user email */}</span>
+                </div>
+              </div>
+
+              {/* To Section with Multiple Recipients */}
+              <div className="flex gap-3 mb-4 border-b dark:border-gray-700 pb-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400 w-16 pt-2">To:</div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {replyData.to.map((recipient, index) => (
+                      <div 
+                        key={index}
+                        className="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full px-3 py-1 text-sm flex items-center gap-2"
+                      >
+                        <span>{recipient}</span>
+                        <button
+                          onClick={() => removeRecipient(recipient)}
+                          className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <input
+                    type="email"
+                    placeholder="Type email and press Enter"
+                    className="w-full bg-transparent border-none p-1 focus:outline-none text-sm"
+                    onKeyDown={handleAddRecipient}
+                  />
+                </div>
+              </div>
+
+              {/* Subject Section */}
+              <div className="flex gap-3 mb-4 border-b dark:border-gray-700 pb-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400 w-16">Subject:</div>
+                <input
+                  type="text"
+                  value={replyData.subject}
+                  onChange={(e) => setReplyData(prev => ({ ...prev, subject: e.target.value }))}
+                  className="flex-1 bg-transparent border-none p-1 focus:outline-none text-sm"
+                />
+              </div>
+
+              {/* Body Section */}
+              <div className="mb-4">
+                <textarea
+                  value={replyData.body}
+                  onChange={(e) => setReplyData(prev => ({ ...prev, body: e.target.value }))}
+                  placeholder="Write your reply..."
+                  className="w-full h-32 p-3 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-between">
+                <Button variant="ghost" onClick={() => setShowReplyBox(false)}>
+                  Discard
+                </Button>
+                <Button 
+                  onClick={() => handleSendReply(replyData)} 
+                  className="bg-purple-600 hover:bg-purple-700"
+                  disabled={replyData.to.length === 0 || !replyData.subject || !replyData.body}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Send
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Attachments */}
         {email.attachments && email.attachments.length > 0 && (

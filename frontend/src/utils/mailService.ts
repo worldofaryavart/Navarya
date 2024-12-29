@@ -282,3 +282,43 @@ export const deleteEmail = async (emailId: string): Promise<void> => {
     throw error;
   }
 };
+
+// Reply thread types
+export interface ReplyDraft {
+  to: string[];
+  subject: string;
+  body: string;
+  inReplyTo: string;
+  quotedText?: string;
+}
+
+export const handleReply = async (email: Email): Promise<ReplyDraft> => {
+  const replyDraft: ReplyDraft = {
+    to: [email.from],
+    subject: email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`,
+    body: '',
+    inReplyTo: email.id,
+    quotedText: `\n\nOn ${new Date(email.timestamp).toLocaleString()}, ${email.from} wrote:\n${email.body}`
+  };
+  return replyDraft;
+};
+
+export const handleForward = (email: Email): EmailDraft => {
+  return {
+    to: [],
+    subject: email.subject.startsWith('Fwd:') ? email.subject : `Fwd: ${email.subject}`,
+    body: `\n\n---------- Forwarded message ---------\nFrom: ${email.from}\nDate: ${new Date(email.timestamp).toLocaleString()}\nSubject: ${email.subject}\nTo: ${email.to.join(', ')}\n\n${email.body}`
+  };
+};
+
+export const sendReply = async (replyDraft: ReplyDraft): Promise<void> => {
+  try {
+    await apiCall('mail/send', 'POST', {
+      ...replyDraft,
+      type: 'reply'
+    });
+  } catch (error) {
+    console.error('Error sending reply:', error);
+    throw error;
+  }
+};
