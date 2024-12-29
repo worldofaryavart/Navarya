@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Email } from '@/types/mail';
+import { Email } from '@/types/mailTypes';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { getAuthToken, toggleImportant, deleteEmail, handleReply, handleForward, sendReply, sendForward, ReplyDraft, ForwardDraft } from '@/utils/mailService';
 import { ChevronLeft, Star, Reply, MoreVertical, Download, Trash, Forward, Mail, FileText, Calendar, Link, Send, ChevronRight } from 'lucide-react';
 import EmailContentRenderer from './EmailContentRenderer';
-import { isJobAlertEmail, formatJobAlertEmail } from '@/utils/emailContentFormatter';
 import PreviewEmail from './PreviewEmail';
 
 interface EmailViewProps {
@@ -65,7 +64,7 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
     });
     setShowForwardBox(true);
     setShowReplyBox(false);
-    
+
     // Also call the original onForward if provided
     if (onForward) {
       const forwardData = handleForward(email);
@@ -146,12 +145,12 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
           }
         }
       );
-      
+
       if (!response.ok) {
         console.error('Download failed:', response.status, response.statusText);
         throw new Error(`Download failed: ${response.statusText}`);
       }
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -233,7 +232,7 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
               <Forward className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleToggleImportant}>
-              <Star className="h-4 w-4" />
+              <Star className={`h-4 w-4 ${email.important ? 'fill-yellow-400 text-yellow-400' : ''}`} />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleDelete}>
               <Trash className="h-4 w-4" />
@@ -312,12 +311,12 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
                   <ChevronRight className={`h-4 w-4 transform transition-transform ${showOriginalEmail ? 'rotate-90' : ''}`} />
                   Show Original Email
                 </button>
-                
+
                 {showOriginalEmail && (
                   <div className="mt-2 border-l-2 border-purple-500 dark:border-purple-400">
                     <div className="ml-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                       <div className="prose dark:prose-invert max-w-none text-sm">
-                        <EmailContentRenderer 
+                        <EmailContentRenderer
                           content={email.body}
                           className="email-container"
                         />
@@ -404,12 +403,12 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
                   <ChevronRight className={`h-4 w-4 transform transition-transform ${showOriginalEmail ? 'rotate-90' : ''}`} />
                   Show Forwarded Content
                 </button>
-                
+
                 {showOriginalEmail && (
                   <div className="mt-2 border-l-2 border-purple-500 dark:border-purple-400">
                     <div className="ml-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                       <div className="prose dark:prose-invert max-w-none text-sm">
-                        <EmailContentRenderer 
+                        <EmailContentRenderer
                           content={email.body}
                           className="email-container"
                         />
@@ -442,12 +441,51 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
               from={email.to[0]} // Current user's email
               to={showReplyBox ? replyData.to : forwardData.to}
               subject={showReplyBox ? replyData.subject : forwardData.subject}
-              body={showReplyBox 
+              body={showReplyBox
                 ? `${replyData.body}\n\n${replyData.originalEmail}`
                 : `${forwardData.body}\n\n${forwardData.originalEmail}`
               }
               onClose={() => setShowPreview(false)}
             />
+          )}
+
+          {/* Attachments */}
+          {email.attachments && email.attachments.length > 0 && (
+            <div className="mx-auto max-w-[800px] px-4 py-6 space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Attachments ({email.attachments.length})
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {email.attachments.map((attachment, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700"
+                  >
+                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                      {attachment.type === 'document' ? (
+                        <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      ) : attachment.type === 'calendar' ? (
+                        <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <Link className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{attachment.name}</p>
+                      <p className="text-xs text-gray-500">{attachment.size}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => handleDownload(attachment)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -455,4 +493,4 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
   );
 };
 
-export default EmailView;
+      export default EmailView;
