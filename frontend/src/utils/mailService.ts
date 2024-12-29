@@ -288,8 +288,16 @@ export interface ReplyDraft {
   to: string[];
   subject: string;
   body: string;
-  inReplyTo: string;
+  inReplyTo?: string;
   quotedText?: string;
+  originalEmail?: string;
+}
+
+export interface ForwardDraft {
+  to: string[];
+  subject: string;
+  body: string;
+  originalEmail?: string;
 }
 
 export const handleReply = async (email: Email): Promise<ReplyDraft> => {
@@ -298,17 +306,20 @@ export const handleReply = async (email: Email): Promise<ReplyDraft> => {
     subject: email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`,
     body: '',
     inReplyTo: email.id,
-    quotedText: `\n\nOn ${new Date(email.timestamp).toLocaleString()}, ${email.from} wrote:\n${email.body}`
+    quotedText: `\n\nOn ${new Date(email.timestamp).toLocaleString()}, ${email.from} wrote:\n${email.body}`,
+    originalEmail: email.body
   };
   return replyDraft;
 };
 
-export const handleForward = (email: Email): EmailDraft => {
-  return {
+export const handleForward = async (email: Email): Promise<ForwardDraft> => {
+  const forwardDraft: ForwardDraft = {
     to: [],
     subject: email.subject.startsWith('Fwd:') ? email.subject : `Fwd: ${email.subject}`,
-    body: `\n\n---------- Forwarded message ---------\nFrom: ${email.from}\nDate: ${new Date(email.timestamp).toLocaleString()}\nSubject: ${email.subject}\nTo: ${email.to.join(', ')}\n\n${email.body}`
+    body: '',
+    originalEmail: `\n\n---------- Forwarded message ---------\nFrom: ${email.from}\nDate: ${new Date(email.timestamp).toLocaleString()}\nSubject: ${email.subject}\n\n${email.body}`
   };
+  return forwardDraft;
 };
 
 export const sendReply = async (replyDraft: ReplyDraft): Promise<void> => {
@@ -316,7 +327,7 @@ export const sendReply = async (replyDraft: ReplyDraft): Promise<void> => {
     const response = await apiCall<{ success: boolean; messageId?: string; error?: string }>('send', 'POST', {
       to: replyDraft.to,
       subject: replyDraft.subject,
-      body: replyDraft.body,
+      body: `${replyDraft.body}\n\n${replyDraft.originalEmail || ''}`,
       type: 'reply'
     });
 
@@ -327,6 +338,24 @@ export const sendReply = async (replyDraft: ReplyDraft): Promise<void> => {
     // Optionally handle successful send (e.g., show notification)
   } catch (error) {
     console.error('Error sending reply:', error);
+    throw error;
+  }
+};
+
+export const sendForward = async (forwardDraft: ForwardDraft): Promise<void> => {
+  try {
+    const response = await apiCall<{ success: boolean; messageId?: string; error?: string }>('send', 'POST', {
+      to: forwardDraft.to,
+      subject: forwardDraft.subject,
+      body: `${forwardDraft.body}\n\n${forwardDraft.originalEmail || ''}`,
+      type: 'forward'
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to send email');
+    }
+  } catch (error) {
+    console.error('Error sending forward:', error);
     throw error;
   }
 };
