@@ -27,7 +27,6 @@ export default function EmailView({ email, onClose, onEmailUpdate, onReply, onFo
     .toUpperCase()
     .slice(0, 2);
 
-  console.log("selected mail body is : ", email.body);
   // Function to render different types of content
   const renderEmailContent = () => {
     return (

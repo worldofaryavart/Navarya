@@ -313,10 +313,18 @@ export const handleForward = (email: Email): EmailDraft => {
 
 export const sendReply = async (replyDraft: ReplyDraft): Promise<void> => {
   try {
-    await apiCall('mail/send', 'POST', {
-      ...replyDraft,
+    const response = await apiCall<{ success: boolean; messageId?: string; error?: string }>('send', 'POST', {
+      to: replyDraft.to,
+      subject: replyDraft.subject,
+      body: replyDraft.body,
       type: 'reply'
     });
+
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to send email');
+    }
+
+    // Optionally handle successful send (e.g., show notification)
   } catch (error) {
     console.error('Error sending reply:', error);
     throw error;

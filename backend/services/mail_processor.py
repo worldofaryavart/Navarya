@@ -241,26 +241,39 @@ class MailProcessor:
     async def send_email(self, to: List[str], subject: str, body: str) -> Dict[str, Any]:
         """Send an email."""
         try:
+            # Re-authenticate if needed
+            if not self.creds or not self.creds.valid:
+                self.authenticate()
+
             message = MIMEMultipart()
             message['to'] = ', '.join(to)
             message['subject'] = subject
+            message['from'] = 'me'  # Gmail API will use the authenticated user's email
 
-            msg = MIMEText(body)
+            # Create message body
+            msg = MIMEText(body, 'plain', 'utf-8')
             message.attach(msg)
 
-            raw = base64.urlsafe_b64encode(
-                message.as_bytes()
-            ).decode('utf-8')
-            
-            sent_message = self.service.users().messages().send(
-                userId='me',
-                body={'raw': raw}
-            ).execute()
+            try:
+                raw = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+            except Exception as e:
+                logger.error(f"Error encoding message: {str(e)}")
+                raise
 
-            return {
-                'success': True,
-                'messageId': sent_message['id']
-            }
+            try:
+                sent_message = self.service.users().messages().send(
+                    userId='me',
+                    body={'raw': raw}
+                ).execute()
+                logger.info(f"Email sent successfully. Message ID: {sent_message['id']}")
+                return {
+                    'success': True,
+                    'messageId': sent_message['id']
+                }
+            except Exception as e:
+                logger.error(f"Error in Gmail API send: {str(e)}")
+                raise
+
         except Exception as e:
             logger.error(f"Error sending email: {str(e)}")
             return {
