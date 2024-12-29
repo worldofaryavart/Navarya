@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Email } from '@/types/mailTypes';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { getAuthToken, toggleImportant, deleteEmail, handleReply, handleForward, sendReply, sendForward, ReplyDraft, ForwardDraft } from '@/utils/mailService';
+import { getAuthToken, toggleImportant, deleteEmail, handleForward, sendReply, sendForward, ReplyDraft, ForwardDraft } from '@/utils/mailService';
 import { ChevronLeft, Star, Reply, MoreVertical, Download, Trash, Forward, Mail, FileText, Calendar, Link, Send, ChevronRight } from 'lucide-react';
 import EmailContentRenderer from './EmailContentRenderer';
 import PreviewEmail from './PreviewEmail';
@@ -64,17 +64,6 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
     });
     setShowForwardBox(true);
     setShowReplyBox(false);
-
-    // Also call the original onForward if provided
-    if (onForward) {
-      const forwardData = handleForward(email);
-      onForward({
-        ...email,
-        to: [],
-        subject: forwardData.subject,
-        body: forwardData.body
-      });
-    }
   };
 
   const handleSendReply = async (data: ReplyDraft) => {
@@ -95,16 +84,6 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
       });
       setShowForwardBox(false);
       setForwardData({ to: [], subject: '', body: '', originalEmail: '' });
-
-      // Also call the original onForward if provided
-      if (onForward) {
-        onForward({
-          ...email,
-          to: forwardData.to,
-          subject: forwardData.subject,
-          body: `${forwardData.body}\n\n${forwardData.originalEmail}`
-        });
-      }
     } catch (error) {
       console.error('Error sending forward:', error);
     }
@@ -493,4 +472,4 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
   );
 };
 
-      export default EmailView;
+export default EmailView;
