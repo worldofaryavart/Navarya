@@ -3,17 +3,21 @@ import { Email } from '@/types/mailTypes';
 import { format } from 'date-fns';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { getAuthToken } from '@/utils/mailService';
+import { getAuthToken, toggleImportant, deleteEmail } from '@/utils/mailService';
 import { ChevronLeft, Star, Reply, MoreVertical, Download, Trash, Forward, Mail, FileText, Calendar, Link } from 'lucide-react';
 import EmailContentRenderer from './EmailContentRenderer';
 import { isJobAlertEmail, formatJobAlertEmail } from '@/utils/emailContentFormatter';
+import { useState } from 'react';
 
 interface EmailViewProps {
   email: Email;
   onClose: () => void;
+  onEmailUpdate?: (email: Email | null) => void;
+  onReply?: (email: Email) => void;
+  onForward?: (email: Email) => void;
 }
 
-export default function EmailView({ email, onClose }: EmailViewProps) {
+export default function EmailView({ email, onClose, onEmailUpdate, onReply, onForward }: EmailViewProps) {
   const senderName = email.from.split('<')[0].trim();
   const senderEmail = email.from.match(/<(.+)>/)?.[1] || email.from;
   const initials = senderName
@@ -69,6 +73,45 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
     }
   };
 
+  const handleToggleImportant = async () => {
+    try {
+      const isImportant = await toggleImportant(email.id);
+      if (onEmailUpdate) {
+        onEmailUpdate({ ...email, important: isImportant });
+      }
+    } catch (error) {
+      console.error('Error toggling important status:', error);
+      // You might want to show a toast notification here
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteEmail(email.id);
+      onClose();
+      if (onEmailUpdate) {
+        onEmailUpdate(null);
+      }
+    } catch (error) {
+      console.error('Error deleting email:', error);
+      // You might want to show a toast notification here
+    }
+  };
+
+  const handleReply = () => {
+    if (onReply) {
+      onReply(email);
+    }
+  };
+
+  const handleForward = () => {
+    if (onForward) {
+      onForward(email);
+    }
+  };
+
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+
   return (
     <div className="h-full flex flex-col">
       {/* Email Header - Fixed */}
@@ -101,21 +144,40 @@ export default function EmailView({ email, onClose }: EmailViewProps) {
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="ghost" size="icon">
-              <Star className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={handleToggleImportant}>
+              <Star className={`h-5 w-5 ${email.important ? 'fill-yellow-400 text-yellow-400' : ''}`} />
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={handleReply}>
               <Reply className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={handleForward}>
               <Forward className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400">
+            <Button variant="ghost" size="icon" onClick={handleDelete} className="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400">
               <Trash className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => setShowMoreOptions(!showMoreOptions)}>
               <MoreVertical className="h-5 w-5" />
             </Button>
+            {showMoreOptions && (
+              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+                <div className="py-1">
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => {/* Add mark as unread functionality */}}
+                  >
+                    Mark as unread
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => {/* Add print functionality */}}
+                  >
+                    Print
+                  </button>
+                  {/* Add more options as needed */}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

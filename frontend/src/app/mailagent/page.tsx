@@ -94,6 +94,30 @@ const MailAgent = () => {
     }
   };
 
+  const handleReply = (email: Email) => {
+    setShowCompose(true);
+    // The ComposeEmail component will handle the reply details based on the replyToEmail prop
+  };
+
+  const handleForward = (email: Email) => {
+    setShowCompose(true);
+    // The ComposeEmail component will handle the forward details based on the forwardEmail prop
+  };
+
+  const handleEmailUpdate = (updatedEmail: Email | null) => {
+    if (!updatedEmail) {
+      // Email was deleted
+      setSelectedEmail(null);
+      setEmails(prevEmails => prevEmails.filter(e => e.id !== selectedEmail?.id));
+    } else {
+      // Email was updated (e.g., marked as important)
+      setEmails(prevEmails =>
+        prevEmails.map(e => e.id === updatedEmail.id ? updatedEmail : e)
+      );
+      setSelectedEmail(updatedEmail);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
       <div className="flex h-screen overflow-hidden">
@@ -188,6 +212,9 @@ const MailAgent = () => {
               <EmailView
                 email={selectedEmail}
                 onClose={() => setSelectedEmail(null)}
+                onEmailUpdate={handleEmailUpdate}
+                onReply={handleReply}
+                onForward={handleForward}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-400">
@@ -202,6 +229,13 @@ const MailAgent = () => {
           <ComposeEmail
             onClose={() => setShowCompose(false)}
             replyToEmail={selectedEmail?.id}
+            initialDraft={
+              selectedEmail && {
+                to: selectedEmail.from ? [selectedEmail.from] : [],
+                subject: `${selectedEmail.id ? 'Re: ' : 'Fwd: '}${selectedEmail.subject}`,
+                body: selectedEmail.body
+              }
+            }
           />
         )}
       </div>

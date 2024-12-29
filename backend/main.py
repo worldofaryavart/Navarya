@@ -194,6 +194,33 @@ async def analyze_importance(email: EmailId, request: Request):
     # TODO: Implement AI importance analysis
     return {"important": False}
 
+@app.post("/api/mail/toggle-important/{email_id}")
+async def toggle_important(email_id: str, user_token: dict = Depends(verify_token)):
+    """Toggle the important status of an email."""
+    try:
+        result = await mail_processor.toggle_important(email_id)
+        return {"success": True, "important": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/api/mail/delete/{email_id}")
+async def delete_email(email_id: str, user_token: dict = Depends(verify_token)):
+    """Permanently delete an email."""
+    try:
+        await mail_processor.delete_email(email_id, permanent=True)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/api/mail/trash/{email_id}")
+async def trash_email(email_id: str, user_token: dict = Depends(verify_token)):
+    """Move an email to trash."""
+    try:
+        await mail_processor.delete_email(email_id)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=5000)

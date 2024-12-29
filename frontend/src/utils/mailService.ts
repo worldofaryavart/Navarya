@@ -15,7 +15,7 @@ export const getAuthToken = async () => {
 };
 
 // Helper function for API calls
-const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' = 'GET', data?: any): Promise<T> => {
+const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', data?: any): Promise<T> => {
   try {
     const token = await getAuthToken();
     const config = {
@@ -26,9 +26,14 @@ const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' = 'GET', data
     };
 
     console.log(`Making API call to ${endpoint}...`);
-    const response = method === 'GET' 
-      ? await axios.get(`${API_BASE_URL}/${endpoint}`, config)
-      : await axios.post(`${API_BASE_URL}/${endpoint}`, data, config);
+    let response;
+    if (method === 'DELETE') {
+      response = await axios.delete(`${API_BASE_URL}/${endpoint}`, config);
+    } else {
+      response = method === 'GET' 
+        ? await axios.get(`${API_BASE_URL}/${endpoint}`, config)
+        : await axios.post(`${API_BASE_URL}/${endpoint}`, data, config);
+    }
     console.log(`API call response:`, response.data);
 
     return response.data;
@@ -113,7 +118,7 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
 export const getEmailsFromFirestore = async (): Promise<Email[]> => {
   try {
     // Get emails from Firestore
-    const emailsRef = collection(db, 'emails');
+    const emailsRef = collection(db!, 'emails');
     const q = query(emailsRef, orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
     
@@ -256,5 +261,24 @@ export const analyzeEmailImportance = async (email: Email): Promise<boolean> => 
   } catch (error) {
     console.error('Error analyzing importance:', error);
     return false;
+  }
+};
+
+export const toggleImportant = async (emailId: string): Promise<boolean> => {
+  try {
+    const response = await apiCall<{success: boolean; important: boolean}>(`toggle-important/${emailId}`, 'POST');
+    return response.important;
+  } catch (error) {
+    console.error('Error toggling important status:', error);
+    throw error;
+  }
+};
+
+export const deleteEmail = async (emailId: string): Promise<void> => {
+  try {
+    await apiCall(`trash/${emailId}`, 'DELETE');
+  } catch (error) {
+    console.error('Error deleting email:', error);
+    throw error;
   }
 };

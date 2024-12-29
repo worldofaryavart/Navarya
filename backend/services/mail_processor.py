@@ -281,6 +281,45 @@ class MailProcessor:
             logger.error(f"Error marking email as read: {str(e)}")
             return False
 
+    async def toggle_important(self, email_id: str) -> bool:
+        """Toggle the important status of an email."""
+        try:
+            logger.info(f"Toggling important status for email {email_id}")
+            # Get current labels
+            msg = self.service.users().messages().get(userId='me', id=email_id).execute()
+            current_labels = set(msg.get('labelIds', []))
+            
+            # Toggle STARRED label
+            if 'STARRED' in current_labels:
+                current_labels.remove('STARRED')
+                is_important = False
+            else:
+                current_labels.add('STARRED')
+                is_important = True
+            
+            # Update labels
+            self.service.users().messages().modify(
+                userId='me',
+                id=email_id,
+                body={'addLabelIds' if is_important else 'removeLabelIds': ['STARRED']}
+            ).execute()
+            
+            logger.info(f"Successfully toggled important status to {is_important}")
+            return is_important
+        except Exception as e:
+            logger.error(f"Error toggling important status: {str(e)}")
+            raise
+
+    async def delete_email(self, email_id: str) -> None:
+        """Move an email to trash."""
+        try:
+            logger.info(f"Moving email {email_id} to trash")
+            self.service.users().messages().trash(userId='me', id=email_id).execute()
+            logger.info("Successfully moved email to trash")
+        except Exception as e:
+            logger.error(f"Error moving email to trash: {str(e)}")
+            raise
+
     async def get_attachment(self, message_id: str, attachment_id: str) -> Optional[Dict[str, Any]]:
         """Download an attachment."""
         try:
