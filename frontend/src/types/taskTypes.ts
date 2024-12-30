@@ -9,6 +9,10 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   createdAt: Date;
+  source?: {
+    type: 'email';
+    emailId: string;
+  };
 }
 
 // Type for adding a new task without required fields
