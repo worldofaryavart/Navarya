@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, Send, Paperclip, Bot } from 'lucide-react';
-import { EmailDraft } from '@/types/mailTypes';
+import { EmailDraft, Email } from '@/types/mailTypes';
 import { sendEmail, generateEmailResponse } from '@/utils/mailService';
 
 interface ComposeEmailProps {
@@ -39,7 +39,20 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
 
     setIsGeneratingResponse(true);
     try {
-      const response = await generateEmailResponse(replyToEmail);
+      // Create a minimal Email object from the replyToEmail string
+      const emailObject: Email = {
+        id: 'temp-id',
+        subject: '',
+        from: '',
+        to: [],
+        body: replyToEmail,
+        timestamp: new Date(),
+        read: true,
+        important: false,
+        labels: []
+      };
+      
+      const response = await generateEmailResponse(emailObject);
       setDraft(prev => ({
         ...prev,
         body: response
