@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Email, EmailFolder, EmailLabel } from '@/types/mailTypes';
-import { Loader2, Search, Plus, Inbox, Send, Archive, Trash, Tag, Star } from 'lucide-react';
+import { Loader2, Search, Plus, Inbox, Send, Archive, Trash, Tag, Star, LayoutDashboard } from 'lucide-react';
 import { getEmails, markAsRead } from '@/utils/mailService';
 import ComposeEmail from '@/components/mail/ComposeEmail';
 import EmailList from '@/components/mail/EmailList';
@@ -123,7 +123,14 @@ const MailAgent = () => {
       <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
         <div className="w-64 flex-shrink-0 bg-gray-800/50 border-r border-gray-700 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-800 [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
-          <div className="p-4">
+          <div className="p-4 space-y-2">
+            <button
+              onClick={() => window.location.href = '/mailagent/dashboard'}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-2 px-4 flex items-center justify-center gap-2 transition-colors duration-200"
+            >
+              <LayoutDashboard size={20} />
+              Dashboard
+            </button>
             <button
               onClick={handleComposeClick}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-2 px-4 flex items-center justify-center gap-2 transition-colors duration-200"
