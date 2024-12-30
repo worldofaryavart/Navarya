@@ -9,13 +9,13 @@ import PreviewEmail from './PreviewEmail';
 
 interface EmailViewProps {
   email: Email;
-  onBack: () => void;
-  onForward?: (email: Email) => void;
-  onEmailUpdate?: (email: Email | null) => void;
   onClose: () => void;
+  onEmailUpdate?: (email: Email | null) => void;
+  onReply: (email: Email) => void;
+  onForward: (email: Email) => void;
 }
 
-const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmailUpdate, onClose }) => {
+const EmailView: React.FC<EmailViewProps> = ({ email, onClose, onEmailUpdate, onReply, onForward }) => {
   const senderName = email.from.split('<')[0].trim();
   const initials = senderName
     .split(' ')
@@ -184,7 +184,7 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onBack, onForward, onEmail
       {/* Email Header - Fixed */}
       <div className="flex-none p-4 border-b dark:border-gray-800 bg-white dark:bg-gray-800">
         <div className="flex items-center gap-4 mb-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+          <Button variant="ghost" size="icon" onClick={onClose}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl font-semibold">{email.subject}</h1>
