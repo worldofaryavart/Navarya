@@ -78,10 +78,7 @@ const EmailView: React.FC<EmailViewProps> = ({ email, onClose, onEmailUpdate, on
 
   const handleSendForward = async () => {
     try {
-      await sendReply({
-        ...forwardData,
-        type: 'forward'
-      });
+      await sendForward(forwardData);
       setShowForwardBox(false);
       setForwardData({ to: [], subject: '', body: '', originalEmail: '' });
     } catch (error) {
