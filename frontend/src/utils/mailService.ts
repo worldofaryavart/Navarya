@@ -97,11 +97,19 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
       emails = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
-          ...data,
           id: doc.id,
-          timestamp: data.timestamp instanceof Timestamp 
-            ? data.timestamp.toDate() 
-            : new Date(data.timestamp)
+          subject: data.subject || '',
+          from: data.from || '',
+          to: data.to || [],
+          cc: data.cc || [],
+          bcc: data.bcc || [],
+          body: data.body || '',
+          timestamp: data.timestamp ? new Date(data.timestamp.toDate()) : new Date(),
+          read: data.read || false,
+          important: data.important || false,
+          labels: data.labels || [],
+          attachments: data.attachments || [],
+          threadId: data.threadId
         };
       }) as Email[];
     }
@@ -125,9 +133,19 @@ export const getEmailsFromFirestore = async (): Promise<Email[]> => {
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
       return {
-        ...data,
         id: doc.id,
-        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+        subject: data.subject || '',
+        from: data.from || '',
+        to: data.to || [],
+        cc: data.cc || [],
+        bcc: data.bcc || [],
+        body: data.body || '',
+        timestamp: data.timestamp ? new Date(data.timestamp.toDate()) : new Date(),
+        read: data.read || false,
+        important: data.important || false,
+        labels: data.labels || [],
+        attachments: data.attachments || [],
+        threadId: data.threadId
       };
     });
   } catch (error) {
