@@ -237,11 +237,11 @@ const MailAgent = () => {
             onClose={() => setShowCompose(false)}
             replyToEmail={selectedEmail?.id}
             initialDraft={
-              selectedEmail && {
+              selectedEmail ? {
                 to: selectedEmail.from ? [selectedEmail.from] : [],
                 subject: `${selectedEmail.id ? 'Re: ' : 'Fwd: '}${selectedEmail.subject}`,
                 body: selectedEmail.body
-              }
+              } : undefined
             }
           />
         )}
