@@ -59,7 +59,7 @@ const WelcomeComponent = () => {
           className="text-center mb-8"
         >
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-            Your AI Command Center
+            NavArya Command Center
           </h1>
           <p className="text-gray-400 mt-2">All your AI-powered tools in one place</p>
         </motion.div>
