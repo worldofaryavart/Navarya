@@ -11,6 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import logging
 from email.utils import parsedate_to_datetime
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,35 +29,31 @@ class MailProcessor:
     def authenticate(self):
         """Authenticate with Gmail API."""
         try:
-            if os.path.exists('token.pickle'):
-                logger.info("Found existing token.pickle")
+            # First try to get credentials from environment variable
+            token_pickle_b64 = os.environ.get('TOKEN_PICKLE')
+            if token_pickle_b64:
+                # Decode base64 string and load credentials
+                token_pickle_data = base64.b64decode(token_pickle_b64)
+                self.creds = pickle.loads(token_pickle_data)
+            # Fallback to local file
+            elif os.path.exists('token.pickle'):
                 with open('token.pickle', 'rb') as token:
                     self.creds = pickle.load(token)
-                    logger.info("Loaded credentials from token.pickle")
-            
+
             if not self.creds or not self.creds.valid:
-                logger.info("Credentials invalid or missing, refreshing...")
                 if self.creds and self.creds.expired and self.creds.refresh_token:
-                    logger.info("Refreshing expired credentials")
                     self.creds.refresh(Request())
                 else:
-                    logger.info("Getting new credentials from credentials.json")
-                    if not os.path.exists('credentials.json'):
-                        raise FileNotFoundError("credentials.json not found in the current directory")
-                    
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        'credentials.json', SCOPES)
+                    flow = InstalledAppFlow.from_client_config(
+                        json.loads(os.environ.get('GOOGLE_CREDENTIALS')),
+                        SCOPES
+                    )
                     self.creds = flow.run_local_server(port=0)
-                    logger.info("Got new credentials")
-                
-                logger.info("Saving credentials to token.pickle")
-                with open('token.pickle', 'wb') as token:
-                    pickle.dump(self.creds, token)
 
             self.service = build('gmail', 'v1', credentials=self.creds)
-            logger.info("Gmail service built successfully")
+            logger.info("Successfully authenticated with Gmail API")
         except Exception as e:
-            logger.error(f"Authentication error: {str(e)}")
+            logger.error(f"Error in authentication: {str(e)}")
             raise
 
     async def get_emails(self, query: str = '') -> List[Dict[str, Any]]:
