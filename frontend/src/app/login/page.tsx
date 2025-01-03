@@ -10,10 +10,6 @@ const LoginPage: React.FC = () => {
   const router = useRouter();
   const { user, loading } = useAuth(); 
 
-  const handleLogin = () => {
-    router.push("/");
-  };
-
   useEffect(() => {
     if (user && !loading) {
       router.push("/");
@@ -27,8 +23,10 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="container h-screen mx-auto bg-gray-900 text-white overflow-y-auto">
-      <Login onLogin={handleLogin} />
+    <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="w-full max-w-md">
+        <Login onLogin={() => router.push("/")} />
+      </div>
     </div>
   );
 };

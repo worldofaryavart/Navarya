@@ -22,11 +22,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <LayoutProvider>
-          <AuthWrapper>
-            <TaskProvider>
-              <Layout>{children}</Layout>
-            </TaskProvider>
-          </AuthWrapper>
+          <TaskProvider>
+            {children}
+          </TaskProvider>
         </LayoutProvider>
       </body>
     </html>
