@@ -1,6 +1,0 @@
-frontend/
-.git/
-**/*.pyc
-**/__pycache__/
-.env
-.env.local

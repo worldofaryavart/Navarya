@@ -4,8 +4,7 @@ import { Email, EmailDraft, Meeting } from '@/types/mailTypes';
 import { Task } from '@/types/taskTypes';
 import { addTask } from './tasks';
 import axios from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/mail';
+import { getApiUrl } from './api.config';
 
 // Helper function to get auth token
 export const getAuthToken = async () => {
@@ -27,12 +26,14 @@ const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' | 'DELETE' = 
 
     console.log(`Making API call to ${endpoint}...`);
     let response;
+    const url = getApiUrl(`/api/mail/${endpoint}`);
+    
     if (method === 'DELETE') {
-      response = await axios.delete(`${API_BASE_URL}/${endpoint}`, config);
+      response = await axios.delete(url, config);
     } else {
       response = method === 'GET' 
-        ? await axios.get(`${API_BASE_URL}/${endpoint}`, config)
-        : await axios.post(`${API_BASE_URL}/${endpoint}`, data, config);
+        ? await axios.get(url, config)
+        : await axios.post(url, data, config);
     }
     console.log(`API call response:`, response.data);
 

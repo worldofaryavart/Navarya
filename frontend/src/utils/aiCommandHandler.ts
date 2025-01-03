@@ -1,5 +1,6 @@
 import { Task, NewTaskInput, TaskStatus, TaskPriority } from '@/types/taskTypes';
 import { addTask, deleteTask, getTasks, updateTask } from './tasks';
+import { getApiUrl } from './api.config';
 
 export type CommandType = 
   | 'CREATE_TASK'
@@ -242,7 +243,7 @@ export class AICommandHandler {
     timeframe?: 'today' | 'tomorrow' | 'week';
   }): Promise<CommandResult> {
     try {
-      const response = await fetch('http://localhost:8000/api/reminders');
+      const response = await fetch(getApiUrl('/api/reminders'));
       const reminders = await response.json();
       
       if (!Array.isArray(reminders)) {
@@ -514,7 +515,7 @@ Example:
       console.log("Sending request with input:", input);
       
       // Send all other commands to AI processor
-      const aiResponse = await fetch('http://localhost:8000/api/process-task', {
+      const aiResponse = await fetch(getApiUrl('/api/process-task'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
