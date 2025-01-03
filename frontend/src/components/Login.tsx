@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { signInWithGoogle, signInWithEmail } from '../utils/auth';
 import { FaGoogle } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,7 +16,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     if (errorMessage) {
       const timer = setTimeout(() => {
         setErrorMessage('');
-      }, 5000); // Error message will disappear after 5 seconds
+      }, 5000);
 
       return () => clearTimeout(timer);
     }
@@ -37,8 +36,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     e.preventDefault();
     try {
       await signInWithEmail(email, password);
-      onLogin()
-      // router.push('/dashboard');
+      onLogin();
     } catch (error) {
       console.error('Email sign-in error:', error);
       setErrorMessage('Invalid email or password. Please try again.');
@@ -46,91 +44,91 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-purple-800 to-blue-700 min-h-screen flex flex-col items-center justify-center px-4 py-8 text-center">
+    <div className="relative w-full max-w-md mx-auto">
       <motion.div
-        initial={{ opacity: 0, y: -50 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="grid mb-8"
+        className="text-center mb-8"
       >
-        <Image
-          src="/aaryai.png"
-          alt="Aarya Logo"
-          width={80}
-          height={80}
-          className="text-white h-auto w-auto place-self-center animate-pulse"
-        />
-        <h1 className="font-copernicus text-white text-4xl md:text-5xl font-bold tracking-tight px-4 drop-shadow-lg">
-          Empower Your Learning Journey
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+          NavArya
         </h1>
+        <p className="text-gray-400 text-sm">
+          Your Intelligent AI Assistant
+        </p>
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 max-w-md w-full mx-auto relative"
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="bg-black/40 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-white/10"
       >
-        <p className="text-xl mb-6 text-white font-semibold drop-shadow-md">Start your journey with NavArya</p>
         <AnimatePresence>
           {errorMessage && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="absolute top-0 left-0 right-0 z-10 px-4 py-2"
+              transition={{ duration: 0.3 }}
+              className="mb-4"
             >
-              <p className="text-red-500 bg-red-100 border border-red-400 rounded p-2 text-sm">
-                {errorMessage}
-              </p>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <p className="text-red-500 text-sm">
+                  {errorMessage}
+                </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
+
         <button
           onClick={handleGoogleSignIn}
-          className="bg-white text-gray-800 py-3 px-6 rounded-full w-full mb-6 flex items-center justify-center transition duration-300 hover:bg-gray-100 hover:shadow-lg"
+          className="w-full bg-white/5 border border-white/10 backdrop-blur-sm text-white rounded-lg py-3 px-4 flex items-center justify-center space-x-2 hover:bg-white/10 transition-all duration-200"
         >
-          <FaGoogle className="mr-2 text-blue-600" />
-          Continue with Google
+          <FaGoogle className="text-white" />
+          <span>Continue with Google</span>
         </button>
-        <div className="flex items-center my-6">
-          <hr className="flex-grow border-t border-white opacity-30" />
-          <span className="mx-4 text-white opacity-70">OR</span>
-          <hr className="flex-grow border-t border-white opacity-30" />
+
+        <div className="relative my-8">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-[#0A0A0A] text-gray-400">or continue with email</span>
+          </div>
         </div>
+
         <form onSubmit={handleEmailSignIn} className="space-y-4">
-          <input
-            type="email"
-            placeholder="name@yourcompany.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg py-3 px-4 w-full text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg py-3 px-4 w-full text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-            required
-          />
-          <button type="submit" className="bg-gradient-to-r from-purple-600 to-blue-700 text-white py-3 px-6 rounded-full w-full font-semibold transition duration-300 hover:shadow-lg transform hover:-translate-y-1">
-            Continue with email
+          <div>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email address"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/20"
+              required
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/20"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-lg py-3 px-4 hover:opacity-90 transition-all duration-200"
+          >
+            Sign in
           </button>
         </form>
-        <p className="text-xs text-white text-opacity-80 mt-6 drop-shadow-sm">
-          By continuing, you agree to Aaryavart&apos;s Consumer Terms and Usage Policy, and acknowledge their Privacy Policy.
-        </p>
       </motion.div>
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="mt-8 text-white hover:underline font-semibold drop-shadow-md"
-      >
-        Learn more
-      </motion.button>
     </div>
   );
 };
