@@ -1,10 +1,9 @@
 FROM python:3.9-slim
 
-# Set working directory to backend directly
-WORKDIR /app/backend
+WORKDIR /app
 
 # Copy requirements first for better caching
-COPY backend/requirements.txt ./requirements.txt
+COPY backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
