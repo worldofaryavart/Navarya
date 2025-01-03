@@ -1,35 +1,26 @@
-FROM ubuntu:20.04
+FROM python:3.9
 
-# Prevent timezone prompts
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install Python and pip
-RUN apt-get update && apt-get install -y \
-    python3.9 \
-    python3-pip \
-    python3.9-dev \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create symbolic links for python and pip
-RUN ln -s /usr/bin/python3.9 /usr/bin/python \
-    && ln -s /usr/bin/pip3 /usr/bin/pip
-
-# Set working directory
 WORKDIR /app
 
-# Copy only the requirements file first
-COPY backend/requirements.txt .
-
-# Install dependencies
+# Copy requirements first for better caching
+COPY backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the backend application
-COPY backend .
+# Copy the rest of the application
+COPY backend/ .
 
-# Create a shell script to run the application
-RUN echo '#!/bin/bash\npython -m uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"' > start.sh \
-    && chmod +x start.sh
+# Create start script that handles environment variables
+RUN echo '#!/bin/bash\n\
+# Write credentials from environment variables\n\
+echo "$FIREBASE_CREDENTIALS" > firebase-credentials.json\n\
+echo "$GOOGLE_CREDENTIALS" > credentials.json\n\
+\n\
+# Set default port\n\
+PORT="${PORT:-8000}"\n\
+\n\
+# Start the application\n\
+exec python -m uvicorn main:app --host 0.0.0.0 --port "$PORT"' > start.sh && \
+    chmod +x start.sh
 
 # Command to run the application
-CMD ["./start.sh"]
+ENTRYPOINT ["./start.sh"]
