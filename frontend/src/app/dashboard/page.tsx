@@ -2,9 +2,9 @@
 
 import WelcomeComponent from "@/components/Welcome";
 
-export default function HomePage() {
+export default function DashboardPage() {
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto">
       <WelcomeComponent/>
     </div>
   );
