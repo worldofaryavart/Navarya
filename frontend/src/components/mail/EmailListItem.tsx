@@ -54,10 +54,13 @@ export default function EmailListItem({ email, onClick }: EmailListItemProps) {
     >
       <div className="flex items-start gap-3">
         <Avatar className="h-8 w-8 shrink-0">
-          <AvatarImage src={email.senderAvatar} alt={senderName} />
-          <AvatarFallback className="bg-purple-600 text-white text-xs">
-            {initials}
-          </AvatarFallback>
+          {email.senderAvatar ? (
+            <AvatarImage src={email.senderAvatar} alt={senderName} />
+          ) : (
+            <AvatarFallback className="bg-purple-600 text-white text-xs">
+              {initials}
+            </AvatarFallback>
+          )}
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-baseline mb-0.5">

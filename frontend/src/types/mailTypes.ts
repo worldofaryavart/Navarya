@@ -12,6 +12,7 @@ export interface Email {
   labels: string[];
   attachments?: EmailAttachment[];
   threadId?: string;
+  senderAvatar?: string;
 }
 
 export interface EmailAttachment {
