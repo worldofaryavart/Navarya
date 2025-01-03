@@ -1,4 +1,4 @@
-__pycache__
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -6,8 +6,11 @@ __pycache__
 env/
 venv/
 .env
+.env.local
 *.log
-.git
+.git/
 .gitignore
-.dockerignore
-Dockerfile
+node_modules/
+token.pickle
+credentials.json
+firebase-credentials.json
