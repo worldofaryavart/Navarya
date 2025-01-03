@@ -1,6 +1,11 @@
-FROM python:3.9
+FROM python:3.9-slim
 
 WORKDIR /app
+
+# Install required system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY backend/requirements.txt requirements.txt
@@ -22,5 +27,8 @@ PORT="${PORT:-8000}"\n\
 exec python -m uvicorn main:app --host 0.0.0.0 --port "$PORT"' > start.sh && \
     chmod +x start.sh
 
+# Set the shell explicitly
+SHELL ["/bin/bash", "-c"]
+
 # Command to run the application
-ENTRYPOINT ["./start.sh"]
+ENTRYPOINT ["/bin/bash", "./start.sh"]
