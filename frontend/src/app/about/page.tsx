@@ -14,12 +14,12 @@ const AboutPage: React.FC = () => {
     {
       icon: <FiUsers className="w-8 h-8" />,
       title: "Expert Team",
-      description: "Our team consists of world-class AI researchers and engineers dedicated to pushing the boundaries of what's possible."
+      description: "Our team consists of world-class AI researchers and engineers dedicated to pushing the boundaries of what is possible."
     },
     {
       icon: <FiTarget className="w-8 h-8" />,
       title: "Innovation Focus",
-      description: "We're constantly innovating and developing cutting-edge AI solutions that solve real-world problems."
+      description: "We are constantly innovating and developing cutting-edge AI solutions that solve real-world problems."
     },
     {
       icon: <FiAward className="w-8 h-8" />,
@@ -81,7 +81,7 @@ const AboutPage: React.FC = () => {
             Our Mission
           </h2>
           <p className="text-lg text-gray-300 text-center max-w-4xl mx-auto">
-            At NavArya, we're on a mission to empower minds and expand horizons. We believe in creating a world where everyone has the power to unlock innovation and creativity to grow faster than ever.
+            At NavArya, we&apos;re on a mission to empower minds and expand horizons. We believe in creating a world where everyone has the power to unlock innovation and creativity to grow faster than ever.
           </p>
         </motion.div>
 
@@ -95,7 +95,7 @@ const AboutPage: React.FC = () => {
             Join Us on Our Journey
           </h2>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-8">
-            We're building the future of AI, and we'd love for you to be part of it. Together, we can create something extraordinary.
+            We&apos;re building the future of AI, and we&apos;d love for you to be part of it. Together, we can create something extraordinary.
           </p>
           <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full font-semibold hover:opacity-90 transition-opacity">
             Get Started with NavArya

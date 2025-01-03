@@ -40,7 +40,7 @@ const VisionPage: React.FC = () => {
             Our Vision for the Future
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Reimagining the future of human-AI collaboration and pushing the boundaries of what's possible.
+            Reimagining the future of human-AI collaboration and pushing the boundaries of what&apos;s possible. Join us in shaping the future of artificial intelligence and human potential. Join us in shaping the future of human-AI collaboration and pushing the boundaries of what&apos;s possible.
           </p>
         </motion.div>
 
@@ -76,10 +76,10 @@ const VisionPage: React.FC = () => {
           </h2>
           <div className="text-lg text-gray-300 space-y-4 max-w-4xl mx-auto">
             <p>
-              Imagine having a brilliant mentor who knows everything about your field of interest, understands your learning style, and is available 24/7 to guide you. That's what we're building at NavArya.
+              Imagine having a brilliant mentor who knows everything about your field of interest, understands your learning style, and is available 24/7 to guide you. That&apos;s what we&apos;re building at NavArya.
             </p>
             <p>
-              Our AI systems are designed to adapt to your unique needs, providing personalized growth metrics that evolve with you. Whether you're a startup, researcher, or professional, NavAarya is your partner in invovative growth.
+              Our AI systems are designed to adapt to your unique needs, providing personalized growth metrics that evolve with you. Whether you&apos;re a startup, researcher, or professional, NavAarya is your partner in invovative growth.
             </p>
           </div>
         </motion.div>
