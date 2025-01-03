@@ -13,25 +13,22 @@ import mimetypes
 from io import BytesIO
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "https://www.navarya.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 reminder_service = ReminderService()
 task_processor = TaskProcessor()
 
 # Initialize Firebase Admin
 cred = credentials.Certificate('./firebase-credentials.json')
 firebase_admin.initialize_app(cred)
-
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://frontend-a84yjjdmi-worldofaryavarts-projects.vercel.app",
-        "https://frontend-worldofaryavart-worldofaryavarts-projects.vercel.app"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Dependency to verify Firebase token
 async def verify_token(request: Request):
