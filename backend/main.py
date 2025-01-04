@@ -4,13 +4,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 import firebase_admin
-from firebase_admin import auth, credentials
-from services.reminder_service import ReminderService
-from services.task_processor import TaskProcessor
-from services.mail_processor import mail_processor
+from firebase_admin import auth, credentials, firestore
 import io
 import mimetypes
 from io import BytesIO
+
+# Initialize Firebase Admin first
+cred = credentials.Certificate('./firebase-credentials.json')
+default_app = firebase_admin.initialize_app(cred)
+
+# Initialize Firestore
+db = firestore.client()
+
+# Now import services that depend on Firebase
+from services.reminder_service import ReminderService
+from services.task_processor import TaskProcessor
+from services.mail_processor import mail_processor
 
 app = FastAPI()
 
@@ -25,10 +34,6 @@ app.add_middleware(
 
 reminder_service = ReminderService()
 task_processor = TaskProcessor()
-
-# Initialize Firebase Admin
-cred = credentials.Certificate('./firebase-credentials.json')
-firebase_admin.initialize_app(cred)
 
 # Dependency to verify Firebase token
 async def verify_token(request: Request):
@@ -105,13 +110,48 @@ async def complete_reminder(reminder_id: int):
 async def sync_emails(request: Request):
     """Sync emails from Gmail."""
     try:
-        emails = await mail_processor.get_emails()
-        # Ensure we're returning a list
-        if not isinstance(emails, list):
-            emails = []
-        return {"emails": emails}  # Return as an object with emails array
+        user = await verify_token(request)
+        emails = await mail_processor.get_emails(user['uid'])
+        return {"emails": emails}
     except Exception as e:
-        print(f"Error in sync_emails: {str(e)}")  # Debug log
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/mail/send")
+async def send_email(draft: EmailDraft, request: Request):
+    """Send an email."""
+    try:
+        user = await verify_token(request)
+        result = await mail_processor.send_email(user['uid'], draft.to, draft.subject, draft.body)
+        return {"success": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/mail/mark-read")
+async def mark_email_read(email: EmailId, request: Request):
+    """Mark an email as read."""
+    try:
+        user = await verify_token(request)
+        await mail_processor.mark_as_read(user['uid'], email.emailId)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/mail/toggle-important/{email_id}")
+async def toggle_important(email_id: str, user_token: dict = Depends(verify_token)):
+    """Toggle the important status of an email."""
+    try:
+        result = await mail_processor.toggle_important(user_token['uid'], email_id)
+        return {"success": True, "important": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/mail/{email_id}")
+async def delete_email(email_id: str, user_token: dict = Depends(verify_token)):
+    """Permanently delete an email."""
+    try:
+        await mail_processor.delete_email(user_token['uid'], email_id)
+        return {"success": True}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/mail/attachment/{message_id}/{attachment_id}")
@@ -122,50 +162,16 @@ async def get_attachment(
 ):
     """Download an email attachment."""
     try:
-        print(f"Attempting to download attachment: {attachment_id} from message: {message_id}")
-        attachment = await mail_processor.get_attachment(message_id, attachment_id)
+        attachment = await mail_processor.get_attachment(user_token['uid'], message_id, attachment_id)
         if not attachment:
-            print(f"Attachment not found: {attachment_id}")
             raise HTTPException(status_code=404, detail="Attachment not found")
-
-        print(f"Successfully retrieved attachment: {attachment_id}, size: {attachment['size']} bytes")
         
-        # Create a BytesIO object from the attachment data
-        file_obj = BytesIO(attachment['data'])
-        
-        # Guess the mime type (default to application/octet-stream if unknown)
-        mime_type, _ = mimetypes.guess_type(attachment_id)
-        if not mime_type:
-            mime_type = 'application/octet-stream'
-        
-        print(f"Sending attachment with mime type: {mime_type}")
-
-        # Return the file as a streaming response
         return StreamingResponse(
-            file_obj,
-            media_type=mime_type,
-            headers={
-                'Content-Disposition': f'attachment; filename="{attachment_id}"',
-                'Content-Length': str(attachment['size'])
-            }
+            io.BytesIO(attachment['data']),
+            media_type="application/octet-stream"
         )
     except Exception as e:
-        print(f"Error downloading attachment: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/mail/send")
-async def send_email(draft: EmailDraft, request: Request):
-    """Send an email."""
-    user = await verify_token(request)
-    result = await mail_processor.send_email(draft.to, draft.subject, draft.body)
-    return result
-
-@app.post("/api/mail/mark-read")
-async def mark_email_read(email: EmailId, request: Request):
-    """Mark an email as read."""
-    user = await verify_token(request)
-    success = await mail_processor.mark_as_read(email.emailId)
-    return {"success": success}
 
 @app.post("/api/mail/extract-meeting")
 async def extract_meeting(email: EmailId, request: Request):
@@ -194,33 +200,6 @@ async def analyze_importance(email: EmailId, request: Request):
     user = await verify_token(request)
     # TODO: Implement AI importance analysis
     return {"important": False}
-
-@app.post("/api/mail/toggle-important/{email_id}")
-async def toggle_important(email_id: str, user_token: dict = Depends(verify_token)):
-    """Toggle the important status of an email."""
-    try:
-        result = await mail_processor.toggle_important(email_id)
-        return {"success": True, "important": result}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.delete("/api/mail/delete/{email_id}")
-async def delete_email(email_id: str, user_token: dict = Depends(verify_token)):
-    """Permanently delete an email."""
-    try:
-        await mail_processor.delete_email(email_id, permanent=True)
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.delete("/api/mail/trash/{email_id}")
-async def trash_email(email_id: str, user_token: dict = Depends(verify_token)):
-    """Move an email to trash."""
-    try:
-        await mail_processor.delete_email(email_id)
-        return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

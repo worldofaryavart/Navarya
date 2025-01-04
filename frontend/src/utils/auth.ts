@@ -1,4 +1,4 @@
-import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
 import { app } from './firebase';
 import { useEffect, useState } from 'react';
 
@@ -24,20 +24,13 @@ export const signInWithEmail = async (email: string, password: string) => {
 
 export const signUpWithEmail = async (email: string, password: string) => {
   try {
-    const response = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Signup failed');
+    const auth = getAuthInstance();
+    if (!auth) {
+      throw new Error('Firebase auth not initialized');
     }
 
-    // After successful signup, automatically sign in
-    await signInWithEmail(email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
   } catch (error) {
     console.error('Signup error:', error);
     throw error;

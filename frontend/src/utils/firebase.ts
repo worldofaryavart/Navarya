@@ -22,4 +22,11 @@ if (typeof window !== 'undefined' && !getApps().length) {
   db = getFirestore(app);
 }
 
+export const getAuthInstance = () => {
+  if (!auth && app) {
+    auth = getAuth(app);
+  }
+  return auth;
+};
+
 export { app, auth, db };

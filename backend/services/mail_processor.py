@@ -12,6 +12,7 @@ from datetime import datetime
 import logging
 from email.utils import parsedate_to_datetime
 import json
+from firebase_admin import firestore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,45 +23,53 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 class MailProcessor:
     def __init__(self):
-        self.creds = None
-        self.service = None
-        self.authenticate()
+        # Get the already initialized Firestore client
+        self.db = firestore.client()
+        self.user_services = {}
 
-    def authenticate(self):
-        """Authenticate with Gmail API."""
+    async def get_user_service(self, user_id: str):
+        """Get or create a Gmail service for a specific user."""
+        if user_id in self.user_services:
+            return self.user_services[user_id]
+
+        # Get user's Gmail credentials from Firestore
+        user_doc = await self.db.collection('users').document(user_id).get()
+        if not user_doc.exists:
+            raise Exception('User not found')
+
+        user_data = user_doc.to_dict()
+        if 'gmailCredentials' not in user_data:
+            raise Exception('Gmail credentials not found')
+
+        # Create credentials object
+        creds = Credentials.from_authorized_user_info(
+            json.loads(user_data['gmailCredentials']),
+            SCOPES
+        )
+
+        # Refresh if expired
+        if not creds.valid:
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                # Update stored credentials
+                await self.db.collection('users').document(user_id).update({
+                    'gmailCredentials': json.dumps(creds.to_json())
+                })
+            else:
+                raise Exception('Gmail credentials expired')
+
+        # Build and cache service
+        service = build('gmail', 'v1', credentials=creds)
+        self.user_services[user_id] = service
+        return service
+
+    async def get_emails(self, user_id: str, query: str = '') -> List[Dict[str, Any]]:
+        """Get emails matching the query for a specific user."""
         try:
-            # First try to get credentials from environment variable
-            token_pickle_b64 = os.environ.get('TOKEN_PICKLE')
-            if token_pickle_b64:
-                # Decode base64 string and load credentials
-                token_pickle_data = base64.b64decode(token_pickle_b64)
-                self.creds = pickle.loads(token_pickle_data)
-            # Fallback to local file
-            elif os.path.exists('token.pickle'):
-                with open('token.pickle', 'rb') as token:
-                    self.creds = pickle.load(token)
-
-            if not self.creds or not self.creds.valid:
-                if self.creds and self.creds.expired and self.creds.refresh_token:
-                    self.creds.refresh(Request())
-                else:
-                    flow = InstalledAppFlow.from_client_config(
-                        json.loads(os.environ.get('GOOGLE_CREDENTIALS')),
-                        SCOPES
-                    )
-                    self.creds = flow.run_local_server(port=0)
-
-            self.service = build('gmail', 'v1', credentials=self.creds)
-            logger.info("Successfully authenticated with Gmail API")
-        except Exception as e:
-            logger.error(f"Error in authentication: {str(e)}")
-            raise
-
-    async def get_emails(self, query: str = '') -> List[Dict[str, Any]]:
-        """Get emails matching the query."""
-        try:
-            logger.info(f"Fetching emails with query: {query}")
-            results = self.service.users().messages().list(
+            service = await self.get_user_service(user_id)
+            logger.info(f"Fetching emails for user {user_id} with query: {query}")
+            
+            results = service.users().messages().list(
                 userId='me', q=query).execute()
             messages = results.get('messages', [])
             logger.info(f"Found {len(messages)} messages")
@@ -68,7 +77,7 @@ class MailProcessor:
             emails = []
             for message in messages:
                 try:
-                    msg = self.service.users().messages().get(
+                    msg = service.users().messages().get(
                         userId='me', id=message['id'], format='full').execute()
                     
                     headers = msg['payload']['headers']
@@ -90,45 +99,121 @@ class MailProcessor:
                         if msg['payload'].get('mimeType', '').startswith(('application/', 'image/', 'video/', 'audio/')):
                             attachments = self._get_attachments([msg['payload']], message['id'])
 
-                    # Convert Gmail labels to frontend labels
-                    label_map = {
-                        'INBOX': 'inbox',
-                        'SENT': 'sent',
-                        'DRAFT': 'drafts',
-                        'TRASH': 'trash'
-                    }
-                    frontend_labels = [label_map.get(label, label.lower()) for label in msg['labelIds']]
-
-                    # Parse the date string into a proper timestamp
-                    try:
-                        timestamp = parsedate_to_datetime(date).isoformat()
-                    except:
-                        timestamp = datetime.now().isoformat()
-
-                    email = {
+                    email_data = {
                         'id': message['id'],
-                        'threadId': msg['threadId'],
                         'subject': subject,
                         'from': from_email,
-                        'to': [to.strip() for to in to_email.split(',') if to.strip()],
+                        'to': to_email,
+                        'date': date,
                         'body': body,
-                        'timestamp': timestamp,
+                        'attachments': attachments,
+                        'labels': msg['labelIds'],
                         'read': 'UNREAD' not in msg['labelIds'],
-                        'important': 'IMPORTANT' in msg['labelIds'],
-                        'labels': frontend_labels,
-                        'attachments': attachments
+                        'important': 'IMPORTANT' in msg['labelIds']
                     }
-                    emails.append(email)
-                    logger.info(f"Processed email: {subject} with {len(attachments)} attachments")
+                    emails.append(email_data)
                 except Exception as e:
-                    logger.error(f"Error processing individual email {message['id']}: {str(e)}")
+                    logger.error(f"Error processing message {message['id']}: {str(e)}")
                     continue
 
-            logger.info(f"Successfully processed {len(emails)} emails")
             return emails
         except Exception as e:
-            logger.error(f"Error getting emails: {str(e)}")
+            logger.error(f"Error fetching emails: {str(e)}")
             raise
+
+    async def send_email(self, user_id: str, to: List[str], subject: str, body: str) -> bool:
+        """Send an email from a specific user's account."""
+        try:
+            service = await self.get_user_service(user_id)
+            message = MIMEMultipart()
+            message['to'] = ', '.join(to)
+            message['subject'] = subject
+            message.attach(MIMEText(body, 'plain'))
+            
+            raw = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+            service.users().messages().send(userId='me', body={'raw': raw}).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Error sending email: {str(e)}")
+            return False
+
+    async def mark_as_read(self, user_id: str, message_id: str) -> None:
+        """Mark an email as read for a specific user."""
+        try:
+            service = await self.get_user_service(user_id)
+            service.users().messages().modify(
+                userId='me',
+                id=message_id,
+                body={'removeLabelIds': ['UNREAD']}
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error marking email as read: {str(e)}")
+            raise
+
+    async def toggle_important(self, user_id: str, email_id: str) -> bool:
+        """Toggle the important status of an email for a specific user."""
+        try:
+            logger.info(f"Toggling important status for email {email_id}")
+            service = await self.get_user_service(user_id)
+            # Get current labels
+            msg = service.users().messages().get(userId='me', id=email_id).execute()
+            current_labels = set(msg.get('labelIds', []))
+            
+            # Toggle STARRED label
+            if 'STARRED' in current_labels:
+                current_labels.remove('STARRED')
+                is_important = False
+            else:
+                current_labels.add('STARRED')
+                is_important = True
+            
+            # Update labels
+            service.users().messages().modify(
+                userId='me',
+                id=email_id,
+                body={'addLabelIds' if is_important else 'removeLabelIds': ['STARRED']}
+            ).execute()
+            
+            logger.info(f"Successfully toggled important status to {is_important}")
+            return is_important
+        except Exception as e:
+            logger.error(f"Error toggling important status: {str(e)}")
+            raise
+
+    async def delete_email(self, user_id: str, email_id: str) -> None:
+        """Move an email to trash for a specific user."""
+        try:
+            logger.info(f"Moving email {email_id} to trash")
+            service = await self.get_user_service(user_id)
+            service.users().messages().trash(userId='me', id=email_id).execute()
+            logger.info("Successfully moved email to trash")
+        except Exception as e:
+            logger.error(f"Error moving email to trash: {str(e)}")
+            raise
+
+    async def get_attachment(self, user_id: str, message_id: str, attachment_id: str) -> Optional[Dict[str, Any]]:
+        """Download an attachment for a specific user."""
+        try:
+            logger.info(f"Fetching attachment {attachment_id} from message {message_id}")
+            service = await self.get_user_service(user_id)
+            attachment = service.users().messages().attachments().get(
+                userId='me',
+                messageId=message_id,
+                id=attachment_id
+            ).execute()
+
+            if attachment.get('data'):
+                file_data = base64.urlsafe_b64decode(attachment['data'])
+                logger.info(f"Successfully retrieved attachment data, size: {len(file_data)} bytes")
+                return {
+                    'data': file_data,
+                    'size': len(file_data)
+                }
+            logger.warning(f"No data found in attachment {attachment_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting attachment: {str(e)}")
+            return None
 
     def _get_body_from_parts(self, parts: List[Dict[str, Any]], msg_id: str) -> str:
         """Extract email body from message parts."""
@@ -234,124 +319,6 @@ class MailProcessor:
             process_part(part)
         
         return attachments
-
-    async def send_email(self, to: List[str], subject: str, body: str) -> Dict[str, Any]:
-        """Send an email."""
-        try:
-            # Re-authenticate if needed
-            if not self.creds or not self.creds.valid:
-                self.authenticate()
-
-            message = MIMEMultipart()
-            message['to'] = ', '.join(to)
-            message['subject'] = subject
-            message['from'] = 'me'  # Gmail API will use the authenticated user's email
-
-            # Create message body
-            msg = MIMEText(body, 'plain', 'utf-8')
-            message.attach(msg)
-
-            try:
-                raw = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
-            except Exception as e:
-                logger.error(f"Error encoding message: {str(e)}")
-                raise
-
-            try:
-                sent_message = self.service.users().messages().send(
-                    userId='me',
-                    body={'raw': raw}
-                ).execute()
-                logger.info(f"Email sent successfully. Message ID: {sent_message['id']}")
-                return {
-                    'success': True,
-                    'messageId': sent_message['id']
-                }
-            except Exception as e:
-                logger.error(f"Error in Gmail API send: {str(e)}")
-                raise
-
-        except Exception as e:
-            logger.error(f"Error sending email: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e)
-            }
-
-    async def mark_as_read(self, message_id: str) -> bool:
-        """Mark an email as read."""
-        try:
-            self.service.users().messages().modify(
-                userId='me',
-                id=message_id,
-                body={'removeLabelIds': ['UNREAD']}
-            ).execute()
-            return True
-        except Exception as e:
-            logger.error(f"Error marking email as read: {str(e)}")
-            return False
-
-    async def toggle_important(self, email_id: str) -> bool:
-        """Toggle the important status of an email."""
-        try:
-            logger.info(f"Toggling important status for email {email_id}")
-            # Get current labels
-            msg = self.service.users().messages().get(userId='me', id=email_id).execute()
-            current_labels = set(msg.get('labelIds', []))
-            
-            # Toggle STARRED label
-            if 'STARRED' in current_labels:
-                current_labels.remove('STARRED')
-                is_important = False
-            else:
-                current_labels.add('STARRED')
-                is_important = True
-            
-            # Update labels
-            self.service.users().messages().modify(
-                userId='me',
-                id=email_id,
-                body={'addLabelIds' if is_important else 'removeLabelIds': ['STARRED']}
-            ).execute()
-            
-            logger.info(f"Successfully toggled important status to {is_important}")
-            return is_important
-        except Exception as e:
-            logger.error(f"Error toggling important status: {str(e)}")
-            raise
-
-    async def delete_email(self, email_id: str) -> None:
-        """Move an email to trash."""
-        try:
-            logger.info(f"Moving email {email_id} to trash")
-            self.service.users().messages().trash(userId='me', id=email_id).execute()
-            logger.info("Successfully moved email to trash")
-        except Exception as e:
-            logger.error(f"Error moving email to trash: {str(e)}")
-            raise
-
-    async def get_attachment(self, message_id: str, attachment_id: str) -> Optional[Dict[str, Any]]:
-        """Download an attachment."""
-        try:
-            logger.info(f"Fetching attachment {attachment_id} from message {message_id}")
-            attachment = self.service.users().messages().attachments().get(
-                userId='me',
-                messageId=message_id,
-                id=attachment_id
-            ).execute()
-
-            if attachment.get('data'):
-                file_data = base64.urlsafe_b64decode(attachment['data'])
-                logger.info(f"Successfully retrieved attachment data, size: {len(file_data)} bytes")
-                return {
-                    'data': file_data,
-                    'size': len(file_data)
-                }
-            logger.warning(f"No data found in attachment {attachment_id}")
-            return None
-        except Exception as e:
-            logger.error(f"Error getting attachment: {str(e)}")
-            return None
 
 # Initialize mail processor
 mail_processor = MailProcessor()

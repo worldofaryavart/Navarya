@@ -46,13 +46,28 @@ const apiCall = async <T>(endpoint: string, method: 'GET' | 'POST' | 'DELETE' = 
 
 export const syncEmails = async (): Promise<Email[]> => {
   try {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
     console.log('Syncing emails with Gmail...');
     const response = await apiCall<{emails: Email[]}>('sync');
     if (!response || !response.emails || !Array.isArray(response.emails)) {
       console.error('Invalid response format:', response);
       return [];
     }
-    return response.emails;
+    const emails = response.emails;
+
+    // Add userId to each email before saving
+    const emailsRef = collection(db!, 'emails');
+    emails.forEach(async (email) => {
+      await addDoc(emailsRef, {
+        ...email,
+        userId: user.uid,
+        timestamp: new Date()
+      });
+    });
+
+    return emails;
   } catch (error) {
     console.error('Error syncing with Gmail:', error);
     throw error;
@@ -110,7 +125,8 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
           important: data.important || false,
           labels: data.labels || [],
           attachments: data.attachments || [],
-          threadId: data.threadId
+          threadId: data.threadId,
+          userId: data.userId
         };
       }) as Email[];
     }
@@ -126,9 +142,15 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
 
 export const getEmailsFromFirestore = async (): Promise<Email[]> => {
   try {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
     // Get emails from Firestore
     const emailsRef = collection(db!, 'emails');
-    const q = query(emailsRef, orderBy('timestamp', 'desc'));
+    const q = query(emailsRef, 
+      where('userId', '==', user.uid),
+      orderBy('timestamp', 'desc')
+    );
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map(doc => {
@@ -146,7 +168,8 @@ export const getEmailsFromFirestore = async (): Promise<Email[]> => {
         important: data.important || false,
         labels: data.labels || [],
         attachments: data.attachments || [],
-        threadId: data.threadId
+        threadId: data.threadId,
+        userId: data.userId
       };
     });
   } catch (error) {
@@ -186,39 +209,21 @@ export const sendEmail = async (draft: EmailDraft): Promise<boolean> => {
 };
 
 export const markAsRead = async (emailId: string): Promise<void> => {
-  let retries = 3;
-  while (retries > 0) {
-    try {
-      // First check if the document exists
-      const emailRef = doc(db!, 'emails', emailId);
-      const emailDoc = await getDoc(emailRef);
-      
-      if (!emailDoc.exists()) {
-        console.log(`Email document ${emailId} not found, waiting for sync...`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-        retries--;
-        continue;
-      }
+  try {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Not authenticated');
 
-      // Update in backend
-      await apiCall('mark-read', 'POST', { emailId });
+    const emailRef = doc(db!, 'emails', emailId);
+    const emailDoc = await getDoc(emailRef);
+    
+    if (!emailDoc.exists()) throw new Error('Email not found');
+    if (emailDoc.data().userId !== user.uid) throw new Error('Unauthorized');
 
-      // Update in Firestore
-      await updateDoc(emailRef, {
-        read: true,
-        updatedAt: Timestamp.now()
-      });
-      
-      console.log(`Successfully marked email ${emailId} as read`);
-      return;
-    } catch (error) {
-      console.error('Error marking email as read:', error);
-      retries--;
-      if (retries === 0) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-    }
+    await updateDoc(emailRef, { read: true });
+  } catch (error) {
+    console.error('Error marking email as read:', error);
+    throw error;
   }
-  throw new Error(`Failed to mark email ${emailId} as read after 3 retries`);
 };
 
 export const createMeetingFromEmail = async (email: Email): Promise<Meeting | null> => {
