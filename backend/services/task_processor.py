@@ -12,8 +12,8 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 class TaskProcessor:
-    def __init__(self):
-        self.reminder_service = ReminderService()
+    def __init__(self, db):
+        self.reminder_service = ReminderService(db)
         self.TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
         self.last_api_call = 0  # Track last API call time
         self.min_interval = 5  # Minimum seconds between API calls

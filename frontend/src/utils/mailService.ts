@@ -82,58 +82,8 @@ export const getEmails = async (folder: string = 'inbox'): Promise<Email[]> => {
     console.log('Getting emails for folder:', folder);
     let emails: Email[] = [];
 
-    // If online, sync with Gmail first
-    if (navigator.onLine) {
-      try {
-        console.log('Online - syncing with Gmail...');
-        emails = await syncEmails();
-        console.log('Synced emails:', emails);
-        // Filter emails for the requested folder
-        emails = emails.filter(email => 
-          email.labels?.includes(folder) || 
-          (folder === 'inbox' && (!email.labels || email.labels.length === 0))
-        );
-        console.log('Filtered emails for folder:', emails);
-      } catch (error) {
-        console.error('Error syncing with Gmail:', error);
-      }
-    }
+    return emails;
 
-    // If no emails from sync or offline, get from Firestore
-    if (emails.length === 0) {
-      const emailsRef = collection(db!, 'emails');
-      const q = query(
-        emailsRef,
-        where('userId', '==', user.uid),
-        where('labels', 'array-contains', folder),
-        orderBy('timestamp', 'desc')
-      );
-
-      const snapshot = await getDocs(q);
-      emails = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          subject: data.subject || '',
-          from: data.from || '',
-          to: data.to || [],
-          cc: data.cc || [],
-          bcc: data.bcc || [],
-          body: data.body || '',
-          timestamp: data.timestamp ? new Date(data.timestamp.toDate()) : new Date(),
-          read: data.read || false,
-          important: data.important || false,
-          labels: data.labels || [],
-          attachments: data.attachments || [],
-          threadId: data.threadId,
-          userId: data.userId
-        };
-      }) as Email[];
-    }
-
-    return emails.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
   } catch (error) {
     console.error('Error getting emails:', error);
     throw error;

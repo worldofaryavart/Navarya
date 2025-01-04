@@ -4,37 +4,28 @@ from datetime import datetime
 import re
 from dateutil import parser
 import pytz
+from google.cloud import firestore
 
 class ReminderService:
-    def __init__(self):
-        self.data_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'reminders.json')
+    def __init__(self, db):
+        self.db = db
         self.timezone = pytz.timezone('Asia/Kolkata')  # Indian timezone
-        self._ensure_data_dir()
+        self.reminders_ref = self.db.collection('reminders')
         self.reminders = self._load_reminders()
         
-    def _ensure_data_dir(self):
-        """Ensure the data directory exists"""
-        data_dir = os.path.dirname(self.data_file)
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
-        if not os.path.exists(self.data_file):
-            with open(self.data_file, 'w') as f:
-                json.dump([], f)
-
     def _load_reminders(self):
-        """Load reminders from file"""
+        """Load reminders from Firestore"""
         try:
-            with open(self.data_file, 'r') as f:
-                return json.load(f)
+            reminders = self.reminders_ref.stream()
+            return [{**reminder.to_dict(), 'id': reminder.id} for reminder in reminders]
         except Exception as e:
             print(f"Error loading reminders: {e}")
             return []
 
-    def _save_reminders(self):
-        """Save reminders to file"""
+    def _save_reminders(self, reminder):
+        """Save reminders to Firestore"""
         try:
-            with open(self.data_file, 'w') as f:
-                json.dump(self.reminders, f, indent=2)
+            self.reminders_ref.document(str(reminder['id'])).set(reminder)
         except Exception as e:
             print(f"Error saving reminders: {e}")
         
@@ -63,7 +54,7 @@ class ReminderService:
             'is_completed': False
         }
         self.reminders.append(reminder)
-        self._save_reminders()  # Save after adding
+        self._save_reminders(reminder)  # Save after adding
         return reminder
     
     def get_active_reminders(self):
@@ -90,6 +81,6 @@ class ReminderService:
         for reminder in self.reminders:
             if reminder['id'] == reminder_id:
                 reminder['is_completed'] = True
-                self._save_reminders()  # Save after updating
+                self._save_reminders(reminder)  # Save after updating
                 return True
         return False

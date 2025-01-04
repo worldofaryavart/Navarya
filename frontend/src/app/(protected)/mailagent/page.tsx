@@ -34,15 +34,12 @@ const MailAgent = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showCompose, setShowCompose] = useState(false);
 
-  console.log("emails are : ", emails);
-
   useEffect(() => {
     const loadEmails = async () => {
       try {
         setLoading(true);
         setError(null);
         const fetchedEmails = await getEmails(currentFolder);
-        console.log('fetchedEmails: ', fetchedEmails);
         setEmails(fetchedEmails);
 
         // Update unread count
