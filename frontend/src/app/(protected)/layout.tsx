@@ -1,19 +1,18 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Layout from "@/components/Layout";
 import Loader from "@/components/Loader";
 
-export default function ProtectedTemplate({
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -22,7 +21,11 @@ export default function ProtectedTemplate({
   }, [user, loading, router]);
 
   if (loading) {
-    return <Loader />;
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <Loader />
+      </div>
+    );
   }
 
   if (!user) {

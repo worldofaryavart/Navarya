@@ -12,7 +12,6 @@ import { useTaskContext } from "@/context/TaskContext";
 
 const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { tasks, setTasks } = useTaskContext();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -49,7 +48,6 @@ const Tasks = () => {
       const addedTask = await addTask(taskToAdd);
       setTasks((prevTasks) => [...prevTasks, addedTask]);
       
-      // Check for reminders in the task description
       await checkTaskForReminder(newTask.description || '');
       
       handleCloseTaskModal();
@@ -85,7 +83,6 @@ const Tasks = () => {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    // setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
     try {
       await deleteTask(taskId);
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
@@ -111,12 +108,10 @@ const Tasks = () => {
       </div>
 
       <div className="grid grid-cols-3 gap-6">
-        {/* Calendar View - 2/3 width */}
         <div className="col-span-2">
           <CalendarView tasks={tasks} />
         </div>
 
-        {/* Task List - 1/3 width */}
         <div className="col-span-1">
           <TaskList
             tasks={tasks}
@@ -135,19 +130,6 @@ const Tasks = () => {
           editTask={editingTask}
         />
       )}
-
-      {/* {activeReminders.map((reminder) => (
-        <Toast
-          key={reminder.id}
-          message={`Reminder: ${reminder.title}`}
-          type={reminder.reminderTime < new Date() ? "error" : "success"}
-          onClose={() => {
-            setActiveReminders((prev) =>
-              prev.filter((r) => r.id !== reminder.id)
-            );
-          }}
-        />
-      ))} */}
     </div>
   );
 };

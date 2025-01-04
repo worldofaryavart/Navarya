@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithGoogle, signInWithEmail } from '../utils/auth';
+import { signInWithGoogle, signUpWithEmail } from '../utils/auth';
 import { FaGoogle } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type LoginProps = {
-  onLogin: () => void;
+type SignupProps = {
+  onSignup: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Signup: React.FC<SignupProps> = ({ onSignup }) => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
@@ -22,24 +23,28 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
   }, [errorMessage]);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignUp = async () => {
     try {
       await signInWithGoogle();
-      onLogin();
+      onSignup();
     } catch (error) {
-      console.error('Google sign-in error:', error);
-      setErrorMessage('An error occurred during Google sign-in. Please try again.');
+      console.error('Google sign-up error:', error);
+      setErrorMessage('An error occurred during Google sign-up. Please try again.');
     }
   };
 
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match');
+      return;
+    }
     try {
-      await signInWithEmail(email, password);
-      onLogin();
+      await signUpWithEmail(email, password);
+      onSignup();
     } catch (error) {
-      console.error('Email sign-in error:', error);
-      setErrorMessage('Invalid email or password. Please try again.');
+      console.error('Email sign-up error:', error);
+      setErrorMessage('An error occurred during sign-up. Please try again.');
     }
   };
 
@@ -52,10 +57,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         className="text-center mb-8"
       >
         <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
-          NavArya
+          Create Account
         </h1>
         <p className="text-gray-400 text-sm">
-          Your Intelligent AI Assistant
+          Join NavArya - Your Intelligent AI Assistant
         </p>
       </motion.div>
 
@@ -84,11 +89,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </AnimatePresence>
 
         <button
-          onClick={handleGoogleSignIn}
+          onClick={handleGoogleSignUp}
           className="w-full bg-white/5 border border-white/10 backdrop-blur-sm text-white rounded-lg py-3 px-4 flex items-center justify-center space-x-2 hover:bg-white/10 transition-all duration-200"
         >
           <FaGoogle className="text-white" />
-          <span>Continue with Google</span>
+          <span>Sign up with Google</span>
         </button>
 
         <div className="relative my-8">
@@ -96,11 +101,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <div className="w-full border-t border-white/10"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-[#0A0A0A] text-gray-400">or continue with email</span>
+            <span className="px-2 bg-[#0A0A0A] text-gray-400">or sign up with email</span>
           </div>
         </div>
 
-        <form onSubmit={handleEmailSignIn} className="space-y-4">
+        <form onSubmit={handleEmailSignUp} className="space-y-4">
           <div>
             <input
               type="email"
@@ -121,21 +126,31 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               required
             />
           </div>
+          <div>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm Password"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/20"
+              required
+            />
+          </div>
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-lg py-3 px-4 hover:opacity-90 transition-all duration-200"
           >
-            Sign in
+            Create Account
           </button>
         </form>
         <div className="mt-6 text-center">
           <p className="text-gray-400">
-            Don't have an account?{' '}
+            Already have an account?{' '}
             <button 
-              onClick={() => window.location.href = '/signup'}
+              onClick={() => window.location.href = '/login'}
               className="text-purple-400 hover:text-purple-300 transition-colors"
             >
-              Sign up
+              Login
             </button>
           </p>
         </div>
@@ -144,4 +159,4 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   );
 };
 
-export default Login;
+export default Signup;

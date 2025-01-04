@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import AuthWrapper from "@/components/AuthWrapper";
-import Layout from "@/components/Layout";
 import { TaskProvider } from "@/context/TaskContext";
 import { LayoutProvider } from "@/context/LayoutContext";
 

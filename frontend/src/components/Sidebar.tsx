@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ tasks }) => {
 
   return (
     <div className="fixed left-0 top-0 bottom-0 w-16 bg-gray-900 flex flex-col items-center py-4 shadow-lg z-50">
-      <Link href="/" className="mb-8">
+      <Link href="/dashboard" className="mb-8">
         <motion.div
           whileHover={{ scale: 1.1 }}
           className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600"

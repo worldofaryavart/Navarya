@@ -22,10 +22,30 @@ export const signInWithEmail = async (email: string, password: string) => {
   return signInWithEmailAndPassword(auth, email, password);
 };
 
+export const signUpWithEmail = async (email: string, password: string) => {
+  try {
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Signup failed');
+    }
+
+    // After successful signup, automatically sign in
+    await signInWithEmail(email, password);
+  } catch (error) {
+    console.error('Signup error:', error);
+    throw error;
+  }
+};
+
 export const checkAuthState = (callback: (user: User | null) => void) => {
   const auth = getAuthInstance();
   if (!auth) return () => {};
   return onAuthStateChanged(auth, callback);
 };
-
-
