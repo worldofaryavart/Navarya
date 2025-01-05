@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-md px-4">
-        <Login onLogin={() => router.push("/protected/dashboard")} />
+        <Login onLogin={() => router.push("/dashboard")} />
       </div>
     </div>
   );
