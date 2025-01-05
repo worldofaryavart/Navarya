@@ -5,7 +5,7 @@ import { useLayout } from '@/context/LayoutContext';
 import AIChatSidebar from './AIChatSidebar';
 import { AICommandHandler } from "@/utils/ai/aiCommandHandler";
 import { getTasks } from "@/utils/tasks/tasks";
-import { saveMessage, getConversationHistory, startNewConversation } from "@/utils/topic/conversationService";
+import { saveMessage, getConversationHistory, startNewConversation, getAllConversations } from "@/utils/aicontext/conversationService";
 
 interface Message {
   role: 'user' | 'ai';
@@ -126,6 +126,37 @@ const AIControlButton: React.FC = () => {
     }
   };
 
+  const handleAddClick = async () => {
+    try {
+      const success = await startNewConversation();
+      if (success) {
+        setMessages([]);
+        // You might want to add a notification here
+      }
+    } catch (error) {
+      console.error('Error starting new conversation:', error);
+    }
+  };
+
+  const handleHistoryClick = async () => {
+    // This is now handled in the AIChatSidebar component
+    console.log("Opening conversation history");
+  };
+
+  const handleConversationSelect = async (conversationId: string) => {
+    try {
+      // Get messages for the selected conversation
+      const messages = await getConversationHistory(); // You might want to add a parameter for conversationId
+      setMessages(messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'ai',
+        content: msg.content,
+        timestamp: msg.timestamp
+      })));
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+    }
+  };
+
   return (
     <>
       {/* Floating AI Control Button */}
@@ -153,6 +184,9 @@ const AIControlButton: React.FC = () => {
         isListening={isListening}
         onSubmit={handleSubmit}
         onSpeechRecognition={handleSpeechRecognition}
+        onAddClick={handleAddClick}
+        onHistoryClick={handleHistoryClick}
+        onConversationSelect={handleConversationSelect}
       />
     </>
   );

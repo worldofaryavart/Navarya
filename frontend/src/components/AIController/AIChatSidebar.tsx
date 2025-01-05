@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { X, Send, Mic, Loader2, HelpCircle, List, CheckCircle, Clock, Activity } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { X, Send, Mic, Loader2, HelpCircle, List, CheckCircle, Clock, Activity, Plus, PlusIcon, HistoryIcon } from 'lucide-react';
+import { ConversationInfo, getAllConversations } from '@/utils/aicontext/conversationService';
 
 interface Message {
   role: 'user' | 'ai';
@@ -18,6 +19,9 @@ interface AIChatSidebarProps {
   isListening: boolean;
   onSubmit: () => void;
   onSpeechRecognition: () => void;
+  onAddClick: () => void;
+  onHistoryClick: () => void;
+  onConversationSelect?: (conversationId: string) => void;
 }
 
 const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
@@ -30,8 +34,17 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   isListening,
   onSubmit,
   onSpeechRecognition,
+  onAddClick,
+  onHistoryClick,
+  onConversationSelect
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [conversations, setConversations] = useState<ConversationInfo[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hasMoreConversations, setHasMoreConversations] = useState(false);
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -211,6 +224,49 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     );
   };
 
+  const handleAddClick = () => {
+    onAddClick();
+  };
+
+  const handleHistoryClick = async () => {
+    setShowHistory(true);
+    setIsLoadingHistory(true);
+    try {
+      const response = await getAllConversations();
+      setConversations(response.conversations);
+      setHasMoreConversations(response.hasMore);
+      setLastDoc(response.lastDoc);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+    onHistoryClick();
+  };
+
+  const loadMoreConversations = async () => {
+    if (!lastDoc || isLoadingMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const response = await getAllConversations(6, lastDoc);
+      setConversations(prev => [...prev, ...response.conversations]);
+      setHasMoreConversations(response.hasMore);
+      setLastDoc(response.lastDoc);
+    } catch (error) {
+      console.error('Error loading more conversations:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleConversationSelect = (conversationId: string) => {
+    if (onConversationSelect) {
+      onConversationSelect(conversationId);
+      setShowHistory(false);
+    }
+  };
+
   return (
     <div 
       className={`
@@ -224,100 +280,187 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/95 backdrop-blur-sm sticky top-0">
         <div className="flex items-center space-x-3">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-          <h2 className="text-xl font-semibold text-white">AI Assistant</h2>
+          <h2 className="text-xl font-semibold text-white">
+            {showHistory ? 'Conversation History' : 'AI Assistant'}
+          </h2>
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-        >
-          <X size={20} className="text-gray-400" />
-        </button>
+        <div className="flex space-x-2">
+          {!showHistory && (
+            <>
+              <button
+                className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+                onClick={handleAddClick}
+              >
+                <PlusIcon size={20} className="text-gray-400" />
+              </button>
+              <button
+                className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+                onClick={handleHistoryClick}
+              >
+                <HistoryIcon size={20} className="text-gray-400" />
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => showHistory ? setShowHistory(false) : onClose()}
+            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <X size={20} className="text-gray-400" />
+          </button>
+        </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${
-              message.role === 'user' ? 'justify-end' : 'justify-start'
-            } animate-fadeIn`}
-          >
-            <div
-              className={`
-                max-w-[90%] p-3 rounded-lg
-                ${message.role === 'user'
-                  ? 'bg-purple-600 text-white ml-12'
-                  : 'bg-gray-800/75 text-gray-200 mr-12'}
-                shadow-lg backdrop-blur-sm
-              `}
-            >
-              {renderMessageContent(message)}
-              <div className="mt-2 flex items-center justify-end space-x-2">
-                <span className="text-xs opacity-50">
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </span>
-                {message.role === 'user' && (
-                  <div className="w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center">
-                    <span className="text-[10px]">U</span>
+      {/* Conversation History View */}
+      {showHistory ? (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 size={24} className="animate-spin text-purple-500" />
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="text-center text-gray-400 mt-8">
+              No conversations found
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {conversations.map((conv) => (
+                  <div
+                    key={conv.id}
+                    onClick={() => handleConversationSelect(conv.id)}
+                    className="bg-gray-800/50 p-4 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Clock size={16} className="text-gray-400" />
+                        <span className="text-sm text-gray-400">
+                          {new Date(conv.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {conv.active && (
+                        <span className="px-2 py-1 bg-purple-900/50 text-purple-400 text-xs rounded-full">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-300 text-sm line-clamp-2">
+                      {conv.firstMessage || 'No messages'}
+                    </p>
                   </div>
-                )}
-                {message.role === 'ai' && (
-                  <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span className="text-[10px]">A</span>
+                ))}
+              </div>
+              
+              {hasMoreConversations && (
+                <div className="flex justify-center mt-4">
+                  <button
+                    onClick={loadMoreConversations}
+                    disabled={isLoadingMore}
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors flex items-center space-x-2"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Loading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Show More</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                } animate-fadeIn`}
+              >
+                <div
+                  className={`
+                    max-w-[90%] p-3 rounded-lg
+                    ${message.role === 'user'
+                      ? 'bg-purple-600 text-white ml-12'
+                      : 'bg-gray-800/75 text-gray-200 mr-12'}
+                    shadow-lg backdrop-blur-sm
+                  `}
+                >
+                  {renderMessageContent(message)}
+                  <div className="mt-2 flex items-center justify-end space-x-2">
+                    <span className="text-xs opacity-50">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
+                    {message.role === 'user' && (
+                      <div className="w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center">
+                        <span className="text-[10px]">U</span>
+                      </div>
+                    )}
+                    {message.role === 'ai' && (
+                      <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
+                        <span className="text-[10px]">A</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div className="p-4 border-t border-gray-800 bg-gray-900/95 backdrop-blur-sm">
+            <div className="relative">
+              <textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (inputValue.trim() && !isProcessing) {
+                      onSubmit();
+                    }
+                  }
+                }}
+                placeholder="Type your message..."
+                className="w-full bg-gray-800/75 text-white rounded-lg p-3 pr-24 min-h-[50px] max-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 backdrop-blur-sm"
+                rows={1}
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                <button
+                  onClick={onSpeechRecognition}
+                  disabled={isProcessing || isListening}
+                  className={`
+                    p-2 rounded-full transition-colors
+                    ${isListening ? 'bg-red-600 text-white' : 'hover:bg-gray-700 text-gray-400'}
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                  `}
+                >
+                  <Mic size={20} />
+                </button>
+                <button
+                  onClick={onSubmit}
+                  disabled={!inputValue.trim() || isProcessing}
+                  className="p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Send size={20} />
+                  )}
+                </button>
               </div>
             </div>
           </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <div className="p-4 border-t border-gray-800 bg-gray-900/95 backdrop-blur-sm">
-        <div className="relative">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (inputValue.trim() && !isProcessing) {
-                  onSubmit();
-                }
-              }
-            }}
-            placeholder="Type your message..."
-            className="w-full bg-gray-800/75 text-white rounded-lg p-3 pr-24 min-h-[50px] max-h-[150px] resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 backdrop-blur-sm"
-            rows={1}
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-            <button
-              onClick={onSpeechRecognition}
-              disabled={isProcessing || isListening}
-              className={`
-                p-2 rounded-full transition-colors
-                ${isListening ? 'bg-red-600 text-white' : 'hover:bg-gray-700 text-gray-400'}
-                disabled:opacity-50 disabled:cursor-not-allowed
-              `}
-            >
-              <Mic size={20} />
-            </button>
-            <button
-              onClick={onSubmit}
-              disabled={!inputValue.trim() || isProcessing}
-              className="p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isProcessing ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <Send size={20} />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };
