@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { signOut } from 'firebase/auth';
-import { auth } from '@/utils/firebase';
+import { auth } from '@/utils/config/firebase.config';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface SidebarItem {
@@ -14,15 +14,7 @@ interface SidebarItem {
   icon: React.ReactNode;
 }
 
-interface SidebarProps {
-  tasks: any[];
-}
-
-interface Task {
-  // Add task properties here if needed
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ tasks }) => {
+const Sidebar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const user = auth?.currentUser;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/utils/firebase'; // Adjust this import based on your Firebase config file location
+import { auth } from '@/utils/config/firebase.config'; // Adjust this import based on your Firebase config file location
 
 interface AuthState {
   user: User | null;
@@ -14,7 +14,7 @@ export const useAuth = () => {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth!,(user) => {
+    const unsubscribe = onAuthStateChanged(auth!, (user) => {
       setAuthState({
         user,
         loading: false,

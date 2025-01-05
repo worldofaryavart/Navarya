@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { X, Send, Paperclip, Bot } from 'lucide-react';
 import { EmailDraft, Email } from '@/types/mailTypes';
-import { sendEmail, generateEmailResponse } from '@/utils/mailService';
+import { sendEmail, generateEmailResponse } from '@/utils/mail/mailService';
 
 interface ComposeEmailProps {
   onClose: () => void;

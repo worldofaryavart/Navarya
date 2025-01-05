@@ -5,7 +5,6 @@ import Sidebar from "./Sidebar";
 import AIControlButton from "../AIController/AIControlButton";
 import Header from "./Header";
 import { Task } from "@/types/taskTypes";
-import { EVENTS, getTasks } from "@/utils/stateManager";
 import { useLayout } from "@/context/LayoutContext";
 
 interface LayoutProps {
@@ -13,28 +12,11 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
   const { isSidebarOpen } = useLayout();
-
-  useEffect(() => {
-    // Initial load
-    getTasks().then(setTasks);
-
-    // Listen for updates
-    const handleTasksUpdate = (event: CustomEvent<Task[]>) => {
-      setTasks(event.detail);
-    };
-
-    window.addEventListener(EVENTS.TASKS_UPDATED, handleTasksUpdate as EventListener);
-
-    return () => {
-      window.removeEventListener(EVENTS.TASKS_UPDATED, handleTasksUpdate as EventListener);
-    };
-  }, []);
 
   return (
     <div className="flex h-screen">
-      <Sidebar tasks={tasks} />
+      <Sidebar />
       <div 
         className={`
           flex flex-col flex-grow overflow-hidden ml-16

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Email, EmailFolder, EmailLabel } from '@/types/mailTypes';
 import { Loader2, Search, Plus, Inbox, Send, Archive, Trash, Tag, Star, LayoutDashboard } from 'lucide-react';
-import { getEmails, markAsRead } from '@/utils/mailService';
+import { getEmails, markAsRead } from '@/utils/mail/mailService';
 import ComposeEmail from '@/components/mail/ComposeEmail';
 import EmailList from '@/components/mail/EmailList';
 import EmailView from '@/components/mail/EmailView';

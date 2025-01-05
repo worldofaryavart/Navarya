@@ -1,5 +1,5 @@
 import { Reminder } from "@/types/reminderTypes";
-import { getApiUrl } from './api.config';
+import { getApiUrl } from '@/utils/config/api.config';
 
 export const checkForReminder = async (content: string) => {
   try {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Reminder } from '@/types/reminderTypes';
-import { checkForReminder, getReminders, completeReminder } from '@/utils/reminderApi';
+import { checkForReminder, getReminders, completeReminder } from '@/utils/reminder/reminderService';
 
 export const useReminderSystem = () => {
   const [reminders, setReminders] = useState<Reminder[]>([]);

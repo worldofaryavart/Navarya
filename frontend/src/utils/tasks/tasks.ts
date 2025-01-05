@@ -1,6 +1,6 @@
 import { Task, NewTaskInput } from "@/types/taskTypes";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
-import { db, auth } from "./firebase";
+import { db, auth } from '../config/firebase.config';
 
 export const addTask = async (task: NewTaskInput): Promise<Task> => {
     try {

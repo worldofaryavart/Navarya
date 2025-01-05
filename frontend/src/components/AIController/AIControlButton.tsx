@@ -3,9 +3,9 @@ import { Sparkles } from "lucide-react";
 import { useTaskContext } from '@/context/TaskContext';
 import { useLayout } from '@/context/LayoutContext';
 import AIChatSidebar from './AIChatSidebar';
-import { AICommandHandler } from "@/utils/aiCommandHandler";
-import { getTasks } from "@/utils/tasks";
-import { saveMessage, getConversationHistory, startNewConversation } from "@/utils/conversationService";
+import { AICommandHandler } from "@/utils/ai/aiCommandHandler";
+import { getTasks } from "@/utils/tasks/tasks";
+import { saveMessage, getConversationHistory, startNewConversation } from "@/utils/topic/conversationService";
 
 interface Message {
   role: 'user' | 'ai';

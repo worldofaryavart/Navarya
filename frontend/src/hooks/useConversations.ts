@@ -1,5 +1,5 @@
 import { Conversation } from "@/types/types";
-import { fetchConversations } from "@/utils/topicService";
+import { fetchConversations } from "@/utils/topic/topicService";
 import { User } from "firebase/auth";
 import { useEffect, useState } from "react";
 

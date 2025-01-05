@@ -10,7 +10,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { Message, MessageType, SenderType } from "@/types/types";
-import { addMessage, fetchExistingMessages } from "@/utils/topicService";
+import { addMessage, fetchExistingMessages } from "@/utils/topic/topicService";
 
 interface LearningSpaceProps {
   currentConversationId: string;

@@ -1,4 +1,5 @@
-import { db, auth } from './firebase';
+import { db,auth } from '../config/firebase.config';
+
 import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, DocumentData, updateDoc, doc } from 'firebase/firestore';
 
 export interface Message {

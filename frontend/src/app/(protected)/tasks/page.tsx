@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import CalendarView from "@/components/TaskScheduler/CalendarView";
 import TaskFormModal from "@/components/TaskScheduler/TaskFormModal";
 import TaskList from "@/components/TaskScheduler/TaskList";
-import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks";
+import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
 import Loader from "@/components/commonComp/Loader";
 import { useReminderSystem } from "@/hooks/useReminderSystem";

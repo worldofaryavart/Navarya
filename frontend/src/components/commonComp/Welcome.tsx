@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NewConversationModal from '../Learning/NewConversationModal';
 import { useAuth } from '@/hooks/useAuth';
-import { createConversation } from '@/utils/topicService';
+import { createConversation } from '@/utils/topic/topicService';
 import { useConversations } from '@/hooks/useConversations';
 import { Conversation } from '@/types/types';
 import { useRouter } from 'next/navigation';

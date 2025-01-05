@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithGoogle, signInWithEmail } from '../utils/auth';
+import { signInWithGoogle, signInWithEmail } from '@/utils/auth/auth';
 import { FaGoogle } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 

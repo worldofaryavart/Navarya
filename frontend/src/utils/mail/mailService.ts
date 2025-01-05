@@ -1,10 +1,10 @@
-import { db, auth } from './firebase';
+import { db, auth } from '../config/firebase.config';
 import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, updateDoc, doc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { Email, EmailDraft, Meeting } from '@/types/mailTypes';
 import { Task } from '@/types/taskTypes';
-import { addTask } from './tasks';
+import { addTask } from '../tasksutil/tasks';
 import axios from 'axios';
-import { getApiUrl } from './api.config';
+import { getApiUrl } from '@/utils/config/api.config';
 
 // Helper function to get auth token
 export const getAuthToken = async () => {

@@ -1,7 +1,7 @@
-import { db } from './firebase';
 import { collection , addDoc, updateDoc, serverTimestamp, getDoc, orderBy, query, where, limit, getDocs, doc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { Conversation, Message, MessageType, SenderType } from '@/types/types';
+import { db } from '../config/firebase.config';
 
 
 async function createConversation(user: User, initialMessage: string, convTitle: string): Promise<Conversation | null>{

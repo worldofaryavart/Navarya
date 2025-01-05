@@ -1,6 +1,5 @@
 import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth';
-import { app } from './firebase';
-import { useEffect, useState } from 'react';
+import { app } from '../config/firebase.config';
 
 const getAuthInstance = () => {
   if (typeof window !== 'undefined') {

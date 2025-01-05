@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { getAuthInstance } from '@/utils/firebase';
+import { getAuthInstance } from '@/utils/config/firebase.config';
 
 export async function POST(request: Request) {
   try {

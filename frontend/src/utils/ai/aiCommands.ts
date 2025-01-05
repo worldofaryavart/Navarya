@@ -1,6 +1,3 @@
-// src/utils/aiCommands.ts
-import { Task } from "@/types/taskTypes";
-
 export type AICommandType = 
   | 'CREATE_TASK'
   | 'UPDATE_TASK'

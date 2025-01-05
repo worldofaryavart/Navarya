@@ -1,6 +1,6 @@
 import { Task, NewTaskInput, TaskStatus, TaskPriority } from '@/types/taskTypes';
-import { addTask, deleteTask, getTasks, updateTask } from './tasks';
-import { getApiUrl } from './api.config';
+import { addTask, deleteTask, getTasks, updateTask } from '@/utils/tasks/tasks';
+import { getApiUrl } from '../config/api.config';
 
 export type CommandType = 
   | 'CREATE_TASK'
