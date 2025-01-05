@@ -20,9 +20,13 @@ export const useReminderSystem = () => {
   }, []);
 
   const fetchReminders = useCallback(async () => {
-    const fetchedReminders = await getReminders();
-    setReminders(fetchedReminders);
-    checkForDueReminders(fetchedReminders);
+    try {
+      const fetchedReminders = await getReminders();
+      setReminders(fetchedReminders);
+      checkForDueReminders(fetchedReminders);
+    } catch (error) {
+      console.error('Error fetching reminders:', error);
+    }
   }, [checkForDueReminders]);
 
   useEffect(() => {
@@ -42,10 +46,19 @@ export const useReminderSystem = () => {
   };
 
   const handleCompleteReminder = async (reminderId: number) => {
-    const success = await completeReminder(reminderId);
-    if (success) {
-      setReminders(prev => prev.filter(r => r.id !== reminderId));
-      console.log('Reminder marked as completed');
+    try {
+      await completeReminder(reminderId);
+      // Update local state to remove the completed reminder
+      setReminders(prevReminders => 
+        prevReminders.map(reminder => 
+          reminder.id === reminderId 
+            ? { ...reminder, is_completed: true }
+            : reminder
+        )
+      );
+    } catch (error) {
+      console.error('Error completing reminder:', error);
+      throw error;
     }
   };
 

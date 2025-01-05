@@ -28,21 +28,28 @@ export const checkForReminder = async (content: string) => {
 export const getReminders = async (): Promise<Reminder[]> => {
   try {
     const response = await fetch(getApiUrl('/api/reminders'));
+    if (!response.ok) throw new Error('Failed to fetch reminders');
     return await response.json();
   } catch (error) {
     console.error('Error fetching reminders:', error);
-    return [];
+    throw error;
   }
 };
 
-export const completeReminder = async (reminderId: number): Promise<boolean> => {
+export const completeReminder = async (reminderId: number): Promise<void> => {
   try {
     const response = await fetch(getApiUrl(`/api/reminders/${reminderId}/complete`), {
       method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
-    return response.ok;
+    
+    if (!response.ok) {
+      throw new Error('Failed to complete reminder');
+    }
   } catch (error) {
     console.error('Error completing reminder:', error);
-    return false;
+    throw error;
   }
 };

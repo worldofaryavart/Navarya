@@ -31,7 +31,7 @@ const TaskList: React.FC<TaskListProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Task["status"] | "All">("All");
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
-  const { reminders } = useReminderSystem();
+  const { reminders, handleCompleteReminder } = useReminderSystem();
 
   // Get reminder for a specific task
   const getTaskReminder = (task: Task) => {
@@ -138,6 +138,15 @@ const TaskList: React.FC<TaskListProps> = ({
     );
   };
 
+  const handleMarkAsRead = async (reminder: Reminder) => {
+    try {
+      await handleCompleteReminder(reminder.id);
+      setSelectedReminder(null);
+    } catch (error) {
+      console.error('Error marking reminder as read:', error);
+    }
+  };
+
   return (
     <div className="bg-gray-900 shadow-xl rounded-lg overflow-hidden border border-gray-800">
       <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
@@ -217,16 +226,24 @@ const TaskList: React.FC<TaskListProps> = ({
                         }`} />
                       </button>
                       {selectedReminder && selectedReminder.task.includes(task.title) && (
-                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg p-3 z-10 border border-gray-700">
+                        <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-lg p-3 z-10 border border-gray-700">
                           <div className="text-sm text-gray-300">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Clock className="w-4 h-4 text-yellow-400" />
-                              <span>Reminder</span>
-                              {selectedReminder.is_due && (
-                                <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full">
-                                  Due
-                                </span>
-                              )}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <Clock className="w-4 h-4 text-yellow-400" />
+                                <span>Reminder</span>
+                                {selectedReminder.is_due && (
+                                  <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full">
+                                    Due
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => setSelectedReminder(null)}
+                                className="p-1 hover:bg-gray-700 rounded-full"
+                              >
+                                <X className="w-3 h-3 text-gray-400" />
+                              </button>
                             </div>
                             <p className="text-xs text-gray-400">
                               {formatReminderTime(selectedReminder)}
@@ -234,13 +251,16 @@ const TaskList: React.FC<TaskListProps> = ({
                             <p className="text-xs text-gray-400 mt-1">
                               {selectedReminder.task}
                             </p>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                onClick={() => handleMarkAsRead(selectedReminder)}
+                                className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md transition-colors duration-200 flex items-center space-x-1"
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                                <span>Mark as complete</span>
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => setSelectedReminder(null)}
-                            className="absolute top-1 right-1 p-1 hover:bg-gray-700 rounded-full"
-                          >
-                            <X className="w-3 h-3 text-gray-400" />
-                          </button>
                         </div>
                       )}
                     </div>
