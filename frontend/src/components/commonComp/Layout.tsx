@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { FiMenu } from "react-icons/fi";
 import Sidebar from "./Sidebar";
-import AIControlButton from "./AIControlButton";
+import AIControlButton from "../AIController/AIControlButton";
 import Header from "./Header";
 import { Task } from "@/types/taskTypes";
 import { EVENTS, getTasks } from "@/utils/stateManager";

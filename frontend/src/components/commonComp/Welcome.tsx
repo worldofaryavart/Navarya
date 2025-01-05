@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import NewConversationModal from './NewConversationModal';
+import NewConversationModal from '../Learning/NewConversationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { createConversation } from '@/utils/topicService';
 import { useConversations } from '@/hooks/useConversations';

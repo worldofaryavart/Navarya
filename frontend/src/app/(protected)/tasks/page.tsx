@@ -6,7 +6,7 @@ import TaskFormModal from "@/components/TaskScheduler/TaskFormModal";
 import TaskList from "@/components/TaskScheduler/TaskList";
 import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
-import Loader from "@/components/Loader";
+import Loader from "@/components/commonComp/Loader";
 import { useReminderSystem } from "@/hooks/useReminderSystem";
 import { useTaskContext } from "@/context/TaskContext";
 

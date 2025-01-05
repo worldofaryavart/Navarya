@@ -1,6 +1,6 @@
 "use client";
 
-import WelcomeComponent from "@/components/Welcome";
+import WelcomeComponent from "@/components/commonComp/Welcome";
 
 export default function DashboardPage() {
   return (

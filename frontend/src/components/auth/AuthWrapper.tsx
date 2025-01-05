@@ -3,7 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Loader from "./Loader";
+import Loader from "../commonComp/Loader";
 
 const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);

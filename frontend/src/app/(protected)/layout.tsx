@@ -3,8 +3,8 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import Layout from "@/components/Layout";
-import Loader from "@/components/Loader";
+import Layout from "@/components/commonComp/Layout";
+import Loader from "@/components/commonComp/Loader";
 
 export default function ProtectedLayout({
   children,

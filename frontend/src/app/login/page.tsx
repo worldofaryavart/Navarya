@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
-import Login from "@/components/Login";
+import Login from "@/components/auth/Login";
 import { useAuth } from "@/hooks/useAuth";
-import Loader from "@/components/Loader";
+import Loader from "@/components/commonComp/Loader";
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
