@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MoreVertical,
   Edit2,
@@ -8,8 +8,12 @@ import {
   CheckCircle,
   Clock,
   Activity,
+  Bell,
+  X,
 } from "lucide-react";
 import { Task } from "@/types/taskTypes";
+import { Reminder } from "@/types/reminderTypes";
+import { useReminderSystem } from "@/hooks/useReminderSystem";
 
 interface TaskListProps {
   tasks: Task[];
@@ -26,6 +30,44 @@ const TaskList: React.FC<TaskListProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Task["status"] | "All">("All");
+  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
+  const { reminders } = useReminderSystem();
+
+  // Get reminder for a specific task
+  const getTaskReminder = (task: Task) => {
+    // Match reminder based on task title or description
+    return reminders.find(reminder => 
+      !reminder.is_completed && 
+      (reminder.task.includes(task.title) || 
+       (task.description && reminder.task.includes(task.description)))
+    );
+  };
+
+  // Format date
+  const formatDate = (date: any) => {
+    if (!date) return 'No due date';
+    
+    // Handle Firestore Timestamp
+    if (typeof date === 'object' && date.seconds) {
+      return new Date(date.seconds * 1000).toLocaleDateString();
+    }
+    
+    // Handle string date
+    return new Date(date).toLocaleDateString();
+  };
+
+  // Format reminder time
+  const formatReminderTime = (reminder: Reminder) => {
+    if (!reminder.reminder_time) return '';
+    const time = new Date(reminder.reminder_time);
+    return time.toLocaleString('en-US', { 
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true,
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   const filteredTasks = tasks
     .sort((a, b) => {
@@ -96,19 +138,6 @@ const TaskList: React.FC<TaskListProps> = ({
     );
   };
 
-  // Format date
-  const formatDate = (date: any) => {
-    if (!date) return 'No due date';
-    
-    // Handle Firestore Timestamp
-    if (typeof date === 'object' && date.seconds) {
-      return new Date(date.seconds * 1000).toLocaleDateString();
-    }
-    
-    // Handle string date
-    return new Date(date).toLocaleDateString();
-  };
-
   return (
     <div className="bg-gray-900 shadow-xl rounded-lg overflow-hidden border border-gray-800">
       <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
@@ -174,6 +203,48 @@ const TaskList: React.FC<TaskListProps> = ({
                   >
                     <Edit2 className="w-4 h-4 text-blue-400" />
                   </button>
+                  {getTaskReminder(task) && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setSelectedReminder(getTaskReminder(task) || null)}
+                        className={`p-1 hover:bg-gray-700 rounded-full transition-colors duration-200 ${
+                          getTaskReminder(task)?.is_due ? 'animate-pulse' : ''
+                        }`}
+                        title="View reminder"
+                      >
+                        <Bell className={`w-4 h-4 ${
+                          getTaskReminder(task)?.is_due ? 'text-red-400' : 'text-yellow-400'
+                        }`} />
+                      </button>
+                      {selectedReminder && selectedReminder.task.includes(task.title) && (
+                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg p-3 z-10 border border-gray-700">
+                          <div className="text-sm text-gray-300">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Clock className="w-4 h-4 text-yellow-400" />
+                              <span>Reminder</span>
+                              {selectedReminder.is_due && (
+                                <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full">
+                                  Due
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              {formatReminderTime(selectedReminder)}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {selectedReminder.task}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setSelectedReminder(null)}
+                            className="absolute top-1 right-1 p-1 hover:bg-gray-700 rounded-full"
+                          >
+                            <X className="w-3 h-3 text-gray-400" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

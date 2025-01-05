@@ -1,6 +1,14 @@
 import { Reminder } from "@/types/reminderTypes";
 import { getApiUrl } from '@/utils/config/api.config';
 
+// export interface Reminder {
+//   id: number;
+//   taskId?: string;
+//   reminderTime: string;
+//   message: string;
+//   completed: boolean;
+// }
+
 export const checkForReminder = async (content: string) => {
   try {
     const response = await fetch(getApiUrl('/api/check-reminder'), {
