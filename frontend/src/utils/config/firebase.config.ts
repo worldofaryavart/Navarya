@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -27,6 +27,24 @@ export const getAuthInstance = () => {
     auth = getAuth(app);
   }
   return auth;
+};
+
+// Function to wait for auth to initialize
+export const waitForAuth = () => {
+  return new Promise((resolve, reject) => {
+    if (!auth) {
+      reject(new Error('Auth not initialized'));
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, 
+      (user) => {
+        unsubscribe();
+        resolve(user);
+      },
+      reject
+    );
+  });
 };
 
 export { app, auth, db };

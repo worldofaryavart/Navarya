@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Email } from '@/types/mailTypes';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { getAuthToken, toggleImportant, deleteEmail, handleForward, sendReply, sendForward, ReplyDraft, ForwardDraft } from '@/utils/mailutil/mailService';
+import { getAuthToken, toggleImportant, deleteEmail, handleForward, sendReply, sendForward, ReplyDraft, ForwardDraft } from '@/utils/mail/mailService';
 import { ChevronLeft, Star, Reply, MoreVertical, Download, Trash, Forward, Mail, FileText, Calendar, Link, Send, ChevronRight } from 'lucide-react';
 import EmailContentRenderer from './EmailContentRenderer';
 import PreviewEmail from './PreviewEmail';

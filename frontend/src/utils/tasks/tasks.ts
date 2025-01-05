@@ -1,6 +1,6 @@
 import { Task, NewTaskInput } from "@/types/taskTypes";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
-import { db, auth } from '../config/firebase.config';
+import { db, auth, getAuthInstance, waitForAuth } from '../config/firebase.config';
 
 export const addTask = async (task: NewTaskInput): Promise<Task> => {
     try {
@@ -28,7 +28,14 @@ export const addTask = async (task: NewTaskInput): Promise<Task> => {
 
 export const getTasks = async () => {
     try {
-        const user = auth?.currentUser;
+        const auth = getAuthInstance();
+        if (!auth) throw new Error('Auth not initialized');
+        
+        // Wait for auth to initialize
+        await waitForAuth();
+        
+        const user = auth.currentUser;
+        console.log("user is :", user);
         if (!user) throw new Error('Not authenticated');
 
         const tasksCollection = collection(db!, 'tasks');
