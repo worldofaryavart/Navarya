@@ -130,7 +130,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </form>
         <div className="mt-6 text-center">
           <p className="text-gray-400">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <button 
               onClick={() => window.location.href = '/signup'}
               className="text-purple-400 hover:text-purple-300 transition-colors"
