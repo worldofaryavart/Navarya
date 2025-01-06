@@ -2,14 +2,6 @@ import { getApiUrl } from '../config/api.config';
 import { TaskCommandHandler } from './taskcommands/taskHandler';
 import { ReminderCommandHandler } from './reminderCommands/reminderCommandHandler';
 
-export type CommandType = 
-  | 'CREATE_TASK'
-  | 'DELETE_TASK'
-  | 'UPDATE_TASK'
-  | 'LIST_TASKS'
-  | 'HELP'
-  | 'UNKNOWN';
-
 interface CommandResult {
   success: boolean;
   message: string;
@@ -39,7 +31,7 @@ export class AICommandHandler {
       console.log("Sending request with input:", input);
       
       // Send all other commands to AI processor
-      const aiResponse = await fetch(getApiUrl('/api/process-task'), {
+      const aiResponse = await fetch(getApiUrl('/api/process-command'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

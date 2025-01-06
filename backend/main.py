@@ -3,22 +3,29 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+import os
+from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import auth, credentials, firestore
 import io
 import mimetypes
 from io import BytesIO
 
-# Initialize Firebase Admin first
-cred = credentials.Certificate('./firebase-credentials.json')
+# Load environment variables
+load_dotenv()
+
+# Initialize Firebase
+cred = credentials.Certificate("firebase-credentials.json")
 default_app = firebase_admin.initialize_app(cred)
 
-# Initialize Firestore
+# Get Firestore database
 db = firestore.client()
 
 # Now import services that depend on Firebase
 from services.reminder_service import ReminderService
 from services.task_processor import TaskProcessor
+from services.processor_factory import ProcessorFactory
+
 reminder_service = ReminderService(db)
 
 app = FastAPI()
@@ -68,12 +75,15 @@ async def check_reminder(task: TaskBase):
         return {"has_reminder": True, "reminder": reminder}
     return {"has_reminder": False}
 
-@app.post("/api/process-task")
-async def process_task(task: TaskBase):
-    """Process natural language task requests using AI"""
+@app.post("/api/process-command")
+async def process_command(task: TaskBase):
+    """Process natural language commands using AI"""
     try:
-        result = await task_processor.process_message(task.content)
-        print("Processing result:", result)  # Debug log
+        processor_factory = ProcessorFactory(db)
+        processor = await processor_factory.get_processor(task.content)
+        
+        result = await processor.process_message(task.content)
+        print("Processing result:", result)
         
         # If this is a create_task action, create a reminder
         if result.get("success") and result.get("action") == "create_task" and result.get("data"):
@@ -87,7 +97,7 @@ async def process_task(task: TaskBase):
         
         return result
     except Exception as e:
-        print("Error processing task:", str(e))  # Debug log
+        print("Error processing command:", str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/reminders")
