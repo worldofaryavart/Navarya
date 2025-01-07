@@ -30,7 +30,7 @@ class BaseCommandProcessor(ABC):
         """Process the AI response"""
         pass
 
-    async def process_message(self, message: str) -> Dict[Any, Any]:
+    async def process_message(self, message: str, session_context: Dict = None, persistent_context: Dict = None, current_time: str = None) -> Dict[Any, Any]:
         try:
             current_time = time.time()
             
@@ -40,6 +40,13 @@ class BaseCommandProcessor(ABC):
                 
             print("Received message:", message)
             self.last_api_call = current_time
+
+            # Add context to prompt if available
+            context_prompt = ""
+            if session_context:
+                context_prompt += f"\nSession Context: {json.dumps(session_context)}"
+            if persistent_context:
+                context_prompt += f"\nPersistent Context: {json.dumps(persistent_context)}"
 
             current_date = datetime.now().strftime("%Y-%m-%d")
             combined_prompt = f"""System: First, classify the user's intent using this format:
@@ -53,9 +60,11 @@ INTENT CLASSIFICATION:
 Then, process the command according to this prompt:
 {self.get_system_prompt()}
 
-Current date: {current_date}
+Current Date: {current_date}
+{context_prompt}
 
-Please provide both the intent classification and command processing in your response, clearly separated."""
+User Message: {message}
+"""
 
             response = requests.post(
                 "https://api.together.xyz/v1/chat/completions",

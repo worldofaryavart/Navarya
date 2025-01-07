@@ -25,8 +25,10 @@ db = firestore.client()
 from services.reminder_service import ReminderService
 from services.task_processor import TaskProcessor
 from services.processor_factory import ProcessorFactory
+from services.context_manager import ContextManager
 
 reminder_service = ReminderService(db)
+context_manager = ContextManager(db)
 
 app = FastAPI()
 
@@ -57,6 +59,7 @@ async def verify_token(request: Request):
 # Task Models
 class TaskBase(BaseModel):
     content: str
+    context: Optional[dict] = None
 
 class TaskCreate(TaskBase):
     pass
@@ -80,21 +83,8 @@ async def process_command(task: TaskBase):
     """Process natural language commands using AI"""
     try:
         processor_factory = ProcessorFactory(db)
-        processor = await processor_factory.get_processor(task.content)
-        
-        result = await processor.process_message(task.content)
+        result = await processor_factory.process_with_context(task.content, task.context)
         print("Processing result:", result)
-        
-        # If this is a create_task action, create a reminder
-        if result.get("success") and result.get("action") == "create_task" and result.get("data"):
-            task_data = result["data"]
-            reminder = reminder_service.create_reminder(
-                task_data["title"],
-                task_data.get("dueDate", None)
-            )
-            if reminder:
-                result["data"]["reminder"] = reminder
-        
         return result
     except Exception as e:
         print("Error processing command:", str(e))
@@ -111,6 +101,46 @@ async def complete_reminder(reminder_id: int):
     if reminder_service.mark_completed(reminder_id):
         return {"message": "Reminder marked as completed"}
     raise HTTPException(status_code=404, detail="Reminder not found")
+
+# New endpoints for context management
+@app.get("/api/context/{context_type}")
+async def get_context(context_type: str, request: Request):
+    """Get user context by type"""
+    try:
+        user_id = request.headers.get("user-id", "anonymous")
+        context = await context_manager.get_context(user_id, context_type)
+        if context is None:
+            raise HTTPException(status_code=404, detail="Context not found")
+        return context
+    except Exception as e:
+        print(f"Error in get_context: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/context/{context_type}")
+async def store_context(context_type: str, data: dict, request: Request):
+    """Store user context by type"""
+    try:
+        user_id = request.headers.get("user-id", "anonymous")
+        success = await context_manager.store_context(user_id, context_type, data)
+        if success:
+            return {"message": "Context stored successfully"}
+        raise HTTPException(status_code=500, detail="Failed to store context")
+    except Exception as e:
+        print(f"Error in store_context: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/context/{context_type}")
+async def clear_context(context_type: str, request: Request):
+    """Clear user context by type"""
+    try:
+        user_id = request.headers.get("user-id", "anonymous")
+        success = await context_manager.clear_context(user_id, context_type)
+        if success:
+            return {"message": "Context cleared successfully"}
+        raise HTTPException(status_code=500, detail="Failed to clear context")
+    except Exception as e:
+        print(f"Error in clear_context: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

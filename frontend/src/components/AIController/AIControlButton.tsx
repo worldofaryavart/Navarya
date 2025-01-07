@@ -6,6 +6,8 @@ import AIChatSidebar from './AIChatSidebar';
 import { AICommandHandler } from "@/utils/ai/aiCommandHandler";
 import { getTasks } from "@/utils/tasks/tasks";
 import { saveMessage, getConversationHistory, startNewConversation, getAllConversations } from "@/utils/aicontext/conversationService";
+import { auth } from '@/utils/config/firebase.config';
+import { getApiUrl } from "@/utils/config/api.config";
 
 interface Message {
   role: 'user' | 'ai';
@@ -13,13 +15,152 @@ interface Message {
   timestamp: Date;
 }
 
+interface ContextData {
+  session?: any;
+  persistent?: any;
+  local?: any;
+}
+
 const AIControlButton: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [contextData, setContextData] = useState<ContextData>({});
   const { tasks, setTasks } = useTaskContext();
   const { isSidebarOpen, setIsSidebarOpen } = useLayout();
+
+  // Function to fetch context from backend
+  const fetchContext = async (contextType: string) => {
+    try {
+      const response = await fetch(getApiUrl(`/api/context/${contextType}`), {
+        headers: {
+          'user-id': auth?.currentUser?.uid || 'anonymous'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setContextData(prev => ({ ...prev, [contextType]: data }));
+        return data;
+      }
+    } catch (error) {
+      console.error(`Error fetching ${contextType} context:`, error);
+    }
+    return null;
+  };
+
+  // Function to update context in backend
+  const updateContext = async (contextType: string, data: any) => {
+    try {
+      await fetch(getApiUrl(`/api/context/${contextType}`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'user-id': auth?.currentUser?.uid || 'anonymous'
+        },
+        body: JSON.stringify(data)
+      });
+      setContextData(prev => ({ ...prev, [contextType]: data }));
+    } catch (error) {
+      console.error(`Error updating ${contextType} context:`, error);
+    }
+  };
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      // Load conversation history
+      const history = await getConversationHistory();
+      if (history.length > 0) {
+        setMessages(history.map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.timestamp
+        })));
+      } else {
+        await startNewConversation();
+      }
+
+      // Load context data
+      await Promise.all([
+        fetchContext('session'),
+        fetchContext('persistent')
+      ]);
+    };
+    loadHistory();
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!inputValue.trim()) return;
+
+    // Add user message
+    const userMessage: Message = {
+      role: 'user',
+      content: inputValue,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    // Save user message to Firebase
+    await saveMessage(inputValue, 'user');
+
+    setIsProcessing(true);
+    try {
+      // Update session context with current conversation
+      const sessionContext = {
+        ...contextData.session,
+        currentTopic: inputValue,
+        recentMessages: messages.slice(-5)
+      };
+      await updateContext('session', sessionContext);
+
+      // Process the command with context
+      const result = await AICommandHandler.processCommand(inputValue, {
+        sessionContext: contextData.session,
+        persistentContext: contextData.persistent
+      });
+
+      // Add AI response
+      const aiMessage: Message = {
+        role: 'ai',
+        content: result.message,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
+
+      // Save AI message to Firebase
+      await saveMessage(result.message, 'assistant');
+
+      // Update context based on the response
+      if (result.success) {
+        // Update session context with command result
+        const updatedSessionContext = {
+          ...sessionContext,
+          lastSuccessfulCommand: {
+            command: inputValue,
+            result: result.message,
+            timestamp: new Date()
+          }
+        };
+        await updateContext('session', updatedSessionContext);
+
+        // If command was successful, refresh tasks
+        await refreshTasks();
+      }
+
+      setInputValue("");
+    } catch (error) {
+      console.error("Processing error", error);
+      const errorMessage: Message = {
+        role: 'ai',
+        content: 'Sorry, I encountered an error processing your request.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const refreshTasks = async () => {
     try {
@@ -51,78 +192,6 @@ const AIControlButton: React.FC = () => {
       recognition.start();
     } else {
       alert("Speech recognition not supported in this browser");
-    }
-  };
-
-  useEffect(() => {
-    const loadHistory = async () => {
-      const history = await getConversationHistory();
-      if (history.length > 0) {
-        setMessages(history.map(msg => ({
-          role: msg.sender === 'user' ? 'user' : 'ai',
-          content: msg.content,
-          timestamp: msg.timestamp
-        })));
-      } else {
-        // Start a new conversation if there's no history
-        await startNewConversation();
-      }
-    };
-    loadHistory();
-  }, []);
-
-  const handleSubmit = async () => {
-    if (!inputValue.trim()) return;
-
-    // Add user message
-    const userMessage: Message = {
-      role: 'user',
-      content: inputValue,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    // Save user message to Firebase
-    await saveMessage(inputValue, 'user');
-
-    setIsProcessing(true);
-    try {
-      // Process the command
-      const result = await AICommandHandler.processCommand(inputValue);
-      console.log("result is : ", result);
-
-      // Add AI response
-      const aiMessage: Message = {
-        role: 'ai',
-        content: result.message,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-
-      // Save AI message to Firebase
-      await saveMessage(result.message, 'assistant');
-
-      // If command was successful, refresh tasks
-      if (result.success) {
-        await refreshTasks();
-      }
-
-      // Reset input
-      setInputValue("");
-    } catch (error) {
-      console.error("Processing error", error);
-      // Add error message
-      const errorMessage: Message = {
-        role: 'ai',
-        content: 'Sorry, I encountered an error processing your request.',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      
-      // Save error message to Firebase
-      await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
-    } finally {
-      setIsProcessing(false);
     }
   };
 

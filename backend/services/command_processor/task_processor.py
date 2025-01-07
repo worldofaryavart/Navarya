@@ -79,35 +79,132 @@ When a user sends a message, analyze it and respond with a JSON object that matc
     def get_system_prompt(self) -> str:
         return self.SYSTEM_PROMPT
 
-    def _parse_natural_language(self, message: str) -> Dict[Any, Any]:
-        """Fallback method for when API is rate limited"""
-        try:
-            message = message.lower()
-            title = message
-            due_date = None
-            priority = "Medium"
-            
-            if "tomorrow" in message:
-                due_date = (datetime.now() + timedelta(days=1)).isoformat()
-            elif "today" in message:
-                due_date = datetime.now().isoformat()
+    def _parse_natural_language(self, message: str, context: Dict = None) -> Dict[Any, Any]:
+        """Parse natural language into structured task data"""
+        message = message.lower()
+        
+        # Check for context-based references
+        if context and 'lastSuccessfulCommand' in context:
+            last_command = context['lastSuccessfulCommand']
+            if any(word in message for word in ['it', 'that', 'this']):
+                message = f"{message} (referring to: {last_command['command']})"
 
+        # Handle update commands
+        if any(word in message for word in ['change', 'modify', 'update']):
             return {
-                "success": True,
-                "action": "create_task",
-                "data": {
-                    "title": title,
-                    "description": None,
-                    "dueDate": due_date,
-                    "priority": priority
+                'success': True,
+                'action': 'update_task',
+                'data': {
+                    'description': message,
+                    'updates': self._extract_task_updates(message)
                 }
             }
-        except Exception as e:
-            print("Error in fallback parsing:", str(e))
+
+        # Handle list commands
+        if any(word in message for word in ['show', 'list', 'display']):
             return {
-                "success": False,
-                "message": "Could not parse the request"
+                'success': True,
+                'action': 'list_tasks',
+                'data': {
+                    'filter': self._extract_list_filters(message)
+                }
             }
+
+        # Handle delete commands
+        if any(word in message for word in ['delete', 'remove']):
+            return {
+                'success': True,
+                'action': 'delete_task',
+                'data': {
+                    'description': message
+                }
+            }
+
+        # Default to create task
+        return {
+            'success': True,
+            'action': 'create_task',
+            'data': self._extract_task_data(message)
+        }
+
+    def _extract_task_updates(self, message: str) -> Dict[str, Any]:
+        """Extract task update information from message"""
+        updates = {}
+        
+        # Extract date changes
+        if 'today' in message:
+            updates['dueDate'] = datetime.now().strftime('%Y-%m-%d')
+        elif 'tomorrow' in message:
+            updates['dueDate'] = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+            
+        # Extract priority changes
+        if 'high' in message:
+            updates['priority'] = 'High'
+        elif 'medium' in message:
+            updates['priority'] = 'Medium'
+        elif 'low' in message:
+            updates['priority'] = 'Low'
+            
+        # Extract status changes
+        if 'complete' in message:
+            updates['status'] = 'Completed'
+        elif 'start' in message:
+            updates['status'] = 'In Progress'
+            
+        return updates
+
+    def _extract_list_filters(self, message: str) -> Dict[str, Any]:
+        """Extract list filter criteria from message"""
+        filters = {}
+        
+        # Status filters
+        if 'pending' in message:
+            filters['status'] = 'Pending'
+        elif 'progress' in message:
+            filters['status'] = 'In Progress'
+        elif 'complete' in message:
+            filters['status'] = 'Completed'
+            
+        # Priority filters
+        if 'high' in message:
+            filters['priority'] = 'High'
+        elif 'medium' in message:
+            filters['priority'] = 'Medium'
+        elif 'low' in message:
+            filters['priority'] = 'Low'
+            
+        # Time filters
+        if 'today' in message:
+            filters['due'] = 'today'
+        elif 'overdue' in message:
+            filters['due'] = 'overdue'
+        elif 'upcoming' in message:
+            filters['due'] = 'upcoming'
+            
+        return filters
+
+    def _extract_task_data(self, message: str) -> Dict[str, Any]:
+        """Extract task creation data from message"""
+        data = {
+            'title': message,
+            'description': None,
+            'dueDate': None,
+            'priority': 'Medium'  # default priority
+        }
+        
+        # Extract due date
+        if 'today' in message:
+            data['dueDate'] = datetime.now().strftime('%Y-%m-%d')
+        elif 'tomorrow' in message:
+            data['dueDate'] = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+            
+        # Extract priority
+        if 'high' in message:
+            data['priority'] = 'High'
+        elif 'low' in message:
+            data['priority'] = 'Low'
+            
+        return data
 
     def process_ai_response(self, content: str) -> Dict[Any, Any]:
         try:
