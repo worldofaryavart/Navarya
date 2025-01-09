@@ -1,30 +1,47 @@
 import create from 'zustand';
 
+interface TaskFilter {
+  status: string | null;
+  priority: string | null;
+  due: string | null;
+  created: string | null;
+}
+
 interface UIState {
   currentPage: string;
-  taskFilter: string;
+  taskFilter: TaskFilter;
   searchQuery: string;
-  selectedPriority: string | null;
   setCurrentPage: (page: string) => void;
-  setTaskFilter: (filter: string) => void;
+  setTaskFilter: (filter: Partial<TaskFilter>) => void;
   setSearchQuery: (query: string) => void;
-  setSelectedPriority: (priority: string | null) => void;
   resetFilters: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
   currentPage: '/',
-  taskFilter: 'All',
+  taskFilter: {
+    status: null,
+    priority: null,
+    due: null,
+    created: null
+  },
   searchQuery: '',
-  selectedPriority: null,
 
   setCurrentPage: (page) => set({ currentPage: page }),
-  setTaskFilter: (filter) => set({ taskFilter: filter }),
+  
+  setTaskFilter: (filter) => set((state) => ({ 
+    taskFilter: { ...state.taskFilter, ...filter } 
+  })),
+  
   setSearchQuery: (query) => set({ searchQuery: query }),
-  setSelectedPriority: (priority) => set({ selectedPriority: priority }),
+  
   resetFilters: () => set({ 
-    taskFilter: 'All', 
-    searchQuery: '', 
-    selectedPriority: null 
+    taskFilter: {
+      status: null,
+      priority: null,
+      due: null,
+      created: null
+    },
+    searchQuery: '' 
   }),
 }));

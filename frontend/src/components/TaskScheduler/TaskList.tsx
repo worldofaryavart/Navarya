@@ -14,6 +14,7 @@ import {
 import { Task } from "@/types/taskTypes";
 import { Reminder } from "@/types/reminderTypes";
 import { useReminderSystem } from "@/hooks/useReminderSystem";
+import { useUIStore } from "@/store/uiStateStore";
 
 interface TaskListProps {
   tasks: Task[];
@@ -28,10 +29,43 @@ const TaskList: React.FC<TaskListProps> = ({
   onDeleteTask,
   onEditTask,
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Task["status"] | "All">("All");
-  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
+  const { taskFilter, searchQuery } = useUIStore();
   const { reminders, handleCompleteReminder } = useReminderSystem();
+
+  // Filter tasks based on all criteria
+  const filteredTasks = tasks.filter(task => {
+    // Apply status filter
+    if (taskFilter.status && taskFilter.status !== 'All') {
+      if (task.status !== taskFilter.status) return false;
+    }
+
+    // Apply priority filter
+    if (taskFilter.priority && taskFilter.priority !== 'All') {
+      if (task.priority !== taskFilter.priority) return false;
+    }
+
+    // Apply due date filter
+    if (taskFilter.due) {
+      // Implement due date filtering logic based on your needs
+      // Example: today, this week, this month, etc.
+    }
+
+    // Apply created date filter
+    if (taskFilter.created) {
+      // Implement created date filtering logic based on your needs
+    }
+
+    // Apply search query
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      return (
+        task.title.toLowerCase().includes(searchLower) ||
+        (task.description?.toLowerCase() || '').includes(searchLower)
+      );
+    }
+
+    return true;
+  });
 
   // Get reminder for a specific task
   const getTaskReminder = (task: Task) => {
@@ -68,19 +102,6 @@ const TaskList: React.FC<TaskListProps> = ({
       day: 'numeric'
     });
   };
-
-  const filteredTasks = tasks
-    .sort((a, b) => {
-      // Sort by creation time (newest first)
-      const timeA = new Date(a.createdAt).getTime();
-      const timeB = new Date(b.createdAt).getTime();
-      return timeB - timeA;
-    })
-    .filter((task) => {
-      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "All" || task.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
 
   // Status change handler
   const handleStatusChange = (task: Task, newStatus: Task["status"]) => {
@@ -141,11 +162,12 @@ const TaskList: React.FC<TaskListProps> = ({
   const handleMarkAsRead = async (reminder: Reminder) => {
     try {
       await handleCompleteReminder(reminder.id);
-      setSelectedReminder(null);
     } catch (error) {
       console.error('Error marking reminder as read:', error);
     }
   };
+
+  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
 
   return (
     <div className="bg-gray-900 shadow-xl rounded-lg overflow-hidden border border-gray-800">
@@ -158,7 +180,7 @@ const TaskList: React.FC<TaskListProps> = ({
               type="text"
               placeholder="Search tasks..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {}}
               className="w-full px-3 py-1 text-sm bg-gray-700 border border-gray-600 rounded-lg text-gray-100 
                 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
                 transition-all duration-200"
@@ -171,10 +193,10 @@ const TaskList: React.FC<TaskListProps> = ({
           {["All", "Pending", "In Progress", "Completed"].map((status) => (
             <button
               key={status}
-              onClick={() => setStatusFilter(status as Task["status"] | "All")}
+              onClick={() => {}}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200
                 ${
-                  statusFilter === status
+                  taskFilter.status === status
                     ? 'bg-blue-600 text-white shadow-lg transform scale-105'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
                 }`}

@@ -5,9 +5,13 @@ export interface UICommand {
   type: 'NAVIGATE' | 'FILTER' | 'SEARCH' | 'RESET';
   payload: {
     page?: string;
-    filter?: string;
+    filter?: {
+      status?: string | null;
+      priority?: string | null;
+      due?: string | null;
+      created?: string | null;
+    };
     search?: string;
-    priority?: string | null;
   };
 }
 
@@ -24,6 +28,14 @@ class UICommandHandler {
     switch (command.type) {
       case 'NAVIGATE':
         if (command.payload.page) {
+          // Handle filters if present in navigation payload
+          if (command.payload.filter) {
+            // Reset filters first
+            store.resetFilters();
+            
+            // Apply new filters
+            store.setTaskFilter(command.payload.filter);
+          }
           this.router.push(command.payload.page);
           store.setCurrentPage(command.payload.page);
         }
@@ -32,9 +44,6 @@ class UICommandHandler {
       case 'FILTER':
         if (command.payload.filter) {
           store.setTaskFilter(command.payload.filter);
-        }
-        if (command.payload.priority !== undefined) {
-          store.setSelectedPriority(command.payload.priority);
         }
         break;
 
@@ -67,7 +76,10 @@ class UICommandHandler {
       } else if (response.intent.intent === 'list_tasks') {
         commands.push({
           type: 'NAVIGATE',
-          payload: { page: '/tasks' }
+          payload: { 
+            page: '/tasks',
+            filter: response.data?.filter || null
+          }
         });
       }
     }
@@ -77,17 +89,6 @@ class UICommandHandler {
       commands.push({
         type: 'SEARCH',
         payload: { search: response.search }
-      });
-    }
-
-    // Handle filters
-    if (response.filter) {
-      commands.push({
-        type: 'FILTER',
-        payload: { 
-          filter: response.filter,
-          priority: response.priority || null
-        }
       });
     }
 
