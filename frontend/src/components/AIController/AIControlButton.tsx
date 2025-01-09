@@ -213,7 +213,14 @@ const AIControlButton: React.FC = () => {
       const success = await startNewConversation();
       if (success) {
         setMessages([]);
-        // You might want to add a notification here
+        // Reset session context
+        const emptySessionContext = {
+          currentTopic: '',
+          recentMessages: [],
+          lastSuccessfulCommand: null
+        };
+        await updateContext('session', emptySessionContext);
+        setContextData(prev => ({ ...prev, session: emptySessionContext }));
       }
     } catch (error) {
       console.error('Error starting new conversation:', error);
