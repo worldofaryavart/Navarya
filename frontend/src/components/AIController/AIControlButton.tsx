@@ -8,6 +8,8 @@ import { getTasks } from "@/utils/tasks/tasks";
 import { saveMessage, getConversationHistory, startNewConversation, getAllConversations } from "@/utils/aicontext/conversationService";
 import { auth } from '@/utils/config/firebase.config';
 import { getApiUrl } from "@/utils/config/api.config";
+import UICommandHandler from '@/utils/ai/uiCommandHandler';
+import { useRouter } from 'next/navigation';
 
 interface Message {
   role: 'user' | 'ai';
@@ -29,6 +31,11 @@ const AIControlButton: React.FC = () => {
   const [contextData, setContextData] = useState<ContextData>({});
   const { tasks, setTasks } = useTaskContext();
   const { isSidebarOpen, setIsSidebarOpen } = useLayout();
+  const router = useRouter();
+  const uiCommandHandler = new UICommandHandler(router);
+  const aiCommandHandler = new AICommandHandler(router);
+
+  console.log("contextData is : ", contextData);
 
   // Function to fetch context from backend
   const fetchContext = async (contextType: string) => {
@@ -100,65 +107,71 @@ const AIControlButton: React.FC = () => {
     };
     setMessages(prev => [...prev, userMessage]);
 
-    // Save user message to Firebase
-    await saveMessage(inputValue, 'user');
-
-    setIsProcessing(true);
     try {
-      // Update session context with current conversation
-      const sessionContext = {
-        ...contextData.session,
-        currentTopic: inputValue,
-        recentMessages: messages.slice(-5)
-      };
-      await updateContext('session', sessionContext);
+      // Store user message
+      await saveMessage(inputValue, 'user');
 
-      // Process the command with context
-      const result = await AICommandHandler.processCommand(inputValue, {
-        sessionContext: contextData.session,
-        persistentContext: contextData.persistent
-      });
-
-      // Add AI response
-      const aiMessage: Message = {
-        role: 'ai',
-        content: result.message,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-
-      // Save AI message to Firebase
-      await saveMessage(result.message, 'assistant');
-
-      // Update context based on the response
-      if (result.success) {
-        // Update session context with command result
-        const updatedSessionContext = {
-          ...sessionContext,
-          lastSuccessfulCommand: {
-            command: inputValue,
-            result: result.message,
-            timestamp: new Date()
-          }
+      setIsProcessing(true);
+      try {
+        // Update session context with current conversation
+        const sessionContext = {
+          ...contextData.session,
+          currentTopic: inputValue,
+          recentMessages: messages.slice(-5)
         };
-        await updateContext('session', updatedSessionContext);
+        await updateContext('session', sessionContext);
 
-        // If command was successful, refresh tasks
-        await refreshTasks();
+        // Process command with context
+        const result = await AICommandHandler.processCommand(inputValue, router, {
+          sessionContext: contextData.session,
+          persistentContext: contextData.persistent
+        });
+
+        console.log("result is : ", result);
+
+        // Execute UI commands based on AI response
+        if (result.success) {
+          // Add AI response
+          const aiMessage: Message = {
+            role: 'ai',
+            content: result.message,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, aiMessage]);
+
+          // Save AI response
+          await saveMessage(result.message, 'assistant');
+
+          // Update context based on the response
+          const updatedSessionContext = {
+            ...sessionContext,
+            lastSuccessfulCommand: {
+              command: inputValue,
+              result: result.message,
+              timestamp: new Date()
+            }
+          };
+          await updateContext('session', updatedSessionContext);
+
+          // If command was successful, refresh tasks
+          await refreshTasks();
+        }
+
+        setInputValue("");
+      } catch (error) {
+        console.error("Processing error", error);
+        const errorMessage: Message = {
+          role: 'ai',
+          content: 'Sorry, I encountered an error processing your request.',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
+      } finally {
+        setIsProcessing(false);
       }
-
-      setInputValue("");
     } catch (error) {
-      console.error("Processing error", error);
-      const errorMessage: Message = {
-        role: 'ai',
-        content: 'Sorry, I encountered an error processing your request.',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
-    } finally {
-      setIsProcessing(false);
+      console.error('Error processing command:', error);
     }
   };
 

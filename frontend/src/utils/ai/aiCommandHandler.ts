@@ -1,6 +1,9 @@
 import { getApiUrl } from '../config/api.config';
 import { TaskCommandHandler } from './taskcommands/taskHandler';
 import { ReminderCommandHandler } from './reminderCommands/reminderCommandHandler';
+import UICommandHandler from './uiCommandHandler';
+import { useRouter } from 'next/navigation';
+type AppRouterInstance = ReturnType<typeof useRouter>;
 
 interface CommandResult {
   success: boolean;
@@ -14,7 +17,18 @@ interface ContextData {
 }
 
 export class AICommandHandler {
-  public static async processCommand(input: string, context?: ContextData): Promise<CommandResult> {
+  private router: AppRouterInstance;
+
+  constructor(router: AppRouterInstance) {
+    this.router = router;
+  }
+
+  public static async processCommand(input: string, router: AppRouterInstance, context?: ContextData): Promise<CommandResult> {
+    const aiCommandHandler = new AICommandHandler(router);
+    return aiCommandHandler.processCommandInternal(input, context);
+  }
+
+  private async processCommandInternal(input: string, context?: ContextData): Promise<CommandResult> {
     const lowercaseInput = input.toLowerCase();
 
     // Direct commands that don't need AI processing
@@ -55,6 +69,15 @@ export class AICommandHandler {
           success: false,
           message: result.detail || "Failed to process the command. Please try again."
         };
+      }
+
+      const uiCommandHandler = new UICommandHandler(this.router);
+      const uiCommands = UICommandHandler.parseAIResponse(result);
+      console.log("UI commands are:", uiCommands);
+      
+      for (const command of uiCommands) {
+        console.log("Executing UI command:", command);
+        await uiCommandHandler.executeCommand(command);
       }
 
       if (!result.success) {
