@@ -292,7 +292,7 @@ const TaskList: React.FC<TaskListProps> = ({
 
               {/* Middle row: Description */}
               <p className="text-sm text-gray-400 mt-2">
-                {task.description.length > 50
+                {task.description && task.description.length > 50
                   ? `${task.description.substring(0, 50)}...`
                   : task.description}
               </p>

@@ -68,10 +68,10 @@ class UICommandHandler {
     console.log('AI response:', response);
 
     if (response.intent?.domain === 'tasks') {
-      if (response.intent.intent === 'create_task') {
+      if (response.intent.intent === 'create_task' || response.action === 'batch_operations') {
         commands.push({
           type: 'NAVIGATE',
-          payload: { page: '/tasks/new' }
+          payload: { page: '/tasks' }
         });
       } else if (response.intent.intent === 'list_tasks') {
         commands.push({
