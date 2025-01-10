@@ -36,7 +36,9 @@ const TaskList: React.FC<TaskListProps> = ({
   const filteredTasks = tasks.filter(task => {
     // Apply status filter
     if (taskFilter.status && taskFilter.status !== 'All') {
-      if (task.status !== taskFilter.status) return false;
+      // Handle multiple statuses separated by |
+      const statusArray = taskFilter.status.split('|').map(s => s.trim().toLowerCase());
+      if (!statusArray.includes(task.status.toLowerCase())) return false;
     }
 
     // Apply priority filter
@@ -46,8 +48,33 @@ const TaskList: React.FC<TaskListProps> = ({
 
     // Apply due date filter
     if (taskFilter.due) {
-      // Implement due date filtering logic based on your needs
-      // Example: today, this week, this month, etc.
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+
+      let dueDate: Date;
+      if (typeof task.dueDate === 'string') {
+        dueDate = new Date(task.dueDate);
+      } else if (task.dueDate instanceof Date) {
+        dueDate = task.dueDate;
+      } else if (typeof task.dueDate === 'object' && task.dueDate?.seconds) {
+        dueDate = new Date(task.dueDate.seconds * 1000);
+      } else {
+        return false;
+      }
+
+      switch (taskFilter.due) {
+        case 'today':
+          if (!(dueDate >= startOfDay && dueDate < endOfDay)) return false;
+          break;
+        case 'overdue':
+          if (!(dueDate < startOfDay)) return false;
+          break;
+        case 'upcoming':
+          if (!(dueDate >= startOfDay)) return false;
+          break;
+      }
     }
 
     // Apply created date filter

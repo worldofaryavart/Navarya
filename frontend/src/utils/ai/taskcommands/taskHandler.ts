@@ -1,5 +1,6 @@
 import { Task, NewTaskInput, TaskStatus, TaskPriority } from '@/types/taskTypes';
 import { addTask, deleteTask, getTasks, updateTask } from '@/utils/tasks/tasks';
+import { useUIStore } from '@/store/uiStateStore';
 
 interface CommandResult {
   success: boolean;
@@ -124,6 +125,17 @@ export class TaskCommandHandler {
     created?: 'today';
   }): Promise<CommandResult> {
     try {
+      // Update UI store filters if filters are provided
+      if (filter) {
+        const uiStore = useUIStore.getState();
+        uiStore.setTaskFilter({
+          status: filter.status || null,
+          priority: filter.priority || null,
+          due: filter.due || null,
+          created: filter.created || null
+        });
+      }
+
       const tasks = await getTasks();
       console.log('Initial tasks:', tasks);
       
