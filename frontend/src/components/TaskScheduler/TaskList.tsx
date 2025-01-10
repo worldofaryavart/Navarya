@@ -34,9 +34,28 @@ const TaskList: React.FC<TaskListProps> = ({
 
   // Filter tasks based on all criteria
   const filteredTasks = tasks.filter(task => {
+    // Helper function to convert any date format to Date object
+    const convertToDate = (date: any): Date | null => {
+      if (!date) return null;
+      
+      if (date instanceof Date) {
+        return date;
+      }
+      
+      if (typeof date === 'object' && 'seconds' in date) {
+        return new Date(date.seconds * 1000);
+      }
+      
+      if (typeof date === 'string') {
+        const parsed = new Date(date);
+        return isNaN(parsed.getTime()) ? null : parsed;
+      }
+      
+      return null;
+    };
+
     // Apply status filter
     if (taskFilter.status && taskFilter.status !== 'All') {
-      // Handle multiple statuses separated by |
       const statusArray = taskFilter.status.split('|').map(s => s.trim().toLowerCase());
       if (!statusArray.includes(task.status.toLowerCase())) return false;
     }
@@ -56,17 +75,22 @@ const TaskList: React.FC<TaskListProps> = ({
       const startOfYesterday = new Date(startOfToday);
       startOfYesterday.setDate(startOfYesterday.getDate() - 1);
 
-      let dueDate: Date;
-      if (typeof task.dueDate === 'string') {
-        dueDate = new Date(task.dueDate);
-      } else if (task.dueDate instanceof Date) {
-        dueDate = task.dueDate;
-      } else if (typeof task.dueDate === 'object' && task.dueDate?.seconds) {
-        dueDate = new Date(task.dueDate.seconds * 1000);
-      } else {
+      const dueDate = convertToDate(task.dueDate);
+      if (!dueDate) return false;
+
+      // Handle specific date (format: YYYY-MM-DD)
+      if (taskFilter.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const specificDate = new Date(taskFilter.due);
+        const nextDate = new Date(specificDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        
+        if (!isNaN(specificDate.getTime())) {
+          return dueDate >= specificDate && dueDate < nextDate;
+        }
         return false;
       }
 
+      // Handle relative dates
       switch (taskFilter.due) {
         case 'today':
           if (!(dueDate >= startOfToday && dueDate < endOfToday)) return false;
@@ -85,7 +109,28 @@ const TaskList: React.FC<TaskListProps> = ({
 
     // Apply created date filter
     if (taskFilter.created) {
-      // Implement created date filtering logic based on your needs
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfToday = new Date(startOfToday);
+      endOfToday.setDate(endOfToday.getDate() + 1);
+
+      const createdDate = convertToDate(task.createdAt);
+      if (!createdDate) return false;
+
+      if (taskFilter.created === 'today') {
+        if (!(createdDate >= startOfToday && createdDate < endOfToday)) return false;
+      } else if (taskFilter.created.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Handle specific date (format: YYYY-MM-DD)
+        const specificDate = new Date(taskFilter.created);
+        const nextDate = new Date(specificDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        
+        if (!isNaN(specificDate.getTime())) {
+          if (!(createdDate >= specificDate && createdDate < nextDate)) return false;
+        } else {
+          return false;
+        }
+      }
     }
 
     // Apply search query
