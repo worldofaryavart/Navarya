@@ -121,7 +121,7 @@ export class TaskCommandHandler {
   public static async listTasks(filter?: {
     status?: TaskStatus;
     priority?: TaskPriority;
-    due?: 'today' | 'overdue' | 'upcoming';
+    due?: 'today' | 'yesterday' | 'overdue' | 'upcoming';
     created?: 'today';
   }): Promise<CommandResult> {
     try {
@@ -149,16 +149,18 @@ export class TaskCommandHandler {
 
       let filteredTasks = [...tasks];
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfToday = new Date(startOfToday);
+      endOfToday.setDate(endOfToday.getDate() + 1);
+      
+      const startOfYesterday = new Date(startOfToday);
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
 
       console.log('Filter criteria:', filter);
 
       if (filter) {
         if (filter.status) {
           console.log('Status filter:', filter.status);
-          // Make status comparison case-insensitive
           const statusArray = filter.status.split('|').map(s => s.trim().toLowerCase());
           console.log('Status array:', statusArray);
           filteredTasks = filteredTasks.filter(task => {
@@ -182,44 +184,62 @@ export class TaskCommandHandler {
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
                 
-                // Handle different date formats
                 let dueDate: Date;
                 if (typeof task.dueDate === 'string') {
                   dueDate = new Date(task.dueDate);
                 } else if (task.dueDate instanceof Date) {
                   dueDate = task.dueDate;
                 } else if (typeof task.dueDate === 'object' && task.dueDate?.seconds) {
-                  // Handle Firestore Timestamp
                   dueDate = new Date(task.dueDate.seconds * 1000);
                 } else {
                   return false;
                 }
 
-                const isToday = dueDate >= startOfDay && dueDate < endOfDay;
+                const isToday = dueDate >= startOfToday && dueDate < endOfToday;
                 console.log('Task:', task.title, 'Due date:', dueDate, 'Is today:', isToday);
                 return isToday;
               });
-              console.log('Tasks after due date filter:', filteredTasks);
               break;
+
+            case 'yesterday':
+              filteredTasks = filteredTasks.filter(task => {
+                if (!task.dueDate) return false;
+                
+                let dueDate: Date;
+                if (typeof task.dueDate === 'string') {
+                  dueDate = new Date(task.dueDate);
+                } else if (task.dueDate instanceof Date) {
+                  dueDate = task.dueDate;
+                } else if (typeof task.dueDate === 'object' && task.dueDate?.seconds) {
+                  dueDate = new Date(task.dueDate.seconds * 1000);
+                } else {
+                  return false;
+                }
+
+                const isYesterday = dueDate >= startOfYesterday && dueDate < startOfToday;
+                console.log('Task:', task.title, 'Due date:', dueDate, 'Is yesterday:', isYesterday);
+                return isYesterday;
+              });
+              break;
+
             case 'overdue':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
                 const dueDate = new Date(task.dueDate?.toString());
-                const isOverdue = dueDate < startOfDay;
+                const isOverdue = dueDate < startOfToday;
                 console.log('Task:', task.title, 'Due date:', dueDate, 'Is overdue:', isOverdue);
                 return isOverdue;
               });
-              console.log('Tasks after due date filter:', filteredTasks);
               break;
+
             case 'upcoming':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
                 const dueDate = new Date(task.dueDate?.toString());
-                const isUpcoming = dueDate >= startOfDay;
+                const isUpcoming = dueDate >= startOfToday;
                 console.log('Task:', task.title, 'Due date:', dueDate, 'Is upcoming:', isUpcoming);
                 return isUpcoming;
               });
-              console.log('Tasks after due date filter:', filteredTasks);
               break;
           }
         }
@@ -228,7 +248,7 @@ export class TaskCommandHandler {
           console.log('Created filter:', filter.created);
           filteredTasks = filteredTasks.filter(task => {
             const createdDate = new Date(task.createdAt);
-            const isToday = createdDate >= startOfDay && createdDate < endOfDay;
+            const isToday = createdDate >= startOfToday && createdDate < endOfToday;
             console.log('Task:', task.title, 'Created date:', createdDate, 'Is today:', isToday);
             return isToday;
           });

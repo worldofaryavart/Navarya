@@ -49,9 +49,12 @@ const TaskList: React.FC<TaskListProps> = ({
     // Apply due date filter
     if (taskFilter.due) {
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfToday = new Date(startOfToday);
+      endOfToday.setDate(endOfToday.getDate() + 1);
+      
+      const startOfYesterday = new Date(startOfToday);
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
 
       let dueDate: Date;
       if (typeof task.dueDate === 'string') {
@@ -66,13 +69,16 @@ const TaskList: React.FC<TaskListProps> = ({
 
       switch (taskFilter.due) {
         case 'today':
-          if (!(dueDate >= startOfDay && dueDate < endOfDay)) return false;
+          if (!(dueDate >= startOfToday && dueDate < endOfToday)) return false;
+          break;
+        case 'yesterday':
+          if (!(dueDate >= startOfYesterday && dueDate < startOfToday)) return false;
           break;
         case 'overdue':
-          if (!(dueDate < startOfDay)) return false;
+          if (!(dueDate < startOfToday)) return false;
           break;
         case 'upcoming':
-          if (!(dueDate >= startOfDay)) return false;
+          if (!(dueDate >= startOfToday)) return false;
           break;
       }
     }
