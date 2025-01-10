@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional
 import json
 import requests
 from datetime import datetime
@@ -30,7 +30,14 @@ class BaseCommandProcessor(ABC):
         """Process the AI response"""
         pass
 
-    async def process_message(self, message: str, session_context: Dict = None, persistent_context: Dict = None, current_time: str = None) -> Dict[Any, Any]:
+    async def process_message(
+        self, 
+        message: str, 
+        context_prompt: str = "",
+        session_context: Optional[Dict] = None, 
+        persistent_context: Optional[Dict] = None, 
+        current_time: Optional[str] = None
+    ) -> Dict[Any, Any]:
         try:
             current_time = time.time()
             
@@ -41,15 +48,15 @@ class BaseCommandProcessor(ABC):
             print("Received message:", message)
             self.last_api_call = current_time
 
-            # Add context to prompt if available
-            context_prompt = ""
-            if session_context:
-                context_prompt += f"\nSession Context: {json.dumps(session_context)}"
-            if persistent_context:
-                context_prompt += f"\nPersistent Context: {json.dumps(persistent_context)}"
+            # Build the complete system prompt
+            system_prompt = f"""System: {self.get_system_prompt()}
 
-            current_date = datetime.now().strftime("%Y-%m-%d")
-            combined_prompt = f"""System: First, classify the user's intent using this format:
+Current Date: {datetime.now().strftime("%Y-%m-%d")}
+
+{context_prompt}
+
+Instructions for AI Response:
+1. First, classify the user's intent using this format:
 INTENT CLASSIFICATION:
 {{
     "domain": "tasks|email|browser|conversation",
@@ -57,11 +64,17 @@ INTENT CLASSIFICATION:
     "confidence": 0.0 to 1.0
 }}
 
-Then, process the command according to this prompt:
-{self.get_system_prompt()}
+2. Then, process the command and generate a response that:
+   - Is consistent with previous context and conversation history
+   - Handles any references to previous messages or actions
+   - Provides clear and actionable results
+   - Maintains state and context for future interactions
 
-Current Date: {current_date}
-{context_prompt}
+3. Format your response as a JSON object with:
+   - success: boolean indicating if the command was successful
+   - action: the action taken (e.g., "list_tasks", "create_task")
+   - data: any relevant data or filter criteria
+   - message: a natural language response to the user
 
 User Message: {message}
 """
@@ -75,7 +88,7 @@ User Message: {message}
                 json={
                     "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
                     "messages": [
-                        {"role": "system", "content": combined_prompt},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": message}
                     ],
                     "max_tokens": 1024,
