@@ -125,6 +125,7 @@ export class TaskCommandHandler {
   }): Promise<CommandResult> {
     try {
       const tasks = await getTasks();
+      console.log('Initial tasks:', tasks);
       
       if (tasks.length === 0) {
         return {
@@ -140,49 +141,97 @@ export class TaskCommandHandler {
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
 
+      console.log('Filter criteria:', filter);
+
       if (filter) {
         if (filter.status) {
-          filteredTasks = filteredTasks.filter(task => task.status === filter.status);
+          console.log('Status filter:', filter.status);
+          // Make status comparison case-insensitive
+          const statusArray = filter.status.split('|').map(s => s.trim().toLowerCase());
+          console.log('Status array:', statusArray);
+          filteredTasks = filteredTasks.filter(task => {
+            const taskStatus = task.status?.toLowerCase();
+            console.log('Task status:', taskStatus, 'Included:', statusArray.includes(taskStatus));
+            return statusArray.includes(taskStatus);
+          });
+          console.log('Tasks after status filter:', filteredTasks);
         }
+
         if (filter.priority) {
+          console.log('Priority filter:', filter.priority);
           filteredTasks = filteredTasks.filter(task => task.priority === filter.priority);
+          console.log('Tasks after priority filter:', filteredTasks);
         }
+
         if (filter.due) {
+          console.log('Due filter:', filter.due);
           switch (filter.due) {
             case 'today':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
-                const dueDate = new Date(task.dueDate?.toString());
-                return dueDate >= startOfDay && dueDate < endOfDay;
+                
+                // Handle different date formats
+                let dueDate: Date;
+                if (typeof task.dueDate === 'string') {
+                  dueDate = new Date(task.dueDate);
+                } else if (task.dueDate instanceof Date) {
+                  dueDate = task.dueDate;
+                } else if (typeof task.dueDate === 'object' && task.dueDate?.seconds) {
+                  // Handle Firestore Timestamp
+                  dueDate = new Date(task.dueDate.seconds * 1000);
+                } else {
+                  return false;
+                }
+
+                const isToday = dueDate >= startOfDay && dueDate < endOfDay;
+                console.log('Task:', task.title, 'Due date:', dueDate, 'Is today:', isToday);
+                return isToday;
               });
+              console.log('Tasks after due date filter:', filteredTasks);
               break;
             case 'overdue':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
                 const dueDate = new Date(task.dueDate?.toString());
-                return dueDate < startOfDay;
+                const isOverdue = dueDate < startOfDay;
+                console.log('Task:', task.title, 'Due date:', dueDate, 'Is overdue:', isOverdue);
+                return isOverdue;
               });
+              console.log('Tasks after due date filter:', filteredTasks);
               break;
             case 'upcoming':
               filteredTasks = filteredTasks.filter(task => {
                 if (!task.dueDate) return false;
                 const dueDate = new Date(task.dueDate?.toString());
-                return dueDate >= startOfDay;
+                const isUpcoming = dueDate >= startOfDay;
+                console.log('Task:', task.title, 'Due date:', dueDate, 'Is upcoming:', isUpcoming);
+                return isUpcoming;
               });
+              console.log('Tasks after due date filter:', filteredTasks);
               break;
           }
         }
+
         if (filter.created === 'today') {
+          console.log('Created filter:', filter.created);
           filteredTasks = filteredTasks.filter(task => {
             const createdDate = new Date(task.createdAt);
-            return createdDate >= startOfDay && createdDate < endOfDay;
+            const isToday = createdDate >= startOfDay && createdDate < endOfDay;
+            console.log('Task:', task.title, 'Created date:', createdDate, 'Is today:', isToday);
+            return isToday;
           });
+          console.log('Tasks after created filter:', filteredTasks);
         }
       }
 
       if (filteredTasks.length === 0) {
         let message = "No tasks found";
-        if (filter?.status) message += ` with status '${filter.status}'`;
+        if (filter?.status) {
+          const statusArray = filter.status.split('|');
+          message += ` with status ${statusArray.length > 1 ? 
+            `'${statusArray.join("' or '")}'` : 
+            `'${filter.status}'`}`;
+        }
         if (filter?.priority) message += ` with priority '${filter.priority}'`;
         if (filter?.due) message += ` that are ${filter.due}`;
         if (filter?.created === 'today') message += " created today";
