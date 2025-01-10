@@ -125,15 +125,36 @@ export class TaskCommandHandler {
     created?: 'today';
   }): Promise<CommandResult> {
     try {
+      const uiStore = useUIStore.getState();
+      
       // Update UI store filters if filters are provided
       if (filter) {
-        const uiStore = useUIStore.getState();
         uiStore.setTaskFilter({
           status: filter.status || null,
           priority: filter.priority || null,
           due: filter.due || null,
           created: filter.created || null
         });
+
+        // Update selected date based on due filter
+        if (filter.due) {
+          const now = new Date();
+          switch (filter.due) {
+            case 'today':
+              uiStore.setSelectedDate(now);
+              break;
+            case 'yesterday':
+              const yesterday = new Date(now);
+              yesterday.setDate(yesterday.getDate() - 1);
+              uiStore.setSelectedDate(yesterday);
+              break;
+            case 'upcoming':
+              const tomorrow = new Date(now);
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              uiStore.setSelectedDate(tomorrow);
+              break;
+          }
+        }
       }
 
       const tasks = await getTasks();

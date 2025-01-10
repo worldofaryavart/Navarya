@@ -11,9 +11,11 @@ interface UIState {
   currentPage: string;
   taskFilter: TaskFilter;
   searchQuery: string;
+  selectedDate: Date;
   setCurrentPage: (page: string) => void;
   setTaskFilter: (filter: Partial<TaskFilter>) => void;
   setSearchQuery: (query: string) => void;
+  setSelectedDate: (date: Date) => void;
   resetFilters: () => void;
 }
 
@@ -26,6 +28,7 @@ export const useUIStore = create<UIState>((set) => ({
     created: null
   },
   searchQuery: '',
+  selectedDate: new Date(),
 
   setCurrentPage: (page) => set({ currentPage: page }),
   
@@ -34,6 +37,8 @@ export const useUIStore = create<UIState>((set) => ({
   })),
   
   setSearchQuery: (query) => set({ searchQuery: query }),
+
+  setSelectedDate: (date) => set({ selectedDate: date }),
   
   resetFilters: () => set({ 
     taskFilter: {
@@ -42,6 +47,7 @@ export const useUIStore = create<UIState>((set) => ({
       due: null,
       created: null
     },
-    searchQuery: '' 
+    searchQuery: '',
+    selectedDate: new Date()
   }),
 }));

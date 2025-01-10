@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "../../css/AaryaCalendar.css";
 import { Task } from "@/types/taskTypes";
+import { useUIStore } from "@/store/uiStateStore";
 
 // Define Task interface
 
@@ -15,7 +16,7 @@ interface CalendarViewProps {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
-  const [date, setDate] = useState<Date | null>(new Date());
+  const { selectedDate, setSelectedDate } = useUIStore();
 
   // Helper function to convert any date format to Date object
   const convertToDate = (date: any): Date => {
@@ -51,13 +52,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
   };
 
   // Get tasks for a specific date and sort by priority
-  const getTasksForDate = (selectedDate: Date | null = new Date()) => {
-    if (!selectedDate) return [];
+  const getTasksForDate = (date: Date | null = new Date()) => {
+    if (!date) return [];
     const priorityOrder = { High: 1, Medium: 2, Low: 3 };
     return tasks
       .filter((task) => {
         const taskDate = convertToDate(task.dueDate);
-        const compareDate = convertToDate(selectedDate);
+        const compareDate = convertToDate(date);
         return (
           taskDate.getFullYear() === compareDate.getFullYear() &&
           taskDate.getMonth() === compareDate.getMonth() &&
@@ -73,11 +74,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     if (value instanceof Date) {
-      setDate(value);
+      setSelectedDate(value);
     } else if (Array.isArray(value) && value.length > 0) {
-      setDate(value[0]);
-    } else {
-      setDate(null);
+      setSelectedDate(value[0]);
     }
   };
 
@@ -131,15 +130,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
 
   // Get the tasks to display based on selected date
   const getDisplayTasks = () => {
-    if (date && !isToday(date)) {
-      return getTasksForDate(date);
+    if (selectedDate && !isToday(selectedDate)) {
+      return getTasksForDate(selectedDate);
     }
     return getTodaysTasks();
   };
 
   const getDisplayDate = () => {
-    if (date && !isToday(date)) {
-      return date;
+    if (selectedDate && !isToday(selectedDate)) {
+      return selectedDate;
     }
     return new Date();
   };
@@ -194,7 +193,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
       <div className="calendar-wrapper">
         <Calendar
           onChange={handleDateChange as any}
-          value={date}
+          value={selectedDate}
           view="month"
           tileContent={tileContent}
           className="aarya-calendar"
