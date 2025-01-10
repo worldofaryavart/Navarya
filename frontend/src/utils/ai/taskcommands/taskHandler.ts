@@ -121,12 +121,32 @@ export class TaskCommandHandler {
   public static async listTasks(filter?: {
     status?: TaskStatus;
     priority?: TaskPriority;
-    due?: 'today' | 'yesterday' | 'overdue' | 'upcoming';
-    created?: 'today';
+    due?: 'today' | 'yesterday' | 'overdue' | 'upcoming' | string;
+    created?: 'today' | string;
   }): Promise<CommandResult> {
     try {
       const uiStore = useUIStore.getState();
       
+      // Helper function to convert any date format to Date object
+      const convertToDate = (date: any): Date | null => {
+        if (!date) return null;
+        
+        if (date instanceof Date) {
+          return date;
+        }
+        
+        if (typeof date === 'object' && 'seconds' in date) {
+          return new Date(date.seconds * 1000);
+        }
+        
+        if (typeof date === 'string') {
+          const parsed = new Date(date);
+          return isNaN(parsed.getTime()) ? null : parsed;
+        }
+        
+        return null;
+      };
+
       // Update UI store filters if filters are provided
       if (filter) {
         uiStore.setTaskFilter({
@@ -152,6 +172,15 @@ export class TaskCommandHandler {
               const tomorrow = new Date(now);
               tomorrow.setDate(tomorrow.getDate() + 1);
               uiStore.setSelectedDate(tomorrow);
+              break;
+            default:
+              // Handle specific date (format: YYYY-MM-DD)
+              if (filter.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const specificDate = new Date(filter.due);
+                if (!isNaN(specificDate.getTime())) {
+                  uiStore.setSelectedDate(specificDate);
+                }
+              }
               break;
           }
         }
@@ -203,19 +232,9 @@ export class TaskCommandHandler {
           switch (filter.due) {
             case 'today':
               filteredTasks = filteredTasks.filter(task => {
-                if (!task.dueDate) return false;
+                const dueDate = convertToDate(task.dueDate);
+                if (!dueDate) return false;
                 
-                let dueDate: Date;
-                if (typeof task.dueDate === 'string') {
-                  dueDate = new Date(task.dueDate);
-                } else if (task.dueDate instanceof Date) {
-                  dueDate = task.dueDate;
-                } else if (typeof task.dueDate === 'object' && task.dueDate?.seconds) {
-                  dueDate = new Date(task.dueDate.seconds * 1000);
-                } else {
-                  return false;
-                }
-
                 const isToday = dueDate >= startOfToday && dueDate < endOfToday;
                 console.log('Task:', task.title, 'Due date:', dueDate, 'Is today:', isToday);
                 return isToday;
@@ -224,19 +243,9 @@ export class TaskCommandHandler {
 
             case 'yesterday':
               filteredTasks = filteredTasks.filter(task => {
-                if (!task.dueDate) return false;
+                const dueDate = convertToDate(task.dueDate);
+                if (!dueDate) return false;
                 
-                let dueDate: Date;
-                if (typeof task.dueDate === 'string') {
-                  dueDate = new Date(task.dueDate);
-                } else if (task.dueDate instanceof Date) {
-                  dueDate = task.dueDate;
-                } else if (typeof task.dueDate === 'object' && task.dueDate?.seconds) {
-                  dueDate = new Date(task.dueDate.seconds * 1000);
-                } else {
-                  return false;
-                }
-
                 const isYesterday = dueDate >= startOfYesterday && dueDate < startOfToday;
                 console.log('Task:', task.title, 'Due date:', dueDate, 'Is yesterday:', isYesterday);
                 return isYesterday;
@@ -245,8 +254,9 @@ export class TaskCommandHandler {
 
             case 'overdue':
               filteredTasks = filteredTasks.filter(task => {
-                if (!task.dueDate) return false;
-                const dueDate = new Date(task.dueDate?.toString());
+                const dueDate = convertToDate(task.dueDate);
+                if (!dueDate) return false;
+                
                 const isOverdue = dueDate < startOfToday;
                 console.log('Task:', task.title, 'Due date:', dueDate, 'Is overdue:', isOverdue);
                 return isOverdue;
@@ -255,24 +265,65 @@ export class TaskCommandHandler {
 
             case 'upcoming':
               filteredTasks = filteredTasks.filter(task => {
-                if (!task.dueDate) return false;
-                const dueDate = new Date(task.dueDate?.toString());
+                const dueDate = convertToDate(task.dueDate);
+                if (!dueDate) return false;
+                
                 const isUpcoming = dueDate >= startOfToday;
                 console.log('Task:', task.title, 'Due date:', dueDate, 'Is upcoming:', isUpcoming);
                 return isUpcoming;
               });
               break;
+
+            default:
+              // Handle specific date (format: YYYY-MM-DD)
+              if (filter.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const specificDate = new Date(filter.due);
+                const nextDate = new Date(specificDate);
+                nextDate.setDate(nextDate.getDate() + 1);
+                
+                if (!isNaN(specificDate.getTime())) {
+                  filteredTasks = filteredTasks.filter(task => {
+                    const dueDate = convertToDate(task.dueDate);
+                    if (!dueDate) return false;
+                    
+                    const isOnDate = dueDate >= specificDate && dueDate < nextDate;
+                    console.log('Task:', task.title, 'Due date:', dueDate, 'Is on specific date:', isOnDate);
+                    return isOnDate;
+                  });
+                }
+              }
+              break;
           }
         }
 
-        if (filter.created === 'today') {
+        if (filter.created) {
           console.log('Created filter:', filter.created);
-          filteredTasks = filteredTasks.filter(task => {
-            const createdDate = new Date(task.createdAt);
-            const isToday = createdDate >= startOfToday && createdDate < endOfToday;
-            console.log('Task:', task.title, 'Created date:', createdDate, 'Is today:', isToday);
-            return isToday;
-          });
+          if (filter.created === 'today') {
+            filteredTasks = filteredTasks.filter(task => {
+              const createdDate = convertToDate(task.createdAt);
+              if (!createdDate) return false;
+              
+              const isToday = createdDate >= startOfToday && createdDate < endOfToday;
+              console.log('Task:', task.title, 'Created date:', createdDate, 'Is today:', isToday);
+              return isToday;
+            });
+          } else if (filter.created.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Handle specific date (format: YYYY-MM-DD)
+            const specificDate = new Date(filter.created);
+            const nextDate = new Date(specificDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+
+            if (!isNaN(specificDate.getTime())) {
+              filteredTasks = filteredTasks.filter(task => {
+                const createdDate = convertToDate(task.createdAt);
+                if (!createdDate) return false;
+                
+                const isOnDate = createdDate >= specificDate && createdDate < nextDate;
+                console.log('Task:', task.title, 'Created date:', createdDate, 'Is on specific date:', isOnDate);
+                return isOnDate;
+              });
+            }
+          }
           console.log('Tasks after created filter:', filteredTasks);
         }
       }
