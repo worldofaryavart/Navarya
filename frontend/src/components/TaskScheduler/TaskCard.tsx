@@ -67,9 +67,10 @@ export const TaskCard = ({
     <>
       <div className={cn(
         'flex items-center justify-between p-4 rounded-lg border',
-        task.status === 'Completed' ? 'bg-gray-50' : 'bg-white',
-        task.priority === 'High' ? 'border-red-200' :
-        task.priority === 'Medium' ? 'border-yellow-200' : 'border-green-200'
+        'dark bg-gray-800 text-gray-100',
+        task.status === 'Completed' ? 'bg-gray-900/50' : 'bg-gray-800',
+        task.priority === 'High' ? 'border-red-500/50' :
+        task.priority === 'Medium' ? 'border-yellow-500/50' : 'border-green-500/50'
       )}>
         <div className="flex items-center space-x-4">
           <Button
@@ -77,8 +78,8 @@ export const TaskCard = ({
             size="icon"
             onClick={handleStatusChange}
             className={cn(
-              'hover:bg-transparent',
-              task.status === 'Completed' ? 'text-green-500' : 'text-gray-400'
+              'hover:bg-gray-700/50',
+              task.status === 'Completed' ? 'text-green-400' : 'text-gray-400'
             )}
           >
             <CheckCircle className="h-5 w-5" />
@@ -86,16 +87,16 @@ export const TaskCard = ({
 
           <div>
             <h3 className={cn(
-              'font-medium',
-              task.status === 'Completed' && 'line-through text-gray-500'
+              'font-medium text-gray-100',
+              task.status === 'Completed' && 'line-through text-gray-400'
             )}>
               {task.title}
             </h3>
             {task.description && (
-              <p className="text-sm text-gray-500">{task.description}</p>
+              <p className="text-sm text-gray-400">{task.description}</p>
             )}
             {task.reminder && (
-              <div className="flex items-center mt-1 text-xs text-gray-500">
+              <div className="flex items-center mt-1 text-xs text-gray-400">
                 <BellRing className="h-3 w-3 mr-1" />
                 {getReminderLabel()}
               </div>
@@ -109,8 +110,8 @@ export const TaskCard = ({
             size="icon"
             onClick={() => setShowReminderDialog(true)}
             className={cn(
-              'hover:bg-transparent',
-              task.reminder ? 'text-blue-500' : 'text-gray-400'
+              'hover:bg-gray-700/50',
+              task.reminder ? 'text-blue-400' : 'text-gray-400'
             )}
           >
             {task.reminder ? <BellRing className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
@@ -118,17 +119,20 @@ export const TaskCard = ({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="hover:bg-gray-700/50">
+                <MoreVertical className="h-5 w-5 text-gray-400" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEditTask(task)}>
+            <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+              <DropdownMenuItem 
+                onClick={() => onEditTask(task)}
+                className="text-gray-100 focus:bg-gray-700 focus:text-gray-100"
+              >
                 <Edit2 className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-red-600"
+                className="text-red-400 focus:bg-gray-700 focus:text-red-400"
                 onClick={() => onDeleteTask(task.id)}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
