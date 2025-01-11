@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   MoreVertical,
   Edit2,
@@ -15,7 +15,7 @@ import { Task } from "@/types/taskTypes";
 import { Reminder } from "@/types/reminderTypes";
 import { useReminderSystem } from "@/hooks/useReminderSystem";
 import { useUIStore } from "@/store/uiStateStore";
-import { useTaskReminders } from "@/hooks/useTaskReminders";
+import { useReminderChecker } from "@/hooks/useReminderChecker";
 import { TaskCard } from "./TaskCard";
 
 interface TaskListProps {
@@ -32,120 +32,124 @@ const TaskList: React.FC<TaskListProps> = ({
   onEditTask,
 }) => {
   const { taskFilter, searchQuery } = useUIStore();
-  const { addReminder, removeReminder } = useTaskReminders(tasks);
+
+  // Initialize reminder checker
+  useReminderChecker(tasks);
 
   // Filter tasks based on all criteria
-  const filteredTasks = tasks.filter(task => {
-    // Helper function to convert any date format to Date object
-    const convertToDate = (date: any): Date | null => {
-      if (!date) return null;
-      
-      if (date instanceof Date) {
-        return date;
-      }
-      
-      if (typeof date === 'object' && 'seconds' in date) {
-        return new Date(date.seconds * 1000);
-      }
-      
-      if (typeof date === 'string') {
-        const parsed = new Date(date);
-        return isNaN(parsed.getTime()) ? null : parsed;
-      }
-      
-      return null;
-    };
-
-    // Apply status filter
-    if (taskFilter.status && taskFilter.status !== 'All') {
-      const statusArray = taskFilter.status.split('|').map(s => s.trim().toLowerCase());
-      if (!statusArray.includes(task.status.toLowerCase())) return false;
-    }
-
-    // Apply priority filter
-    if (taskFilter.priority && taskFilter.priority !== 'All') {
-      if (task.priority !== taskFilter.priority) return false;
-    }
-
-    // Apply due date filter
-    if (taskFilter.due) {
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endOfToday = new Date(startOfToday);
-      endOfToday.setDate(endOfToday.getDate() + 1);
-      
-      const startOfYesterday = new Date(startOfToday);
-      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-
-      const dueDate = convertToDate(task.dueDate);
-      if (!dueDate) return false;
-
-      // Handle specific date (format: YYYY-MM-DD)
-      if (taskFilter.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        const specificDate = new Date(taskFilter.due);
-        const nextDate = new Date(specificDate);
-        nextDate.setDate(nextDate.getDate() + 1);
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      // Helper function to convert any date format to Date object
+      const convertToDate = (date: any): Date | null => {
+        if (!date) return null;
         
-        if (!isNaN(specificDate.getTime())) {
-          return dueDate >= specificDate && dueDate < nextDate;
+        if (date instanceof Date) {
+          return date;
         }
-        return false;
-      }
-
-      // Handle relative dates
-      switch (taskFilter.due) {
-        case 'today':
-          if (!(dueDate >= startOfToday && dueDate < endOfToday)) return false;
-          break;
-        case 'yesterday':
-          if (!(dueDate >= startOfYesterday && dueDate < startOfToday)) return false;
-          break;
-        case 'overdue':
-          if (!(dueDate < startOfToday)) return false;
-          break;
-        case 'upcoming':
-          if (!(dueDate >= startOfToday)) return false;
-          break;
-      }
-    }
-
-    // Apply created date filter
-    if (taskFilter.created) {
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endOfToday = new Date(startOfToday);
-      endOfToday.setDate(endOfToday.getDate() + 1);
-
-      const createdDate = convertToDate(task.createdAt);
-      if (!createdDate) return false;
-
-      if (taskFilter.created === 'today') {
-        if (!(createdDate >= startOfToday && createdDate < endOfToday)) return false;
-      } else if (taskFilter.created.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // Handle specific date (format: YYYY-MM-DD)
-        const specificDate = new Date(taskFilter.created);
-        const nextDate = new Date(specificDate);
-        nextDate.setDate(nextDate.getDate() + 1);
         
-        if (!isNaN(specificDate.getTime())) {
-          if (!(createdDate >= specificDate && createdDate < nextDate)) return false;
-        } else {
+        if (typeof date === 'object' && 'seconds' in date) {
+          return new Date(date.seconds * 1000);
+        }
+        
+        if (typeof date === 'string') {
+          const parsed = new Date(date);
+          return isNaN(parsed.getTime()) ? null : parsed;
+        }
+        
+        return null;
+      };
+
+      // Apply status filter
+      if (taskFilter.status && taskFilter.status !== 'All') {
+        const statusArray = taskFilter.status.split('|').map(s => s.trim().toLowerCase());
+        if (!statusArray.includes(task.status.toLowerCase())) return false;
+      }
+
+      // Apply priority filter
+      if (taskFilter.priority && taskFilter.priority !== 'All') {
+        if (task.priority !== taskFilter.priority) return false;
+      }
+
+      // Apply due date filter
+      if (taskFilter.due) {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfToday = new Date(startOfToday);
+        endOfToday.setDate(endOfToday.getDate() + 1);
+        
+        const startOfYesterday = new Date(startOfToday);
+        startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+        const dueDate = convertToDate(task.dueDate);
+        if (!dueDate) return false;
+
+        // Handle specific date (format: YYYY-MM-DD)
+        if (taskFilter.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const specificDate = new Date(taskFilter.due);
+          const nextDate = new Date(specificDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          
+          if (!isNaN(specificDate.getTime())) {
+            return dueDate >= specificDate && dueDate < nextDate;
+          }
           return false;
         }
+
+        // Handle relative dates
+        switch (taskFilter.due) {
+          case 'today':
+            if (!(dueDate >= startOfToday && dueDate < endOfToday)) return false;
+            break;
+          case 'yesterday':
+            if (!(dueDate >= startOfYesterday && dueDate < startOfToday)) return false;
+            break;
+          case 'overdue':
+            if (!(dueDate < startOfToday)) return false;
+            break;
+          case 'upcoming':
+            if (!(dueDate >= startOfToday)) return false;
+            break;
+        }
       }
-    }
 
-    // Apply search query
-    if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      return (
-        task.title.toLowerCase().includes(searchLower) ||
-        (task.description?.toLowerCase() || '').includes(searchLower)
-      );
-    }
+      // Apply created date filter
+      if (taskFilter.created) {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfToday = new Date(startOfToday);
+        endOfToday.setDate(endOfToday.getDate() + 1);
 
-    return true;
-  });
+        const createdDate = convertToDate(task.createdAt);
+        if (!createdDate) return false;
+
+        if (taskFilter.created === 'today') {
+          if (!(createdDate >= startOfToday && createdDate < endOfToday)) return false;
+        } else if (taskFilter.created.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // Handle specific date (format: YYYY-MM-DD)
+          const specificDate = new Date(taskFilter.created);
+          const nextDate = new Date(specificDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          
+          if (!isNaN(specificDate.getTime())) {
+            if (!(createdDate >= specificDate && createdDate < nextDate)) return false;
+          } else {
+            return false;
+          }
+        }
+      }
+
+      // Apply search query
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        return (
+          task.title.toLowerCase().includes(searchLower) ||
+          (task.description?.toLowerCase() || '').includes(searchLower)
+        );
+      }
+
+      return true;
+    });
+  }, [tasks, taskFilter, searchQuery]);
 
   // Sort tasks: Pending first, then by priority, then by due date
   const sortedTasks = [...filteredTasks].sort((a, b) => {

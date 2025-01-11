@@ -84,3 +84,48 @@ class ReminderService:
                 self._save_reminders(reminder)  # Save after updating
                 return True
         return False
+
+    def add_task_reminder(self, task_id: str, user_id: str, reminder_time: datetime, recurring=None):
+        """Add a reminder for a specific task"""
+        try:
+            reminder_data = {
+                'taskId': task_id,
+                'userId': user_id,
+                'reminderTime': reminder_time,
+                'createdAt': datetime.now(self.timezone),
+                'lastTriggered': None
+            }
+            
+            if recurring:
+                reminder_data['recurring'] = recurring
+
+            # Add to Firestore
+            doc_ref = self.reminders_ref.document()
+            doc_ref.set(reminder_data)
+            
+            return {'id': doc_ref.id, **reminder_data}
+        except Exception as e:
+            print(f"Error adding task reminder: {e}")
+            raise
+
+    def remove_task_reminder(self, task_id: str):
+        """Remove reminder for a specific task"""
+        try:
+            # Query for reminders with this task ID
+            reminders = self.reminders_ref.where('taskId', '==', task_id).stream()
+            
+            # Delete each found reminder
+            for reminder in reminders:
+                reminder.reference.delete()
+        except Exception as e:
+            print(f"Error removing task reminder: {e}")
+            raise
+
+    def get_task_reminders(self, task_id: str):
+        """Get all reminders for a specific task"""
+        try:
+            reminders = self.reminders_ref.where('taskId', '==', task_id).stream()
+            return [{**reminder.to_dict(), 'id': reminder.id} for reminder in reminders]
+        except Exception as e:
+            print(f"Error getting task reminders: {e}")
+            raise

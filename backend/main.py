@@ -10,6 +10,7 @@ from firebase_admin import auth, credentials, firestore
 import io
 import mimetypes
 from io import BytesIO
+from models.reminder_models import ReminderCreate, Reminder
 
 # Load environment variables
 load_dotenv()
@@ -101,6 +102,46 @@ async def complete_reminder(reminder_id: int):
     if reminder_service.mark_completed(reminder_id):
         return {"message": "Reminder marked as completed"}
     raise HTTPException(status_code=404, detail="Reminder not found")
+
+# Task reminder endpoints
+@app.put("/api/tasks/{task_id}/reminder")
+async def add_task_reminder(
+    task_id: str,
+    reminder: ReminderCreate,
+    user = Depends(verify_token)
+):
+    try:
+        result = reminder_service.add_task_reminder(
+            task_id=task_id,
+            user_id=user['uid'],
+            reminder_time=reminder.reminderTime,
+            recurring=reminder.recurring.dict() if reminder.recurring else None
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/tasks/{task_id}/reminder")
+async def remove_task_reminder(
+    task_id: str,
+    user = Depends(verify_token)
+):
+    try:
+        reminder_service.remove_task_reminder(task_id)
+        return {"message": "Reminder removed successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tasks/{task_id}/reminders")
+async def get_task_reminders(
+    task_id: str,
+    user = Depends(verify_token)
+):
+    try:
+        reminders = reminder_service.get_task_reminders(task_id)
+        return reminders
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # New endpoints for context management
 @app.get("/api/context/{context_type}")

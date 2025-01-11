@@ -1,5 +1,4 @@
-import dynamic from 'next/dynamic';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Task, ReminderFrequency } from '@/types/taskTypes';
 import { useTaskReminders } from '@/hooks/useTaskReminders';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ReminderDialogProps {
   task: Task;
@@ -29,58 +29,76 @@ interface ReminderDialogProps {
 }
 
 const ReminderDialog = ({ task, open, onClose, onSuccess }: ReminderDialogProps) => {
-  const { addReminder, removeReminder } = useTaskReminders([]);
+  const { user } = useAuth();
+  const { addReminder, removeReminder } = useTaskReminders();
   const [loading, setLoading] = useState(false);
-  const [reminderTime, setReminderTime] = useState<string>(
-    task.reminder?.time 
-      ? new Date(task.reminder.time instanceof Date 
-          ? task.reminder.time 
-          : task.reminder.time.seconds * 1000
-        ).toISOString().slice(0, 16)
-      : ''
-  );
-  const [isRecurring, setIsRecurring] = useState(!!task.reminder?.recurring);
-  const [frequency, setFrequency] = useState<ReminderFrequency>(
-    task.reminder?.recurring?.frequency || 'daily'
-  );
-  const [interval, setInterval] = useState<number>(
-    task.reminder?.recurring?.interval || 1
-  );
-  const [endDate, setEndDate] = useState<string>(
-    task.reminder?.recurring?.endDate
-      ? new Date(task.reminder.recurring.endDate instanceof Date 
-          ? task.reminder.recurring.endDate 
-          : task.reminder.recurring.endDate.seconds * 1000
-        ).toISOString().slice(0, 16)
-      : ''
-  );
+  const [formState, setFormState] = useState({
+    reminderTime: '',
+    isRecurring: false,
+    frequency: 'daily' as ReminderFrequency,
+    interval: 1,
+    endDate: '',
+  });
+
+  useEffect(() => {
+    if (task.reminder?.time) {
+      const time = task.reminder.time instanceof Date
+        ? task.reminder.time
+        : new Date(task.reminder.time.seconds * 1000);
+
+      setFormState({
+        reminderTime: time.toISOString().slice(0, 16),
+        isRecurring: !!task.reminder.recurring,
+        frequency: task.reminder.recurring?.frequency || 'daily',
+        interval: task.reminder.recurring?.interval || 1,
+        endDate: task.reminder.recurring?.endDate
+          ? (task.reminder.recurring.endDate instanceof Date
+            ? task.reminder.recurring.endDate
+            : new Date(task.reminder.recurring.endDate.seconds * 1000)
+          ).toISOString().slice(0, 16)
+          : '',
+      });
+    } else {
+      setFormState({
+        reminderTime: '',
+        isRecurring: false,
+        frequency: 'daily',
+        interval: 1,
+        endDate: '',
+      });
+    }
+  }, [task.reminder]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      if (!reminderTime) {
+      console.log("formstate: ", formState);
+      if (!formState.reminderTime) {
         if (task.reminder) {
           await removeReminder(task.id);
         }
       } else {
         const reminderData = {
-          time: new Date(reminderTime),
-          ...(isRecurring && {
+          time: new Date(formState.reminderTime),
+          ...(formState.isRecurring && formState.frequency !== 'once' && {
             recurring: {
-              frequency,
-              interval,
-              ...(endDate && { endDate: new Date(endDate) }),
+              frequency: formState.frequency as 'daily' | 'weekly' | 'monthly',
+              interval: formState.interval,
+              ...(formState.endDate && { endDate: new Date(formState.endDate) }),
             },
           }),
         };
 
         await addReminder(task.id, reminderData.time, reminderData.recurring);
       }
-
       onSuccess();
-      onClose();
     } catch (error) {
       console.error('Error saving reminder:', error);
     } finally {
@@ -90,67 +108,73 @@ const ReminderDialog = ({ task, open, onClose, onSuccess }: ReminderDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-gray-800 text-gray-100 border border-gray-700">
         <DialogHeader>
-          <DialogTitle>Set Reminder for "{task.title}"</DialogTitle>
+          <DialogTitle className="text-gray-100">Set Reminder for "{task.title}"</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="reminderTime">Reminder Time</Label>
+            <Label htmlFor="reminderTime" className="text-gray-200">Reminder Time</Label>
             <Input
               id="reminderTime"
               type="datetime-local"
-              value={reminderTime}
-              onChange={(e) => setReminderTime(e.target.value)}
+              value={formState.reminderTime}
+              onChange={(e) => setFormState(prev => ({ ...prev, reminderTime: e.target.value }))}
+              className="bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
           <div className="flex items-center space-x-2">
             <Switch
-              checked={isRecurring}
-              onCheckedChange={setIsRecurring}
+              checked={formState.isRecurring}
+              onCheckedChange={(checked) => setFormState(prev => ({ ...prev, isRecurring: checked }))}
               id="recurring"
+              className="data-[state=checked]:bg-blue-500 data-[state=unchecked]:bg-blue-500"
             />
-            <Label htmlFor="recurring">Recurring Reminder</Label>
+            <Label htmlFor="recurring" className="text-gray-200">Recurring Reminder</Label>
           </div>
 
-          {isRecurring && (
+          {formState.isRecurring && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="frequency">Frequency</Label>
+                <Label htmlFor="frequency" className="text-gray-200">Frequency</Label>
                 <Select
-                  value={frequency}
-                  onValueChange={(value: ReminderFrequency) => setFrequency(value)}
+                  value={formState.frequency}
+                  onValueChange={(value: ReminderFrequency) =>
+                    setFormState(prev => ({ ...prev, frequency: value }))
+                  }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-gray-700 border-gray-600 text-gray-100">
                     <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    <SelectItem value="daily" className="text-gray-100 focus:bg-gray-700">Daily</SelectItem>
+                    <SelectItem value="weekly" className="text-gray-100 focus:bg-gray-700">Weekly</SelectItem>
+                    <SelectItem value="monthly" className="text-gray-100 focus:bg-gray-700">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="interval">Interval</Label>
+                <Label htmlFor="interval" className="text-gray-200">Interval</Label>
                 <Input
                   id="interval"
                   type="number"
                   min="1"
-                  value={interval}
-                  onChange={(e) => setInterval(parseInt(e.target.value))}
+                  value={formState.interval}
+                  onChange={(e) => setFormState(prev => ({ ...prev, interval: parseInt(e.target.value) }))}
+                  className="bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="endDate">End Date (Optional)</Label>
+                <Label htmlFor="endDate" className="text-gray-200">End Date (Optional)</Label>
                 <Input
                   id="endDate"
                   type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  value={formState.endDate}
+                  onChange={(e) => setFormState(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -162,10 +186,15 @@ const ReminderDialog = ({ task, open, onClose, onSuccess }: ReminderDialogProps)
               variant="outline"
               onClick={onClose}
               disabled={loading}
+              className="bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
               {loading ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
@@ -175,7 +204,4 @@ const ReminderDialog = ({ task, open, onClose, onSuccess }: ReminderDialogProps)
   );
 };
 
-// Export with dynamic import to avoid SSR issues
-export default dynamic(() => Promise.resolve(ReminderDialog), {
-  ssr: false
-});
+export default ReminderDialog;
