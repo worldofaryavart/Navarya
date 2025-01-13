@@ -24,7 +24,7 @@ db = firestore.client()
 
 # Now import services that depend on Firebase
 from services.reminder_service import ReminderService
-from services.task_processor import TaskProcessor
+# from services.task_processor import TaskProcessor
 from services.processor_factory import ProcessorFactory
 from services.context_manager import ContextManager
 
@@ -42,7 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-task_processor = TaskProcessor(db)
+# task_processor = TaskProcessor(db)
 
 # Dependency to verify Firebase token
 async def verify_token(request: Request):
@@ -82,6 +82,16 @@ async def process_command(task: TaskBase):
     except Exception as e:
         print("Error processing command:", str(e))
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# Reminder endpoints
+
+@app.get("/api/reminders")
+async def get_reminders(user = Depends(verify_token)):
+    try:
+        return reminder_service.get_active_reminders()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/reminders/{reminder_id}/trigger")
 async def trigger_reminder(reminder_id: str, user = Depends(verify_token)):
