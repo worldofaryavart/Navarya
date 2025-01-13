@@ -81,35 +81,37 @@ class NotificationService {
   }
 
   public checkDueReminders(tasks: Task[]): Task[] {
-    if (typeof window === 'undefined') return [];
+    if (!Array.isArray(tasks)) {
+      console.warn('checkDueReminders: tasks is not an array', tasks);
+      return [];
+    }
 
-    console.log('Checking due reminders for tasks:', tasks.length);
-    
     const now = new Date();
+    console.log('Current time:', now.toISOString());
+    
     const dueReminders = tasks.filter(task => {
-      if (!task.reminder || task.status === 'Completed') {
-        return false;
-      }
-
-      const reminderTime = task.reminder.time instanceof Date
-        ? task.reminder.time
-        : new Date(task.reminder.time.seconds * 1000);
-
-      console.log(`Task "${task.title}" reminder time:`, reminderTime);
+      if (!task.reminder?.time) return false;
       
-      // Check if the reminder is due and notification hasn't been sent
-      const isDue = !task.reminder.notificationSent && reminderTime <= now;
+      // Convert reminder time to Date object, handling both Date and Firestore timestamp formats
+      const reminderTime = task.reminder.time instanceof Date 
+        ? task.reminder.time 
+        : new Date((task.reminder.time as any).seconds * 1000);
+      console.log(`Task ${task.id} reminder time:`, reminderTime.toISOString());
       
-      if (isDue) {
-        console.log(`Task "${task.title}" is due!`);
+      // Check if reminder is within the last minute
+      const timeDiff = Math.abs(now.getTime() - reminderTime.getTime());
+      const isWithinLastMinute = timeDiff <= 60000; // 1 minute in milliseconds
+      
+      if (isWithinLastMinute) {
+        console.log(`Task ${task.id} is due! Time diff:`, timeDiff);
         // Show notification for due reminder
         this.showNotification(task);
       }
-
-      return isDue;
+      
+      return isWithinLastMinute;
     });
 
-    console.log('Due reminders found:', dueReminders.length);
+    console.log('Due reminders:', dueReminders);
     return dueReminders;
   }
 

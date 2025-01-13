@@ -7,6 +7,9 @@ interface RecurringReminder {
 }
 
 const getAuthHeaders = async () => {
+  if (!auth) {
+    throw new Error('Authentication not initialized');
+  }
   const token = await auth.currentUser?.getIdToken();
   return {
     'Content-Type': 'application/json',

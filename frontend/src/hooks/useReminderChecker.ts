@@ -51,14 +51,11 @@ export const useReminderChecker = (tasks: Task[]) => {
       }
     };
 
-    // Initial check
+    // Run initial check
     runCheck();
 
-    // Set up interval only if mounted
-    if (mounted) {
-      // Check every 30 seconds
-      intervalId = setInterval(runCheck, 30000);
-    }
+    // Check every 15 seconds
+    intervalId = setInterval(runCheck, 15000);
 
     return () => {
       mounted = false;

@@ -35,8 +35,6 @@ const AIControlButton: React.FC = () => {
   const uiCommandHandler = new UICommandHandler(router);
   const aiCommandHandler = new AICommandHandler(router);
 
-  console.log("contextData is : ", contextData);
-
   // Function to fetch context from backend
   const fetchContext = async (contextType: string) => {
     try {

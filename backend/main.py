@@ -70,14 +70,6 @@ class Task(TaskBase):
     user_id: str
 
 # Task endpoints
-@app.post("/api/check-reminder")
-async def check_reminder(task: TaskBase):
-    """Check if a task contains a reminder and extract it"""
-    reminder_time = reminder_service.parse_datetime(task.content)
-    if reminder_time:
-        reminder = reminder_service.create_reminder(task.content, task.content)
-        return {"has_reminder": True, "reminder": reminder}
-    return {"has_reminder": False}
 
 @app.post("/api/process-command")
 async def process_command(task: TaskBase):
@@ -91,13 +83,6 @@ async def process_command(task: TaskBase):
         print("Error processing command:", str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/api/reminders")
-async def get_reminders(user = Depends(verify_token)):
-    try:
-        return reminder_service.get_active_reminders()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.put("/api/reminders/{reminder_id}/trigger")
 async def trigger_reminder(reminder_id: str, user = Depends(verify_token)):
     try:
@@ -107,13 +92,6 @@ async def trigger_reminder(reminder_id: str, user = Depends(verify_token)):
         raise HTTPException(status_code=404, detail="Reminder not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.put("/api/reminders/{reminder_id}/complete")
-async def complete_reminder(reminder_id: int):
-    """Mark a reminder as completed"""
-    if reminder_service.mark_completed(reminder_id):
-        return {"message": "Reminder marked as completed"}
-    raise HTTPException(status_code=404, detail="Reminder not found")
 
 # Task reminder endpoints
 @app.put("/api/tasks/{task_id}/reminder")

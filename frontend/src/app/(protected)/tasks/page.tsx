@@ -7,7 +7,6 @@ import TaskList from "@/components/TaskScheduler/TaskList";
 import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
 import Loader from "@/components/commonComp/Loader";
-import { useReminderSystem } from "@/hooks/useReminderSystem";
 import { useTaskContext } from "@/context/TaskContext";
 
 const Tasks = () => {
@@ -15,8 +14,6 @@ const Tasks = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { tasks, setTasks } = useTaskContext();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-
-  const { checkTaskForReminder } = useReminderSystem();
 
   useEffect(() => {
     setIsLoading(false);
@@ -47,9 +44,7 @@ const Tasks = () => {
 
       const addedTask = await addTask(taskToAdd);
       setTasks((prevTasks) => [...prevTasks, addedTask]);
-      
-      await checkTaskForReminder(newTask.description || '');
-      
+            
       handleCloseTaskModal();
     } catch (error) {
       console.error("Failed to add task: ", error);
