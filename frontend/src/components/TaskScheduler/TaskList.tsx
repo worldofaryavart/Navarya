@@ -1,19 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import {
-  MoreVertical,
-  Edit2,
-  Trash2,
-  CheckCircle,
-  Clock,
-  Activity,
-  Bell,
-  X,
-} from "lucide-react";
 import { Task } from "@/types/taskTypes";
-import { Reminder } from "@/types/reminderTypes";
-import { useReminderSystem } from "@/hooks/useReminderSystem";
 import { useUIStore } from "@/store/uiStateStore";
 import { useReminderChecker } from "@/hooks/useReminderChecker";
 import { TaskCard } from "./TaskCard";

@@ -155,6 +155,15 @@ async def get_task_reminders(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.put("/api/tasks/{task_id}/reminder/notification")
+async def update_reminder_notification(task_id: str, user = Depends(verify_token)):
+    """Mark a reminder's notification as sent"""
+    try:
+        reminder = await reminder_service.mark_notification_sent(task_id)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # New endpoints for context management
 @app.get("/api/context/{context_type}")
 async def get_context(context_type: str, request: Request):

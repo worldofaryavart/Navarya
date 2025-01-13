@@ -118,3 +118,20 @@ class ReminderService:
         except Exception as e:
             print(f"Error marking reminder as triggered: {e}")
             return False
+
+    def mark_notification_sent(self, task_id: str):
+        """Mark a reminder's notification as sent"""
+        try:
+            # Query for reminders with this task ID
+            reminders = self.reminders_ref.where('taskId', '==', task_id).stream()
+            
+            for reminder in reminders:
+                reminder_ref = self.reminders_ref.document(reminder.id)
+                reminder_ref.update({
+                    'notificationSent': True,
+                    'lastTriggered': datetime.now(self.timezone).isoformat()
+                })
+            return True
+        except Exception as e:
+            print(f"Error marking notification as sent: {e}")
+            raise
