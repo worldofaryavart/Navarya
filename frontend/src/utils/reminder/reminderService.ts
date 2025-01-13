@@ -3,7 +3,13 @@ import { getApiUrl } from '@/utils/config/api.config';
 import { auth } from '@/utils/config/firebase.config';
 
 const getAuthHeaders = async () => {
+  if (!auth) {
+    throw new Error('Authentication not initialized');
+  }
   const token = await auth.currentUser?.getIdToken();
+  if (!token) {
+    throw new Error('User not authenticated');
+  }
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, memo } from 'react';
-import { Bell, BellRing, MoreVertical, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { Bell, BellRing, MoreVertical, Edit2, Trash2, CheckCircle, Clock } from 'lucide-react';
 import { Task } from '@/types/taskTypes';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import ReminderDialog from './ReminderDialog';
+import { Badge } from '@/components/ui/badge';
 
 interface TaskCardProps {
   task: Task;
@@ -41,7 +42,6 @@ const TaskCard = memo(({
   }, []);
 
   const handleReminderClick = useCallback(() => {
-    console.log("reminder click is clicked");
     setShowReminderDialog(true);
   }, []);
 
@@ -57,15 +57,70 @@ const TaskCard = memo(({
     });
   }, []);
 
+  const getReminderStatus = useCallback(() => {
+    if (!task.reminder) return null;
+
+    const now = new Date();
+    const reminderTime = task.reminder.time instanceof Date 
+      ? task.reminder.time 
+      : new Date(task.reminder.time.seconds * 1000);
+
+    if (reminderTime < now) {
+      return task.reminder.notificationSent ? 'triggered' : 'overdue';
+    }
+    
+    // Calculate time until reminder
+    const diff = reminderTime.getTime() - now.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `in ${days}d`;
+    if (hours > 0) return `in ${hours}h`;
+    if (minutes > 0) return `in ${minutes}m`;
+    return 'now';
+  }, [task.reminder]);
+
   const getReminderLabel = useCallback(() => {
     if (!task.reminder) return null;
 
     const time = formatReminderTime(task.reminder.time);
-    if (!task.reminder.recurring) return `Reminder at ${time}`;
+    const status = getReminderStatus();
+    
+    if (!task.reminder.recurring) {
+      return (
+        <div className="flex items-center gap-2">
+          <Clock className="h-3 w-3" />
+          <span>{time}</span>
+          <Badge variant={
+            status === 'triggered' ? 'secondary' :
+            status === 'overdue' ? 'destructive' : 'default'
+          }>
+            {status}
+          </Badge>
+        </div>
+      );
+    }
 
     const { frequency, interval } = task.reminder.recurring;
-    return `Repeats ${frequency} (every ${interval} ${frequency.slice(0, -2)}${interval > 1 ? 's' : ''})`;
-  }, [task.reminder, formatReminderTime]);
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Clock className="h-3 w-3" />
+          <span>{time}</span>
+          <Badge variant={
+            status === 'triggered' ? 'secondary' :
+            status === 'overdue' ? 'destructive' : 'default'
+          }>
+            {status}
+          </Badge>
+        </div>
+        <Badge variant="outline" className="w-fit">
+          Repeats {frequency} (every {interval} {frequency.slice(0, -2)}{interval > 1 ? 's' : ''})
+        </Badge>
+      </div>
+    );
+  }, [task.reminder, formatReminderTime, getReminderStatus]);
 
   return (
     <div className={cn(
@@ -99,8 +154,7 @@ const TaskCard = memo(({
             <p className="text-sm text-gray-400">{task.description}</p>
           )}
           {task.reminder && (
-            <div className="flex items-center mt-1 text-xs text-gray-400">
-              <BellRing className="h-3 w-3 mr-1" />
+            <div className="mt-2 text-xs text-gray-400">
               {getReminderLabel()}
             </div>
           )}
