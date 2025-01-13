@@ -36,7 +36,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "https://www.navarya.com"],
+    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "https://www.navarya.com", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,9 +92,21 @@ async def process_command(task: TaskBase):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/reminders")
-async def get_reminders():
-    """Get all active reminders"""
-    return reminder_service.get_active_reminders()
+async def get_reminders(user = Depends(verify_token)):
+    try:
+        return reminder_service.get_active_reminders()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/reminders/{reminder_id}/trigger")
+async def trigger_reminder(reminder_id: str, user = Depends(verify_token)):
+    try:
+        success = reminder_service.mark_reminder_triggered(reminder_id)
+        if success:
+            return {"message": "Reminder marked as triggered"}
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/reminders/{reminder_id}/complete")
 async def complete_reminder(reminder_id: int):

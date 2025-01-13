@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Reminder } from '@/types/reminderTypes';
 import { checkForReminder, getReminders, completeReminder } from '@/utils/reminder/reminderService';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useReminderSystem = () => {
+  const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showReminders, setShowReminders] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const checkForDueReminders = useCallback((reminders: Reminder[]) => {
     const now = new Date();
@@ -20,45 +23,69 @@ export const useReminderSystem = () => {
   }, []);
 
   const fetchReminders = useCallback(async () => {
+    if (!user) {
+      setError('User not authenticated');
+      return;
+    }
+
     try {
+      setError(null);
       const fetchedReminders = await getReminders();
       setReminders(fetchedReminders);
       checkForDueReminders(fetchedReminders);
     } catch (error) {
       console.error('Error fetching reminders:', error);
+      setError('Failed to fetch reminders');
     }
-  }, [checkForDueReminders]);
+  }, [checkForDueReminders, user]);
 
   useEffect(() => {
-    fetchReminders();
-    // Poll for new reminders every 30 seconds
-    const interval = setInterval(fetchReminders, 30000);
-    return () => clearInterval(interval);
-  }, [fetchReminders]);
+    if (user) {
+      fetchReminders();
+      // Poll for new reminders every 30 seconds
+      const interval = setInterval(fetchReminders, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setReminders([]);
+      setError(null);
+    }
+  }, [fetchReminders, user]);
 
   const checkTaskForReminder = async (taskContent: string) => {
-    const result = await checkForReminder(taskContent);
-    if (result.has_reminder) {
-      console.log(`Reminder set for: ${taskContent}`);
-      await fetchReminders();
+    if (!user) {
+      setError('User not authenticated');
+      return false;
     }
-    return result.has_reminder;
+
+    try {
+      setError(null);
+      const result = await checkForReminder(taskContent);
+      if (result.has_reminder) {
+        console.log(`Reminder set for: ${taskContent}`);
+        await fetchReminders();
+      }
+      return result.has_reminder;
+    } catch (error) {
+      console.error('Error checking for reminder:', error);
+      setError('Failed to check for reminder');
+      return false;
+    }
   };
 
   const handleCompleteReminder = async (reminderId: number) => {
+    if (!user) {
+      setError('User not authenticated');
+      return;
+    }
+
     try {
+      setError(null);
       await completeReminder(reminderId);
       // Update local state to remove the completed reminder
-      setReminders(prevReminders => 
-        prevReminders.map(reminder => 
-          reminder.id === reminderId 
-            ? { ...reminder, is_completed: true }
-            : reminder
-        )
-      );
+      setReminders(prevReminders => prevReminders.filter(r => r.id !== reminderId));
     } catch (error) {
       console.error('Error completing reminder:', error);
-      throw error;
+      setError('Failed to complete reminder');
     }
   };
 
@@ -71,6 +98,7 @@ export const useReminderSystem = () => {
     showReminders,
     toggleReminders,
     checkTaskForReminder,
-    handleCompleteReminder
+    handleCompleteReminder,
+    error,
   };
 };

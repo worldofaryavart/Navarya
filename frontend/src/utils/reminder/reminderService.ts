@@ -1,21 +1,21 @@
 import { Reminder } from "@/types/reminderTypes";
 import { getApiUrl } from '@/utils/config/api.config';
+import { auth } from '@/utils/config/firebase.config';
 
-// export interface Reminder {
-//   id: number;
-//   taskId?: string;
-//   reminderTime: string;
-//   message: string;
-//   completed: boolean;
-// }
+const getAuthHeaders = async () => {
+  const token = await auth.currentUser?.getIdToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+};
 
 export const checkForReminder = async (content: string) => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(getApiUrl('/api/check-reminder'), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ content }),
     });
     return await response.json();
@@ -27,22 +27,25 @@ export const checkForReminder = async (content: string) => {
 
 export const getReminders = async (): Promise<Reminder[]> => {
   try {
-    const response = await fetch(getApiUrl('/api/reminders'));
+    const headers = await getAuthHeaders();
+    const response = await fetch(getApiUrl('/api/reminders'), {
+      headers,
+    });
+    
     if (!response.ok) throw new Error('Failed to fetch reminders');
     return await response.json();
   } catch (error) {
     console.error('Error fetching reminders:', error);
-    throw error;
+    throw new Error('Failed to fetch reminders');
   }
 };
 
 export const completeReminder = async (reminderId: number): Promise<void> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(getApiUrl(`/api/reminders/${reminderId}/complete`), {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
     
     if (!response.ok) {
