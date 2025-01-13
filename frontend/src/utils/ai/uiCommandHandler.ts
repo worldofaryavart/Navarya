@@ -6,10 +6,10 @@ export interface UICommand {
   payload: {
     page?: string;
     filter?: {
-      status?: string | null;
-      priority?: string | null;
-      due?: string | null;
-      created?: string | null;
+      status?: string;
+      priority?: string;
+      due?: string;
+      created?: string;
     };
     search?: string;
   };

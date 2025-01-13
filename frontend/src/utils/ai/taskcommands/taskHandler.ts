@@ -150,10 +150,10 @@ export class TaskCommandHandler {
       // Update UI store filters if filters are provided
       if (filter) {
         uiStore.setTaskFilter({
-          status: filter.status || null,
-          priority: filter.priority || null,
-          due: filter.due || null,
-          created: filter.created || null
+          status: filter.status || undefined,
+          priority: filter.priority || undefined,
+          due: filter.due || undefined,
+          created: filter.created || undefined
         });
 
         // Update selected date based on due filter

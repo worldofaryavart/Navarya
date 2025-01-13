@@ -1,6 +1,5 @@
 import { getApiUrl } from '../config/api.config';
 import { TaskCommandHandler } from './taskcommands/taskHandler';
-import { ReminderCommandHandler } from './reminderCommands/reminderCommandHandler';
 import UICommandHandler from './uiCommandHandler';
 import { useRouter } from 'next/navigation';
 type AppRouterInstance = ReturnType<typeof useRouter>;
@@ -38,10 +37,6 @@ export class AICommandHandler {
 
     if (lowercaseInput === 'show tasks' || lowercaseInput === 'list tasks') {
       return TaskCommandHandler.listTasks();
-    }
-
-    if (lowercaseInput === 'show reminders' || lowercaseInput === 'list reminders') {
-      return ReminderCommandHandler.listReminders();
     }
 
     try {
@@ -109,9 +104,6 @@ export class AICommandHandler {
 
         case 'list_tasks':
           return TaskCommandHandler.listTasks(result.data?.filter);
-
-        case 'list_reminders':
-          return ReminderCommandHandler.listReminders(result.data?.filter);
 
         case 'delete_task':
           if (!result.data?.taskId && !result.data?.description) {
