@@ -18,17 +18,18 @@ export const useReminderChecker = (tasks: Task[]) => {
         if (!task.reminder?.time) return false;
         
         const reminderTime = new Date(task.reminder.time.seconds * 1000);
-        return true;
+        // Only include tasks that haven't been notified yet
+        return !task.reminder.notificationSent;
       });
 
       const dueReminders = tasksWithReminders.filter(task => {
         const reminderTime = new Date(task.reminder!.time.seconds * 1000);
         const timeDiff = reminderTime.getTime() - now.getTime();
         
-        const isWithinLastMinute = Math.abs(timeDiff) <= 60000; // 1 minute
-        const shouldNotify = isWithinLastMinute && !task.reminder!.notificationSent;
+        // Consider a task due if it's within 5 seconds of its reminder time
+        const isDueTime = Math.abs(timeDiff) <= 5000;
         
-        if (shouldNotify) {
+        if (isDueTime) {
           console.log('Task due for notification:', task.id, task.title);
           notificationService.showNotification(task);
           return true;
@@ -38,13 +39,26 @@ export const useReminderChecker = (tasks: Task[]) => {
 
       if (dueReminders.length > 0) {
         setReminderCount(dueReminders.length);
-
-        // Mark notifications as sent
+        
+        // Mark notifications as sent immediately
         for (const task of dueReminders) {
           try {
+            // Update backend first
             await notificationService.updateNotificationSent(task.id);
-            // Update the local task state to reflect the notification was sent
-            task.reminder!.notificationSent = true;
+            
+            // Force update the task's reminder state
+            task.reminder = {
+              ...task.reminder!,
+              notificationSent: true,
+              lastTriggered: now.toISOString()
+            };
+            
+            // Force a re-render of the task component
+            const updatedTask = { ...task };
+            const taskIndex = tasks.findIndex(t => t.id === task.id);
+            if (taskIndex !== -1) {
+              tasks[taskIndex] = updatedTask;
+            }
           } catch (error) {
             console.error('Error updating notification status for task:', task.id, error);
           }
@@ -77,8 +91,8 @@ export const useReminderChecker = (tasks: Task[]) => {
     // Initial check
     runCheck();
 
-    // Set up interval for periodic checks
-    intervalId = setInterval(runCheck, 15000); // Check every 15 seconds
+    // Check more frequently (every 2 seconds) for more responsive notifications
+    intervalId = setInterval(runCheck, 2000);
 
     return () => {
       mounted = false;
