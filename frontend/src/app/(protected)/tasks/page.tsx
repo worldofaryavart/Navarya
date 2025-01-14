@@ -93,10 +93,10 @@ const Tasks = () => {
       <div className="flex gap-4">
         {/* Left Column - Calendar and Task List */}
         <div className="w-1/3 space-y-4">
-          <div className="rounded-lg p-4">
+          <div className="rounded-lg p-4 border border-gray-700/50">
             <CalendarView tasks={tasks} />
           </div>
-          <div className="rounded-lg overflow-hidden">
+          <div className="rounded-lg overflow-hidden border border-gray-700/50">
             <TaskList
               tasks={tasks}
               onUpdateTask={handleUpdateTask}
@@ -108,10 +108,10 @@ const Tasks = () => {
 
         {/* Right Column - Tasks Section and Timeline */}
         <div className="w-2/3 space-y-4">
-          <div className="rounded-lg overflow-auto">
+          <div className="rounded-lg overflow-auto border border-gray-700/50">
             <TasksSection tasks={tasks} />
           </div>
-          <div className="rounded-lg">
+          <div className="rounded-lg border border-gray-700/50">
             <CalendarTimeline tasks={tasks} />
           </div>
         </div>
