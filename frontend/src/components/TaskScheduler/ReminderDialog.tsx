@@ -148,7 +148,8 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
     setLoading(true);
     try {
       await removeReminder(task.id);
-      onSuccess(task);
+      // Update the task with reminder set to undefined
+      onSuccess({ ...task, reminder: undefined });
     } catch (error) {
       console.error('Error removing reminder:', error);
     } finally {

@@ -29,6 +29,7 @@ export const useReminderChecker = (tasks: Task[]) => {
         const shouldNotify = isWithinLastMinute && !task.reminder!.notificationSent;
         
         if (shouldNotify) {
+          console.log('Task due for notification:', task.id, task.title);
           notificationService.showNotification(task);
           return true;
         }
@@ -40,7 +41,13 @@ export const useReminderChecker = (tasks: Task[]) => {
 
         // Mark notifications as sent
         for (const task of dueReminders) {
-          await notificationService.updateNotificationSent(task.id);
+          try {
+            await notificationService.updateNotificationSent(task.id);
+            // Update the local task state to reflect the notification was sent
+            task.reminder!.notificationSent = true;
+          } catch (error) {
+            console.error('Error updating notification status for task:', task.id, error);
+          }
         }
       }
     } catch (error) {
@@ -48,7 +55,7 @@ export const useReminderChecker = (tasks: Task[]) => {
     } finally {
       checkInProgress.current = false;
     }
-  }, [tasks, notificationService]);
+  }, [tasks, setReminderCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

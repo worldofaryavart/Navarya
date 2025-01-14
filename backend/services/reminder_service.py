@@ -165,9 +165,18 @@ class ReminderService:
             
             for reminder in reminders:
                 reminder_ref = self.reminders_ref.document(reminder.id)
+                reminder_data = reminder.to_dict()
+                
+                # Update the reminder document
                 reminder_ref.update({
                     'notificationSent': True,
                     'lastTriggered': datetime.now(self.timezone).isoformat()
+                })
+                
+                # Update the task document's reminder field
+                task_ref = self.db.collection('tasks').document(task_id)
+                task_ref.update({
+                    'reminder.notificationSent': True
                 })
             return True
         except Exception as e:
