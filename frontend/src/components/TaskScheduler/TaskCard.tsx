@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import { Bell, BellRing, MoreVertical, Edit2, Trash2, CheckCircle, Clock } from 'lucide-react';
 import { Task } from '@/types/taskTypes';
 import dynamic from 'next/dynamic';
@@ -29,17 +29,23 @@ const TaskCard = memo(({
 }: TaskCardProps) => {
   const [showReminderDialog, setShowReminderDialog] = useState(false);
 
-  const checkReminders = useReminderChecker([task]);
-  console.log("checkReminde sis ", checkReminders);
+  // Initialize reminder checker
+  useReminderChecker([task]);
+
+  useEffect(() => {
+    console.log("Task reminder data:", task.reminder);
+  }, [task.reminder]);
 
   const handleStatusChange = useCallback(() => {
     const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
     onUpdateTask({ ...task, status: newStatus });
   }, [task, onUpdateTask]);
 
-  const handleReminderSuccess = useCallback(() => {
+  const handleReminderSuccess = useCallback(async (updatedTask: Task) => {
+    console.log("Handling reminder success with task:", updatedTask);
     setShowReminderDialog(false);
-  }, []);
+    await onUpdateTask(updatedTask);
+  }, [onUpdateTask]);
 
   const handleReminderClose = useCallback(() => {
     setShowReminderDialog(false);

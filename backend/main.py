@@ -36,10 +36,11 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "https://www.navarya.com", "http://127.0.0.1:3000"],
+    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000", "https://www.navarya.com", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # task_processor = TaskProcessor(db)
@@ -194,4 +195,4 @@ async def clear_context(context_type: str, request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

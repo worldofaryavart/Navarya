@@ -28,7 +28,7 @@ interface ReminderDialogProps {
   task: Task;
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (updatedTask: Task) => void;
   onUpdateTask: (task: Task) => void;
 }
 
@@ -100,6 +100,7 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
     }
     
     setLoading(true);
+    console.log("Submitting reminder with form state:", formState);
 
     try {
       if (!formState.reminderTime) {
@@ -127,14 +128,18 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
           notificationSent: false
         };
 
+        console.log("Sending reminder data:", reminderData);
         const response = await addReminder(task.id, new Date(formState.reminderTime), reminderData.recurring);
-        onSuccess();
+        console.log("Received response:", response);
+        
         // Update the task's state with the new reminder
         const updatedTask = {
           ...task,
           reminder: reminderData
         };
-        onUpdateTask(updatedTask);
+        console.log("Updating task with:", updatedTask);
+        await onUpdateTask(updatedTask);
+        onSuccess(updatedTask);
       }
     } catch (error) {
       console.error('Error setting reminder:', error);
@@ -147,7 +152,7 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
     setLoading(true);
     try {
       await removeReminder(task.id);
-      onSuccess();
+      onSuccess(task);
     } catch (error) {
       console.error('Error removing reminder:', error);
     } finally {

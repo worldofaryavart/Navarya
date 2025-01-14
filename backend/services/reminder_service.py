@@ -5,6 +5,7 @@ import re
 from dateutil import parser
 import pytz
 from google.cloud import firestore
+from typing import Union
 
 class ReminderService:
     def __init__(self, db):
@@ -62,18 +63,21 @@ class ReminderService:
             print(f"Error getting active reminders: {e}")
             return []
 
-    def add_task_reminder(self, task_id: str, user_id: str, reminder_time: datetime, recurring=None):
+    def add_task_reminder(self, task_id: str, user_id: str, reminder_time: Union[datetime, str], recurring=None):
         """Add a reminder for a specific task"""
         try:
             # Convert reminder time to timestamp
             if isinstance(reminder_time, str):
                 reminder_time = parser.parse(reminder_time)
             
+            # Convert to UTC timestamp
+            timestamp_seconds = int(reminder_time.timestamp())
+            
             reminder_data = {
                 'taskId': task_id,
                 'userId': user_id,
                 'time': {
-                    'seconds': int(reminder_time.timestamp()),
+                    'seconds': timestamp_seconds,
                     'nanoseconds': 0
                 },
                 'createdAt': firestore.SERVER_TIMESTAMP,
@@ -88,6 +92,8 @@ class ReminderService:
                         'seconds': int(end_date.timestamp()),
                         'nanoseconds': 0
                     }
+
+            print("Adding reminder with data:", reminder_data)
 
             # Add to Firestore reminders collection
             doc_ref = self.reminders_ref.document()

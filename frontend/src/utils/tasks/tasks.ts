@@ -71,6 +71,7 @@ export const updateTask = async (task: Task) => {
             status: task.status,
             priority: task.priority,
             dueDate: task.dueDate,
+            reminder: task.reminder || null,
         });
     } catch (error) {
         console.error("Error updating task: ", error);
