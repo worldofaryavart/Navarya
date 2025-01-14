@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { Task } from '@/types/taskTypes';
 import { notificationService } from '@/services/notificationService';
 import { useUIStore } from '@/store/uiStateStore';
+import { Timestamp } from 'firebase/firestore';
 
 export const useReminderChecker = (tasks: Task[]) => {
   const { setReminderCount } = useUIStore();
@@ -50,7 +51,7 @@ export const useReminderChecker = (tasks: Task[]) => {
             task.reminder = {
               ...task.reminder!,
               notificationSent: true,
-              lastTriggered: now.toISOString()
+              lastNotification: Timestamp.fromDate(now)
             };
             
             // Force a re-render of the task component
