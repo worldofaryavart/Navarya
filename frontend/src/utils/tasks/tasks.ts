@@ -65,14 +65,24 @@ export const updateTask = async (task: Task) => {
         if (!taskDoc.exists()) throw new Error('Task not found');
         if (taskDoc.data().userId !== user.uid) throw new Error('Unauthorized');
 
-        await updateDoc(taskDocRef, {
+        const updateData = {
             title: task.title,
             description: task.description,
             status: task.status,
             priority: task.priority,
             dueDate: task.dueDate,
             reminder: task.reminder || null,
-        });
+        };
+
+        await updateDoc(taskDocRef, updateData);
+        
+        // Return the updated task
+        return {
+            ...task,
+            ...updateData,
+            id: task.id,
+            userId: user.uid
+        };
     } catch (error) {
         console.error("Error updating task: ", error);
         throw error;

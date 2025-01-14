@@ -9,7 +9,10 @@ export const useTaskReminders = () => {
     if (typeof window === 'undefined') return;
 
     try {
-      return await taskReminderService.addReminder(taskId, reminderTime, recurring);
+      console.log('Adding reminder:', { taskId, reminderTime, recurring });
+      const result = await taskReminderService.addReminder(taskId, reminderTime, recurring);
+      console.log('Reminder added successfully:', result);
+      return result;
     } catch (error) {
       console.error('Error adding reminder:', error);
       throw error;

@@ -72,6 +72,7 @@ class ReminderService:
             
             # Convert to UTC timestamp
             timestamp_seconds = int(reminder_time.timestamp())
+            current_time = datetime.now()
             
             reminder_data = {
                 'taskId': task_id,
@@ -80,7 +81,10 @@ class ReminderService:
                     'seconds': timestamp_seconds,
                     'nanoseconds': 0
                 },
-                'createdAt': firestore.SERVER_TIMESTAMP,
+                'createdAt': {
+                    'seconds': int(current_time.timestamp()),
+                    'nanoseconds': 0
+                },
                 'notificationSent': False
             }
             
@@ -105,7 +109,10 @@ class ReminderService:
                 'reminder': reminder_data
             })
             
-            return reminder_data
+            return {
+                'id': doc_ref.id,
+                **reminder_data
+            }
         except Exception as e:
             print(f"Error adding task reminder: {e}")
             raise

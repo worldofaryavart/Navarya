@@ -94,55 +94,51 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      console.error('User not authenticated');
-      return;
-    }
-    
     setLoading(true);
-    console.log("Submitting reminder with form state:", formState);
-
     try {
-      if (!formState.reminderTime) {
-        if (task.reminder) {
-          await removeReminder(task.id);
-        }
-      } else {
-        const reminderData = {
-          time: {
-            seconds: Math.floor(new Date(formState.reminderTime).getTime() / 1000),
-            nanoseconds: 0
-          },
-          ...(formState.isRecurring && formState.frequency !== 'once' && {
-            recurring: {
-              frequency: formState.frequency as 'daily' | 'weekly' | 'monthly',
-              interval: formState.interval,
-              ...(formState.endDate && { 
-                endDate: {
-                  seconds: Math.floor(new Date(formState.endDate).getTime() / 1000),
-                  nanoseconds: 0
-                }
-              }),
-            },
-          }),
-          notificationSent: false
+      console.log("Submitting reminder with form state:", formState);
+      
+      // Convert the reminder time to a Date object
+      const reminderDate = new Date(formState.reminderTime);
+      
+      let recurring = undefined;
+      if (formState.isRecurring && formState.frequency !== 'once') {
+        recurring = {
+          frequency: formState.frequency as 'daily' | 'weekly' | 'monthly',
+          interval: formState.interval
         };
-
-        console.log("Sending reminder data:", reminderData);
-        const response = await addReminder(task.id, new Date(formState.reminderTime), reminderData.recurring);
-        console.log("Received response:", response);
-        
-        // Update the task's state with the new reminder
-        const updatedTask = {
-          ...task,
-          reminder: reminderData
-        };
-        console.log("Updating task with:", updatedTask);
-        await onUpdateTask(updatedTask);
-        onSuccess(updatedTask);
       }
+
+      // Create the reminder data
+      const reminderData = {
+        time: {
+          seconds: Math.floor(reminderDate.getTime() / 1000),
+          nanoseconds: 0
+        },
+        notificationSent: false,
+        ...(recurring && { recurring })
+      };
+
+      console.log("Sending reminder data:", reminderData);
+
+      // Add the reminder
+      const response = await addReminder(task.id, reminderDate, recurring);
+      console.log("Received response:", response);
+
+      // Update the task with the new reminder
+      const updatedTask = {
+        ...task,
+        reminder: {
+          time: response.time,
+          notificationSent: response.notificationSent,
+          ...(recurring && { recurring })
+        }
+      };
+      console.log("Updating task with:", updatedTask);
+
+      onSuccess(updatedTask);
     } catch (error) {
-      console.error('Error setting reminder:', error);
+      console.error("Error setting reminder:", error);
     } finally {
       setLoading(false);
     }

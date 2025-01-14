@@ -55,23 +55,17 @@ const Tasks = () => {
     try {
       if (!updatedTask.id) throw new Error("Task ID is required");
 
-      const completeTask: Task = {
-        id: updatedTask.id,
-        title: updatedTask.title,
-        description: updatedTask.description,
-        status: updatedTask.status,
-        priority: updatedTask.priority,
-        dueDate: updatedTask.dueDate,
-        createdAt: updatedTask.createdAt || new Date(),
-      };
-
-      const result = await updateTask(completeTask);
-
+      const result = await updateTask(updatedTask);
+      
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
-          task.id === updatedTask.id ? completeTask : task
+          task.id === result.id ? result : task
         )
       );
+
+      if (isModalOpen) {
+        handleCloseTaskModal();
+      }
     } catch (error) {
       console.error("Failed to update task: ", error);
     }

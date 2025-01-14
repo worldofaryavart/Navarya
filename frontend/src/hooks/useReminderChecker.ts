@@ -8,47 +8,26 @@ export const useReminderChecker = (tasks: Task[]) => {
   const checkInProgress = useRef(false);
 
   const checkReminders = useCallback(async () => {
-    if (typeof window === 'undefined' || checkInProgress.current) return;
+    if (checkInProgress.current) return;
     
     try {
       checkInProgress.current = true;
       const now = new Date();
-      console.log('Checking reminders...', now.toISOString());
       
       const tasksWithReminders = tasks.filter(task => {
-        if (!task.reminder?.time) {
-          console.log(`Task ${task.id} has no reminder`);
-          return false;
-        }
+        if (!task.reminder?.time) return false;
         
-        const reminderTime = task.reminder.time instanceof Date 
-          ? task.reminder.time 
-          : new Date((task.reminder.time as any).seconds * 1000);
-          
-        console.log(`Task ${task.id} reminder time:`, reminderTime.toISOString());
-        console.log(`Task ${task.id} full reminder data:`, task.reminder);
+        const reminderTime = new Date(task.reminder.time.seconds * 1000);
         return true;
       });
 
-      console.log('Tasks with reminders:', tasksWithReminders);
-
       const dueReminders = tasksWithReminders.filter(task => {
-        const reminderTime = task.reminder!.time instanceof Date 
-          ? task.reminder!.time 
-          : new Date((task.reminder!.time as any).seconds * 1000);
-        
+        const reminderTime = new Date(task.reminder!.time.seconds * 1000);
         const timeDiff = reminderTime.getTime() - now.getTime();
-        console.log(`Task ${task.id} time difference:`, timeDiff, 'ms');
         
         const isWithinLastMinute = Math.abs(timeDiff) <= 60000; // 1 minute
         const shouldNotify = isWithinLastMinute && !task.reminder!.notificationSent;
-
-        console.log(`Task ${task.id} notification status:`, {
-          isWithinLastMinute,
-          notificationSent: task.reminder!.notificationSent,
-          shouldNotify
-        });
-
+        
         if (shouldNotify) {
           notificationService.showNotification(task);
           return true;
@@ -58,23 +37,18 @@ export const useReminderChecker = (tasks: Task[]) => {
 
       if (dueReminders.length > 0) {
         setReminderCount(dueReminders.length);
-        console.log(`Found ${dueReminders.length} due reminders:`, dueReminders);
 
         // Mark notifications as sent
         for (const task of dueReminders) {
           await notificationService.updateNotificationSent(task.id);
-          console.log(`Marked notification as sent for task ${task.id}`);
         }
       }
-
-      return tasksWithReminders;
     } catch (error) {
       console.error('Error checking reminders:', error);
-      return [];
     } finally {
       checkInProgress.current = false;
     }
-  }, [tasks, setReminderCount]);
+  }, [tasks, notificationService]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

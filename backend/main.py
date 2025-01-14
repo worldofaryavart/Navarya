@@ -36,7 +36,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000", "https://www.navarya.com", "http://localhost:5173"],
+    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000", "https://www.navarya.com", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -112,6 +112,7 @@ async def add_task_reminder(
     user = Depends(verify_token)
 ):
     try:
+        print(f"Adding reminder for task {task_id} with data: {reminder}")
         result = reminder_service.add_task_reminder(
             task_id=task_id,
             user_id=user['uid'],
@@ -120,6 +121,7 @@ async def add_task_reminder(
         )
         return result
     except Exception as e:
+        print(f"Error adding reminder: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/tasks/{task_id}/reminder")

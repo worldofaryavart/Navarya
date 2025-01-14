@@ -43,8 +43,31 @@ const TaskCard = memo(({
 
   const handleReminderSuccess = useCallback(async (updatedTask: Task) => {
     console.log("Handling reminder success with task:", updatedTask);
-    setShowReminderDialog(false);
-    await onUpdateTask(updatedTask);
+    try {
+      // Ensure the reminder data is properly structured
+      const reminderData = updatedTask.reminder ? {
+        ...updatedTask.reminder,
+        time: {
+          seconds: updatedTask.reminder.time.seconds,
+          nanoseconds: updatedTask.reminder.time.nanoseconds || 0
+        },
+        notificationSent: updatedTask.reminder.notificationSent || false,
+        ...(updatedTask.reminder.recurring && {
+          recurring: updatedTask.reminder.recurring
+        })
+      } : undefined;
+
+      const taskToUpdate = {
+        ...updatedTask,
+        reminder: reminderData
+      };
+
+      console.log("Updating task with reminder:", taskToUpdate);
+      await onUpdateTask(taskToUpdate);
+      setShowReminderDialog(false);
+    } catch (error) {
+      console.error("Error updating task with reminder:", error);
+    }
   }, [onUpdateTask]);
 
   const handleReminderClose = useCallback(() => {
@@ -131,6 +154,13 @@ const TaskCard = memo(({
       </div>
     );
   }, [task.reminder, formatReminderTime, getReminderStatus]);
+
+  useEffect(() => {
+    if (task.reminder) {
+      console.log("Current task reminder:", task.reminder);
+      console.log("Reminder time:", new Date((task.reminder.time as any).seconds * 1000).toLocaleString());
+    }
+  }, [task.reminder]);
 
   return (
     <div className={cn(

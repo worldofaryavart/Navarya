@@ -1,31 +1,37 @@
+export interface FirestoreTimestamp {
+  seconds: number;
+  nanoseconds: number;
+}
+
 export type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
 export type TaskPriority = 'Low' | 'Medium' | 'High';
 export type ReminderFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
 
 export interface TaskReminder {
-  time: Date | { seconds: number; nanoseconds: number };
+  time: FirestoreTimestamp;
   recurring?: {
     frequency: ReminderFrequency;
-    interval: number; // e.g., every 2 days, every 3 weeks
-    endDate?: Date | { seconds: number; nanoseconds: number };
+    interval: number; 
+    endDate?: FirestoreTimestamp;
   };
   notificationSent: boolean;
-  lastNotification?: Date | { seconds: number; nanoseconds: number };
+  lastNotification?: FirestoreTimestamp;
 }
 
 export interface Task {
   id: string;
   title: string;
-  description: string;
-  dueDate?: Date | { seconds: number; nanoseconds: number } | null;
+  description?: string;
+  dueDate?: FirestoreTimestamp | null;
   status: TaskStatus;
   priority: TaskPriority;
-  createdAt: Date | { seconds: number; nanoseconds: number };
+  createdAt: FirestoreTimestamp;
   reminder?: TaskReminder;
   source?: {
     type: 'email';
     emailId: string;
   };
+  userId: string;
 }
 
 export type NewTaskInput = Omit<Task, 'id' | 'status' | 'createdAt'> & {
