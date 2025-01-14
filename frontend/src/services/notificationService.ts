@@ -47,7 +47,7 @@ class NotificationService {
     };
   }
 
-  private showNotification(task: Task) {
+  public showNotification(task: Task) {
     if (typeof window === 'undefined') return;
     
     console.log('Showing notification for task:', task.title);
