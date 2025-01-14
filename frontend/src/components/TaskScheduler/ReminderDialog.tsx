@@ -29,9 +29,10 @@ interface ReminderDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onUpdateTask: (task: Task) => void;
 }
 
-const ReminderDialog = ({ task, open, onClose, onSuccess }: ReminderDialogProps) => {
+const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: ReminderDialogProps) => {
   const { user } = useAuth();
   const { addReminder, removeReminder } = useTaskReminders();
   const [loading, setLoading] = useState(false);
@@ -107,19 +108,34 @@ const ReminderDialog = ({ task, open, onClose, onSuccess }: ReminderDialogProps)
         }
       } else {
         const reminderData = {
-          time: new Date(formState.reminderTime),
+          time: {
+            seconds: Math.floor(new Date(formState.reminderTime).getTime() / 1000),
+            nanoseconds: 0
+          },
           ...(formState.isRecurring && formState.frequency !== 'once' && {
             recurring: {
               frequency: formState.frequency as 'daily' | 'weekly' | 'monthly',
               interval: formState.interval,
-              ...(formState.endDate && { endDate: new Date(formState.endDate) }),
+              ...(formState.endDate && { 
+                endDate: {
+                  seconds: Math.floor(new Date(formState.endDate).getTime() / 1000),
+                  nanoseconds: 0
+                }
+              }),
             },
           }),
+          notificationSent: false
         };
 
-        await addReminder(task.id, reminderData.time, reminderData.recurring);
+        const response = await addReminder(task.id, new Date(formState.reminderTime), reminderData.recurring);
+        onSuccess();
+        // Update the task's state with the new reminder
+        const updatedTask = {
+          ...task,
+          reminder: reminderData
+        };
+        onUpdateTask(updatedTask);
       }
-      onSuccess();
     } catch (error) {
       console.error('Error setting reminder:', error);
     } finally {

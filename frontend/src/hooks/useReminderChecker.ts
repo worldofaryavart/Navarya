@@ -14,10 +14,35 @@ export const useReminderChecker = (tasks: Task[]) => {
       checkInProgress.current = true;
       console.log('Checking reminders...', new Date().toISOString());
       
-      const dueReminders = notificationService.checkDueReminders(tasks);
-      console.log('Due reminders:', dueReminders);
-      
-      if (dueReminders?.length > 0) {
+      const tasksWithReminders = tasks.filter(task => {
+        if (!task.reminder?.time) return false;
+        
+        const reminderTime = task.reminder.time instanceof Date 
+          ? task.reminder.time 
+          : new Date((task.reminder.time as any).seconds * 1000);
+          
+        console.log(`Task ${task.id} reminder time:`, reminderTime.toISOString());
+        return true;
+      });
+
+      const dueReminders = tasksWithReminders.filter(task => {
+        const reminderTime = task.reminder!.time instanceof Date 
+          ? task.reminder!.time 
+          : new Date((task.reminder!.time as any).seconds * 1000);
+        
+        const now = new Date();
+        const timeDiff = reminderTime.getTime() - now.getTime();
+        const isWithinLastMinute = Math.abs(timeDiff) <= 60000; // 1 minute
+        const shouldNotify = isWithinLastMinute && !task.reminder!.notificationSent;
+
+        if (shouldNotify) {
+          notificationService.showNotification(task);
+          return true;
+        }
+        return false;
+      });
+
+      if (dueReminders.length > 0) {
         setReminderCount(dueReminders.length);
         console.log(`Found ${dueReminders.length} due reminders`);
 
@@ -27,8 +52,11 @@ export const useReminderChecker = (tasks: Task[]) => {
           console.log(`Marked notification as sent for task ${task.id}`);
         }
       }
+
+      return tasksWithReminders;
     } catch (error) {
       console.error('Error checking reminders:', error);
+      return [];
     } finally {
       checkInProgress.current = false;
     }
@@ -51,17 +79,17 @@ export const useReminderChecker = (tasks: Task[]) => {
       }
     };
 
-    // Run initial check
+    // Initial check
     runCheck();
 
-    // Check every 15 seconds
-    intervalId = setInterval(runCheck, 15000);
+    // Set up interval for periodic checks
+    intervalId = setInterval(runCheck, 15000); // Check every 15 seconds
 
     return () => {
       mounted = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
+      if (intervalId) clearInterval(intervalId);
     };
   }, [checkReminders]);
+
+  return checkReminders;
 };

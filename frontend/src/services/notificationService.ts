@@ -89,7 +89,7 @@ class NotificationService {
     const now = new Date();
     console.log('Current time:', now.toISOString());
     
-    const dueReminders = tasks.filter(task => {
+    const tasksWithReminders = tasks.filter(task => {
       if (!task.reminder?.time) return false;
       
       // Convert reminder time to Date object, handling both Date and Firestore timestamp formats
@@ -98,21 +98,35 @@ class NotificationService {
         : new Date((task.reminder.time as any).seconds * 1000);
       console.log(`Task ${task.id} reminder time:`, reminderTime.toISOString());
       
-      // Check if reminder is within the last minute
+      // For recurring reminders, we need to check if it's still active
+      if (task.reminder.recurring) {
+        const { frequency, interval, endDate } = task.reminder.recurring;
+        if (endDate) {
+          const endDateTime = endDate instanceof Date 
+            ? endDate 
+            : new Date((endDate as any).seconds * 1000);
+          if (now > endDateTime) {
+            return false;
+          }
+        }
+      }
+
+      // Check if reminder is due (within the last minute) and notification hasn't been sent
       const timeDiff = Math.abs(now.getTime() - reminderTime.getTime());
       const isWithinLastMinute = timeDiff <= 60000; // 1 minute in milliseconds
+      const shouldNotify = isWithinLastMinute && !task.reminder.notificationSent;
       
-      if (isWithinLastMinute) {
+      if (shouldNotify) {
         console.log(`Task ${task.id} is due! Time diff:`, timeDiff);
         // Show notification for due reminder
         this.showNotification(task);
       }
       
-      return isWithinLastMinute;
+      return true; // Return all tasks with reminders for display purposes
     });
 
-    console.log('Due reminders:', dueReminders);
-    return dueReminders;
+    console.log('Tasks with reminders:', tasksWithReminders);
+    return tasksWithReminders;
   }
 
   public async updateNotificationSent(taskId: string): Promise<void> {

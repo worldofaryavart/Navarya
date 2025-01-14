@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import ReminderDialog from './ReminderDialog';
 import { Badge } from '@/components/ui/badge';
+import { useReminderChecker } from '@/hooks/useReminderChecker';
 
 interface TaskCardProps {
   task: Task;
@@ -27,6 +28,9 @@ const TaskCard = memo(({
   onEditTask,
 }: TaskCardProps) => {
   const [showReminderDialog, setShowReminderDialog] = useState(false);
+
+  const checkReminders = useReminderChecker([task]);
+  console.log("checkReminde sis ", checkReminders);
 
   const handleStatusChange = useCallback(() => {
     const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
@@ -206,6 +210,7 @@ const TaskCard = memo(({
           open={showReminderDialog}
           onClose={handleReminderClose}
           onSuccess={handleReminderSuccess}
+          onUpdateTask={onUpdateTask}
         />
       )}
     </div>

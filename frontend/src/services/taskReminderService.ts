@@ -27,7 +27,9 @@ export const taskReminderService = {
     });
 
     if (!response.ok) throw new Error('Failed to add reminder');
-    return await response.json();
+    const data = await response.json();
+    console.log("Reminder response:", data);
+    return data;
   },
 
   removeReminder: async (taskId: string) => {

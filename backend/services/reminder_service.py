@@ -65,22 +65,41 @@ class ReminderService:
     def add_task_reminder(self, task_id: str, user_id: str, reminder_time: datetime, recurring=None):
         """Add a reminder for a specific task"""
         try:
+            # Convert reminder time to timestamp
+            if isinstance(reminder_time, str):
+                reminder_time = parser.parse(reminder_time)
+            
             reminder_data = {
                 'taskId': task_id,
                 'userId': user_id,
-                'reminderTime': reminder_time.isoformat() if isinstance(reminder_time, datetime) else reminder_time,
-                'createdAt': datetime.now(self.timezone).isoformat(),
-                'lastTriggered': None
+                'time': {
+                    'seconds': int(reminder_time.timestamp()),
+                    'nanoseconds': 0
+                },
+                'createdAt': firestore.SERVER_TIMESTAMP,
+                'notificationSent': False
             }
             
             if recurring:
                 reminder_data['recurring'] = recurring
+                if recurring.get('endDate'):
+                    end_date = parser.parse(recurring['endDate']) if isinstance(recurring['endDate'], str) else recurring['endDate']
+                    reminder_data['recurring']['endDate'] = {
+                        'seconds': int(end_date.timestamp()),
+                        'nanoseconds': 0
+                    }
 
-            # Add to Firestore
+            # Add to Firestore reminders collection
             doc_ref = self.reminders_ref.document()
             doc_ref.set(reminder_data)
             
-            return {'id': doc_ref.id, **reminder_data}
+            # Update the task document with the reminder
+            task_ref = self.db.collection('tasks').document(task_id)
+            task_ref.update({
+                'reminder': reminder_data
+            })
+            
+            return reminder_data
         except Exception as e:
             print(f"Error adding task reminder: {e}")
             raise
@@ -94,6 +113,12 @@ class ReminderService:
             # Delete each found reminder
             for reminder in reminders:
                 reminder.reference.delete()
+            
+            # Remove reminder from task document
+            task_ref = self.db.collection('tasks').document(task_id)
+            task_ref.update({
+                'reminder': firestore.DELETE_FIELD
+            })
         except Exception as e:
             print(f"Error removing task reminder: {e}")
             raise
