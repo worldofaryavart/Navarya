@@ -150,9 +150,15 @@ async def get_task_reminders(
 async def update_reminder_notification(task_id: str, user = Depends(verify_token)):
     """Mark a reminder's notification as sent"""
     try:
+        print(f"Updating notification for task {task_id}")
         reminder = await reminder_service.mark_notification_sent(task_id)
+        print(f"Successfully updated notification for task {task_id}")
         return {"success": True}
     except Exception as e:
+        print(f"Error updating notification: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # New endpoints for context management

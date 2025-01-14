@@ -157,28 +157,46 @@ class ReminderService:
             print(f"Error marking reminder as triggered: {e}")
             return False
 
-    def mark_notification_sent(self, task_id: str):
+    async def mark_notification_sent(self, task_id: str):
         """Mark a reminder's notification as sent"""
         try:
+            print(f"Finding reminders for task: {task_id}")
             # Query for reminders with this task ID
-            reminders = self.reminders_ref.where('taskId', '==', task_id).stream()
+            reminders = list(self.reminders_ref.where('taskId', '==', task_id).stream())
             
+            if not reminders:
+                print(f"No reminders found for task: {task_id}")
+                # Check if task exists
+                task_ref = self.db.collection('tasks').document(task_id)
+                task = task_ref.get()
+                if not task.exists:
+                    raise ValueError(f"Task {task_id} not found")
+                if not task.to_dict().get('reminder'):
+                    raise ValueError(f"Task {task_id} has no reminder")
+                return True
+            
+            print(f"Found {len(reminders)} reminders for task {task_id}")
             for reminder in reminders:
                 reminder_ref = self.reminders_ref.document(reminder.id)
                 reminder_data = reminder.to_dict()
                 
                 # Update the reminder document
+                print(f"Updating reminder {reminder.id}")
                 reminder_ref.update({
                     'notificationSent': True,
                     'lastTriggered': datetime.now(self.timezone).isoformat()
                 })
                 
                 # Update the task document's reminder field
+                print(f"Updating task {task_id} reminder field")
                 task_ref = self.db.collection('tasks').document(task_id)
                 task_ref.update({
-                    'reminder.notificationSent': True
+                    'reminder.notificationSent': True,
+                    'reminder.lastTriggered': datetime.now(self.timezone).isoformat()
                 })
             return True
         except Exception as e:
-            print(f"Error marking notification as sent: {e}")
+            print(f"Error in mark_notification_sent: {str(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             raise
