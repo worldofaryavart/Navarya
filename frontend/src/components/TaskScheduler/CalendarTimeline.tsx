@@ -9,19 +9,19 @@ const CalendarTimeline: React.FC<CalendarTimelineProps> = ({ tasks }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const todayTasks = tasks.filter(task => {
     const today = new Date();
-    const taskDate = new Date(task.dueDate);
+    const taskDate = task.dueDate ? new Date(task.dueDate.seconds * 1000) : new Date();
     return taskDate.toDateString() === today.toDateString();
   });
 
   const getTasksForHour = (hour: number) => {
     return todayTasks.filter(task => {
-      const taskHour = new Date(task.dueDate).getHours();
-      return taskHour === hour;
+      const taskDate = task.dueDate ? new Date(task.dueDate.seconds * 1000) : new Date();
+      return taskDate.getHours() === hour;
     });
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 h-full overflow-y-auto">
+    <div className="rounded-lg p-4 h-full overflow-y-auto">
       <h2 className="text-lg font-semibold mb-4 text-gray-200">Today's Timeline</h2>
       <div className="space-y-2">
         {hours.map((hour) => {
