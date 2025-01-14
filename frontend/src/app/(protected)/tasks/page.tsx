@@ -4,10 +4,12 @@ import React, { useEffect, useState } from "react";
 import CalendarView from "@/components/TaskScheduler/CalendarView";
 import TaskFormModal from "@/components/TaskScheduler/TaskFormModal";
 import TaskList from "@/components/TaskScheduler/TaskList";
+import TasksSection from "@/components/TaskScheduler/TasksSection"; // Import TasksSection component
 import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
 import Loader from "@/components/commonComp/Loader";
 import { useTaskContext } from "@/context/TaskContext";
+import CalendarTimeline from "@/components/TaskScheduler/CalendarTimeline";
 
 const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,31 +79,44 @@ const Tasks = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 bg-gray-900 text-white overflow-y-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-100">Task Scheduler</h1>
+    <div className="container mx-auto p-4 bg-gray-900 text-white min-h-screen">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold text-gray-100">Task Scheduler</h1>
         <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          className="bg-blue-500 hover:bg-blue-600 text-sm text-white font-medium py-1.5 px-3 rounded-md transition-colors"
           onClick={handleOpenTaskModal}
         >
           Add Task
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2">
-          <CalendarView tasks={tasks} />
+      <div className="flex gap-4">
+        {/* Left Column - Calendar and Task List */}
+        <div className="w-1/3 space-y-4">
+          <div className="rounded-lg p-4">
+            <CalendarView tasks={tasks} />
+          </div>
+          <div className="rounded-lg overflow-hidden">
+            <TaskList
+              tasks={tasks}
+              onUpdateTask={handleUpdateTask}
+              onDeleteTask={handleDeleteTask}
+              onEditTask={handleEditTask}
+            />
+          </div>
         </div>
 
-        <div className="col-span-1">
-          <TaskList
-            tasks={tasks}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onEditTask={handleEditTask}
-          />
+        {/* Right Column - Tasks Section and Timeline */}
+        <div className="w-2/3 space-y-4">
+          <div className="rounded-lg overflow-auto">
+            <TasksSection tasks={tasks} />
+          </div>
+          <div className="rounded-lg">
+            <CalendarTimeline tasks={tasks} />
+          </div>
         </div>
       </div>
+
       {isModalOpen && (
         <TaskFormModal
           isOpen={isModalOpen}
