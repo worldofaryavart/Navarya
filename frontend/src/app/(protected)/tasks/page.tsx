@@ -36,18 +36,10 @@ const Tasks = () => {
 
   const handleAddTask = async (newTask: NewTaskInput) => {
     try {
-      const taskToAdd = {
-        ...newTask,
-        createdAt: new Date(),
-        status: newTask.status || "Pending",
-      } as Task;
-
-      const addedTask = await addTask(taskToAdd);
+      const addedTask = await addTask(newTask);
       setTasks((prevTasks) => [...prevTasks, addedTask]);
-            
-      handleCloseTaskModal();
     } catch (error) {
-      console.error("Failed to add task: ", error);
+      console.error('Error adding task:', error);
     }
   };
 
@@ -59,7 +51,7 @@ const Tasks = () => {
       
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
-          task.id === result.id ? result : task
+          task.id === result.id ? { ...result, reminder: result.reminder || undefined } : task
         )
       );
 
