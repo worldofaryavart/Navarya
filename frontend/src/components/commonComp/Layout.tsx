@@ -16,11 +16,11 @@ const Layout = ({ children }: LayoutProps) => {
   const { isSidebarOpen } = useLayout();
 
   return (
-    <div className="flex h-full">
+    <div className="flex">
       <Sidebar />
       <div 
         className={`
-          flex-1 flex flex-col h-full
+          flex-1 flex flex-col
           transition-all duration-300
           ${isSidebarOpen ? 'pl-16' : ''}
         `}
