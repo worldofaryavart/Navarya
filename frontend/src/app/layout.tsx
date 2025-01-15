@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { TaskProvider } from "@/context/TaskContext";
 import { LayoutProvider } from "@/context/LayoutContext";
+import { TaskProvider } from "@/context/TaskContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,13 +17,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} h-full bg-gray-900`}>
-        <LayoutProvider>
-          <TaskProvider>
-            {children}
-          </TaskProvider>
-        </LayoutProvider>
+    <html lang="en">
+      <body className={`${inter.className} bg-gray-900`}>
+        <div className="min-h-screen bg-gray-900">
+          <LayoutProvider>
+            <TaskProvider>
+              {children}
+            </TaskProvider>
+          </LayoutProvider>
+        </div>
       </body>
     </html>
   );
