@@ -1,12 +1,15 @@
+'use client';
+
 import React from 'react';
 import { FaMailBulk, FaTasks } from 'react-icons/fa';
 import { FiUser, FiLogOut, FiInfo, FiEye, FiSettings } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/utils/config/firebase.config';
 import { useRouter, usePathname } from 'next/navigation';
+import { useSidebar } from '@/context/SidebarContext';
 
 interface SidebarItem {
   label: string;
@@ -18,6 +21,7 @@ const Sidebar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const user = auth?.currentUser;
+  const { isSidebarOpen } = useSidebar();
 
   const sidebarItems: SidebarItem[] = [
     {
@@ -57,54 +61,55 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="fixed left-0 top-0 bottom-0 w-16 bg-gray-900 flex flex-col items-center py-4 shadow-lg z-50">
-      <Link href="/dashboard" className="mb-8">
+    <AnimatePresence>
+      {(isSidebarOpen || typeof window !== 'undefined' && window.innerWidth >= 768) && (
         <motion.div
-          whileHover={{ scale: 1.1 }}
-          className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600"
+          initial={{ x: -64 }}
+          animate={{ x: 0 }}
+          exit={{ x: -64 }}
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+          className="fixed left-0 top-16 bottom-0 w-16 bg-gray-900 border-r border-gray-800 flex flex-col items-center py-4 z-40"
         >
-          A
+          <nav className="flex flex-col space-y-4 flex-grow">
+            {sidebarItems.map((item, index) => (
+              <SidebarIconButton
+                key={index}
+                {...item}
+                isActive={pathname === item.href}
+              />
+            ))}
+          </nav>
+
+          <div className="flex flex-col items-center space-y-4">
+            <Link href="/profile">
+              <motion.div whileHover={{ scale: 1.1 }}>
+                <Image
+                  src={user?.photoURL || "/default-profile.png"}
+                  alt="Profile"
+                  width={32}
+                  height={32}
+                  className="rounded-full ring-2 ring-gray-700 hover:ring-blue-500 transition-all"
+                />
+              </motion.div>
+            </Link>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="text-red-400 hover:text-red-300 transition-colors p-2"
+            >
+              <FiLogOut size={20} />
+            </motion.button>
+          </div>
         </motion.div>
-      </Link>
-
-      <nav className="flex flex-col space-y-4 flex-grow">
-        {sidebarItems.map((item, index) => (
-          <SidebarIconButton 
-            key={index} 
-            {...item} 
-            isActive={pathname === item.href}
-          />
-        ))}
-      </nav>
-
-      <div className="flex flex-col items-center space-y-4">
-        <Link href="/profile">
-          <motion.div whileHover={{ scale: 1.1 }}>
-            <Image
-              src={user?.photoURL || "/default-profile.png"}
-              alt="Profile"
-              width={32}
-              height={32}
-              className="rounded-full ring-2 ring-gray-700 hover:ring-blue-500 transition-all"
-            />
-          </motion.div>
-        </Link>
-        <motion.button 
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleLogout}
-          className="text-red-400 hover:text-red-300 transition-colors p-2"
-        >
-          <FiLogOut size={20} />
-        </motion.button>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
 
-const SidebarIconButton: React.FC<SidebarItem & { isActive: boolean }> = ({ 
-  label, 
-  href, 
+const SidebarIconButton: React.FC<SidebarItem & { isActive: boolean }> = ({
+  label,
+  href,
   icon,
   isActive
 }) => {
@@ -129,7 +134,7 @@ const SidebarIconButton: React.FC<SidebarItem & { isActive: boolean }> = ({
           )}
         </motion.div>
       </Link>
-      
+
       <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded 
                     opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
         {label}
