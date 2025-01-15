@@ -11,6 +11,9 @@ import Loader from "@/components/commonComp/Loader";
 import { useTaskContext } from "@/context/TaskContext";
 import CalendarTimeline from "@/components/TaskScheduler/CalendarTimeline";
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
+
 const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

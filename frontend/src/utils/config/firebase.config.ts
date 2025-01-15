@@ -13,24 +13,11 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app: FirebaseApp;
-let auth: Auth;
-let db: ReturnType<typeof getFirestore>;
+let app: FirebaseApp = getApps().length 
+  ? getApps()[0] 
+  : initializeApp(firebaseConfig);
 
-// Check if we're running on the client side
-const initializeFirebase = () => {
-  if (typeof window !== 'undefined') {
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApps()[0];
-    }
-    auth = getAuth(app);
-    db = getFirestore(app);
-  }
-};
-
-// Initialize on import
-initializeFirebase();
+let auth: Auth = getAuth(app);
+let db = getFirestore(app);
 
 export { app, auth, db };
