@@ -124,7 +124,7 @@ const Tasks = () => {
 
         {/* Right Column - Tasks Section and Timeline */}
         <div className="w-2/3 space-y-4 flex flex-col flex-1">
-          <div className="rounded-lg overflow-auto border border-gray-700/50  custom-scrollbar">
+          <div className="rounded-lg overflow-auto border border-gray-700/50 custom-scrollbar min-h-[322px]">
             <TasksSection tasks={tasks} />
           </div>
           <div className="rounded-lg border border-gray-700/50">
