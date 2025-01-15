@@ -15,13 +15,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { isSidebarOpen } = useLayout();
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
+    <div className="flex flex-col min-h-screen bg-gray-900">
       <div 
         className={`
-          flex flex-col flex-grow overflow-hidden ml-16
-          transition-all duration-300 ease-in-out
-          ${isSidebarOpen ? 'mr-96' : 'mr-0'}
+          flex-grow transition-all duration-300
+          ${isSidebarOpen ? 'pl-16' : ''}
         `}
       >
         <Header />

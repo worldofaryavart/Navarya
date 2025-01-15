@@ -62,7 +62,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <AnimatePresence>
-      {(isSidebarOpen || typeof window !== 'undefined' && window.innerWidth >= 768) && (
+      {isSidebarOpen && (
         <motion.div
           initial={{ x: -64 }}
           animate={{ x: 0 }}
