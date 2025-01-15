@@ -32,9 +32,9 @@ const TaskCard = memo(({
   // Initialize reminder checker
   useReminderChecker([task]);
 
-  useEffect(() => {
-    console.log("Task reminder data:", task.reminder);
-  }, [task.reminder]);
+  // useEffect(() => {
+  //   console.log("Task reminder data:", task.reminder);
+  // }, [task.reminder]);
 
   const handleStatusChange = useCallback(() => {
     const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
@@ -155,12 +155,12 @@ const TaskCard = memo(({
     );
   }, [task.reminder, formatReminderTime, getReminderStatus]);
 
-  useEffect(() => {
-    if (task.reminder) {
-      console.log("Current task reminder:", task.reminder);
-      console.log("Reminder time:", new Date((task.reminder.time as any).seconds * 1000).toLocaleString());
-    }
-  }, [task.reminder]);
+  // useEffect(() => {
+  //   if (task.reminder) {
+  //     console.log("Current task reminder:", task.reminder);
+  //     console.log("Reminder time:", new Date((task.reminder.time as any).seconds * 1000).toLocaleString());
+  //   }
+  // }, [task.reminder]);
 
   return (
     <div className={cn(
