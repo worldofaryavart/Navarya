@@ -22,7 +22,7 @@ const CalendarTimeline: React.FC<CalendarTimelineProps> = ({ tasks }) => {
 
   return (
     <div className="rounded-lg p-4 h-full overflow-y-auto">
-      <h2 className="text-lg font-semibold mb-4 text-gray-200">Today's Timeline</h2>
+      <h2 className="text-lg font-semibold mb-4 text-gray-200">Today&apos;s Timeline</h2>
       <div className="space-y-2">
         {hours.map((hour) => {
           const hourTasks = getTasksForHour(hour);

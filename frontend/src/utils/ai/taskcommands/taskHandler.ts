@@ -1,6 +1,8 @@
 import { Task, NewTaskInput, TaskStatus, TaskPriority } from '@/types/taskTypes';
 import { addTask, deleteTask, getTasks, updateTask } from '@/utils/tasks/tasks';
 import { useUIStore } from '@/store/uiStateStore';
+import { Timestamp } from 'firebase/firestore';
+import { auth } from '@/utils/config/firebase.config';
 
 interface CommandResult {
   success: boolean;
@@ -11,11 +13,17 @@ interface CommandResult {
 export class TaskCommandHandler {
   public static async createTask(data: any): Promise<CommandResult> {
     try {
+      const userId = auth?.currentUser?.uid;
+      if (!userId) {
+        throw new Error('User must be authenticated to create a task');
+      }
+      
       const newTask: NewTaskInput = {
         title: data.title,
         description: data.description || '',
         priority: data.priority || 'Medium',
-        dueDate: data.dueDate ? new Date(data.dueDate) : null
+        dueDate: data.dueDate ? Timestamp.fromDate(new Date(data.dueDate)) : null,
+        userId: userId
       };
       await addTask(newTask);
       return {
@@ -387,11 +395,17 @@ export class TaskCommandHandler {
         switch (operation.type) {
           case 'create_task':
             try {
+              const userId = auth?.currentUser?.uid;
+              if (!userId) {
+                throw new Error('User must be authenticated to create a task');
+              }
+              
               const newTask: NewTaskInput = {
                 title: operation.data.title,
                 description: operation.data.description || '',
                 priority: operation.data.priority || 'Medium',
-                dueDate: operation.data.dueDate ? new Date(operation.data.dueDate) : null
+                dueDate: operation.data.dueDate ? Timestamp.fromDate(new Date(operation.data.dueDate)) : null,
+                userId: userId
               };
               await addTask(newTask);
               results.push({

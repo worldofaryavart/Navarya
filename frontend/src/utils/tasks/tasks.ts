@@ -1,71 +1,76 @@
 import { Task, NewTaskInput } from "@/types/taskTypes";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
-import { db, auth, getAuthInstance, waitForAuth } from '../config/firebase.config';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where, Timestamp } from "firebase/firestore";
+import { db, auth } from '../config/firebase.config';
+
+const ensureAuth = () => {
+    if (!auth) throw new Error('Firebase Auth not initialized');
+    if (!auth.currentUser) throw new Error('Not authenticated');
+    if (!db) throw new Error('Database not initialized');
+    return { user: auth.currentUser, db };
+};
 
 export const addTask = async (task: NewTaskInput): Promise<Task> => {
     try {
-        const user = auth?.currentUser;
-        if (!user) throw new Error('Not authenticated');
+        const { user, db } = ensureAuth();
 
-        const tasksCollection = collection(db!, 'tasks');
-        const createdAt = new Date();
+        const tasksCollection = collection(db, 'tasks');
+        const createdAt = Timestamp.fromDate(new Date());
         const taskData = {
-          title: task.title,
-          description: task.description,
-          dueDate: task.dueDate || null,
-          priority: task.priority,
-          status: task.status || 'Pending',
-          createdAt,
-          userId: user.uid // Add user ID to task data
+            title: task.title,
+            description: task.description,
+            dueDate: task.dueDate || null,
+            priority: task.priority,
+            status: task.status || 'Pending',
+            createdAt,
+            userId: user.uid
         };
+
         const docRef = await addDoc(tasksCollection, taskData);
-        return { ...taskData, id: docRef.id, createdAt };
-      } catch (error) {
+        return {
+            id: docRef.id,
+            ...taskData
+        } as Task;
+    } catch (error) {
         console.error('Error adding task:', error);
         throw error;
-      }
+    }
 };
 
 export const getTasks = async () => {
     try {
-        const auth = getAuthInstance();
-        if (!auth) throw new Error('Auth not initialized');
-        
-        // Wait for auth to initialize
-        await waitForAuth();
-        
-        const user = auth.currentUser;
-        console.log("user is :", user);
-        if (!user) throw new Error('Not authenticated');
+        const { user, db } = ensureAuth();
 
-        const tasksCollection = collection(db!, 'tasks');
-        const q = query(tasksCollection, where('userId', '==', user.uid)); // Only get tasks for current user
+        const tasksCollection = collection(db, 'tasks');
+        const q = query(tasksCollection, where("userId", "==", user.uid));
         const querySnapshot = await getDocs(q);
-
+        
         return querySnapshot.docs.map(doc => ({
-            id: doc.id, 
+            id: doc.id,
             ...doc.data()
-        } as Task));
+        })) as Task[];
     } catch (error) {
-        console.error("Error fetching tasks: ", error);
+        console.error('Error fetching tasks:', error);
         throw error;
     }
 };
 
 export const updateTask = async (task: Task) => {
     try {
-        const user = auth?.currentUser;
-        if (!user) throw new Error('Not authenticated');
-
-        if (!db) throw new Error('Firestore not initialized');
+        const { user, db } = ensureAuth();
         
         const taskDocRef = doc(db, 'tasks', task.id);
         const taskDoc = await getDoc(taskDocRef);
         
-        if (!taskDoc.exists()) throw new Error('Task not found');
-        if (taskDoc.data().userId !== user.uid) throw new Error('Unauthorized');
+        if (!taskDoc.exists()) {
+            throw new Error('Task not found');
+        }
 
-        const updateData = {
+        const currentTask = taskDoc.data() as Task;
+        if (currentTask.userId !== user.uid) {
+            throw new Error('Not authorized to update this task');
+        }
+
+        const updates = {
             title: task.title,
             description: task.description,
             status: task.status,
@@ -74,57 +79,56 @@ export const updateTask = async (task: Task) => {
             reminder: task.reminder || null,
         };
 
-        await updateDoc(taskDocRef, updateData);
-        
-        // Return the updated task
-        return {
-            ...task,
-            ...updateData,
-            id: task.id,
-            userId: user.uid
-        };
+        await updateDoc(taskDocRef, updates);
+        return { id: task.id, ...updates } as Task;
     } catch (error) {
-        console.error("Error updating task: ", error);
+        console.error('Error updating task:', error);
         throw error;
     }
 };
 
 export const deleteTask = async (taskId: string) => {
     try {
-        const user = auth?.currentUser;
-        if (!user) throw new Error('Not authenticated');
-
-        if (!db) throw new Error('Firestore not initialized');
+        const { user, db } = ensureAuth();
         
         const taskDocRef = doc(db, 'tasks', taskId);
         const taskDoc = await getDoc(taskDocRef);
         
-        if (!taskDoc.exists()) throw new Error('Task not found');
-        if (taskDoc.data().userId !== user.uid) throw new Error('Unauthorized');
+        if (!taskDoc.exists()) {
+            throw new Error('Task not found');
+        }
+
+        const task = taskDoc.data() as Task;
+        if (task.userId !== user.uid) {
+            throw new Error('Not authorized to delete this task');
+        }
 
         await deleteDoc(taskDocRef);
     } catch (error) {
-        console.error("Error deleting task: ", error);
+        console.error('Error deleting task:', error);
         throw error;
     }
 };
 
 export const getTaskById = async (taskId: string) => {
     try {
-        const user = auth?.currentUser;
-        if (!user) throw new Error('Not authenticated');
-
-        if (!db) throw new Error('Firestore not initialized');
+        const { user, db } = ensureAuth();
         
         const taskDocRef = doc(db, 'tasks', taskId);
         const taskDoc = await getDoc(taskDocRef);
         
-        if (!taskDoc.exists()) throw new Error('Task not found');
-        if (taskDoc.data().userId !== user.uid) throw new Error('Unauthorized');
+        if (!taskDoc.exists()) {
+            throw new Error('Task not found');
+        }
 
-        return { id: taskDoc.id, ...taskDoc.data() } as Task;
+        const task = taskDoc.data() as Task;
+        if (task.userId !== user.uid) {
+            throw new Error('Not authorized to view this task');
+        }
+
+        return { ...task, id: taskId } as Task;
     } catch (error) {
-        console.error("Error getting task: ", error);
+        console.error('Error fetching task:', error);
         throw error;
     }
 };

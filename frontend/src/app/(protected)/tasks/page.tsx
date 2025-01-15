@@ -18,7 +18,11 @@ const Tasks = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
-    setIsLoading(false);
+    // Initialize Firebase on component mount
+    import('@/utils/config/firebase.config').then(({ initFirebase }) => {
+      initFirebase();
+      setIsLoading(false);
+    });
   }, []);
 
   const handleOpenTaskModal = () => {

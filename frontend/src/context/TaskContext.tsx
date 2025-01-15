@@ -3,6 +3,7 @@
 import { Task } from "@/types/taskTypes";
 import { getTasks } from "@/utils/tasks/tasks";
 import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TaskContextType {
     tasks: Task[];
@@ -18,9 +19,10 @@ export const TaskProvider: React.FC<{children: ReactNode }> = ({ children }) => 
     const [tasks, setTasks] = useState<Task[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { user, loading: authLoading } = useAuth();
 
     const fetchTasks = useCallback(async () => {
-        if (isLoading) return; // Prevent multiple simultaneous fetches
+        if (isLoading || !user) return; // Don't fetch if loading or no user
         
         setIsLoading(true);
         setError(null);
@@ -35,17 +37,19 @@ export const TaskProvider: React.FC<{children: ReactNode }> = ({ children }) => 
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading]);
+    }, [isLoading, user]);
 
     useEffect(() => {
-        fetchTasks();
-    }, []); // Only fetch on mount
+        if (!authLoading && user) {
+            fetchTasks();
+        }
+    }, [fetchTasks, user, authLoading]); // Fetch when auth state changes
 
     const value = {
         tasks,
         setTasks,
         fetchTasks,
-        isLoading,
+        isLoading: isLoading || authLoading,
         error
     };
 
