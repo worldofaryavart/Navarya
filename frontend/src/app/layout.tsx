@@ -7,8 +7,8 @@ import { LayoutProvider } from "@/context/LayoutContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Aarya AI",
-  description: "Your AI Assistant",
+  title: "NavArya",
+  description: "AI-powered task management and scheduling",
 };
 
 export default function RootLayout({
@@ -17,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} h-full bg-gray-900`}>
         <LayoutProvider>
           <TaskProvider>
             {children}

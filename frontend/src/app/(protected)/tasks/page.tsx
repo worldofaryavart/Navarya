@@ -95,7 +95,7 @@ const Tasks = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 bg-gray-900 text-white min-h-screen">
+    <div className="container mx-auto p-4 text-white">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-gray-100">Task Scheduler</h1>
         <button

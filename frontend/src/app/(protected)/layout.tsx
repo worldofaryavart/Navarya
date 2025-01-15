@@ -36,18 +36,16 @@ export default function ProtectedLayout({
   return (
     <SidebarProvider>
       {({ isSidebarOpen }) => (
-        <div className="min-h-screen bg-gray-900">
+        <div className="h-full">
           <Header />
           <Sidebar />
           <main 
             className={`
-              pt-16 min-h-screen bg-gray-900 transition-all duration-300
+              pt-16 h-full transition-all duration-300
               ${isSidebarOpen ? 'pl-16' : ''}
             `}
           >
-            <div className="h-full bg-gray-900">
-              {children}
-            </div>
+            {children}
           </main>
         </div>
       )}

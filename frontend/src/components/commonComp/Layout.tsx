@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { FiMenu } from "react-icons/fi";
 import Sidebar from "./Sidebar";
@@ -11,19 +12,21 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout = ({ children }: LayoutProps) => {
   const { isSidebarOpen } = useLayout();
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-900">
+    <div className="flex h-full">
+      <Sidebar />
       <div 
         className={`
-          flex-grow transition-all duration-300
+          flex-1 flex flex-col h-full
+          transition-all duration-300
           ${isSidebarOpen ? 'pl-16' : ''}
         `}
       >
         <Header />
-        <main className="flex-grow overflow-auto p-0">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
         <AIControlButton />
