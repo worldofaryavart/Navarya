@@ -3,6 +3,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, 
 import { db, auth } from '../config/firebase.config';
 
 const ensureAuth = () => {
+    if (typeof window === 'undefined') throw new Error('Cannot access Firebase on server side');
     if (!auth) throw new Error('Firebase Auth not initialized');
     if (!auth.currentUser) throw new Error('Not authenticated');
     if (!db) throw new Error('Database not initialized');

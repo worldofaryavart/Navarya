@@ -18,12 +18,21 @@ const Tasks = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
-    // Initialize Firebase on component mount
-    import('@/utils/config/firebase.config').then(({ initFirebase }) => {
-      initFirebase();
-      setIsLoading(false);
-    });
-  }, []);
+    const loadTasks = async () => {
+      try {
+        if (typeof window !== 'undefined') {  // Only run on client side
+          const fetchedTasks = await getTasks();
+          setTasks(fetchedTasks);
+        }
+      } catch (error) {
+        console.error('Error loading tasks:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTasks();
+  }, [setTasks]);
 
   const handleOpenTaskModal = () => {
     setEditingTask(null);

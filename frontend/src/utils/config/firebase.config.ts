@@ -17,19 +17,8 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: ReturnType<typeof getFirestore>;
 
-if (typeof window !== 'undefined') {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApps()[0];
-  }
-  auth = getAuth(app);
-  db = getFirestore(app);
-}
-
-export { app, auth, db };
-
-export const initFirebase = () => {
+// Check if we're running on the client side
+const initializeFirebase = () => {
   if (typeof window !== 'undefined') {
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
@@ -38,7 +27,10 @@ export const initFirebase = () => {
     }
     auth = getAuth(app);
     db = getFirestore(app);
-    return { auth, db };
   }
-  return null;
 };
+
+// Initialize on import
+initializeFirebase();
+
+export { app, auth, db };
