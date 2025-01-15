@@ -43,9 +43,12 @@ export default function ProtectedLayout({
             className={`
               pt-16 min-h-screen bg-gray-900 transition-all duration-300
               ${isSidebarOpen ? 'md:pl-16' : ''}
+              ${isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 768 ? 'pl-16' : ''}
             `}
           >
-            {children}
+            <div className="h-full bg-gray-900">
+              {children}
+            </div>
           </main>
         </div>
       )}

@@ -25,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         `}
       >
         <Header />
-        <main className="flex-grow bg-gray-900 overflow-auto p-0">
+        <main className="flex-grow overflow-auto p-0">
           {children}
         </main>
         <AIControlButton />
