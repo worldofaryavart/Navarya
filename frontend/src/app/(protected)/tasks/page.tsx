@@ -106,9 +106,19 @@ const Tasks = () => {
         </button>
       </div>
 
-      <div className="flex gap-4 h-[calc(200vh-6rem+5px)]">
+      <div className="flex gap-4 h-[calc(200vh-6rem+5px)] md:flex-row flex-col">
+        {/* Right Column - Tasks Section and Timeline */}
+        <div className="w-full md:w-2/3 space-y-4 flex flex-col flex-1">
+          <div className="rounded-lg overflow-auto border border-gray-700/50 custom-scrollbar min-h-[322px]">
+            <TasksSection tasks={tasks} />
+          </div>
+          <div className="rounded-lg border border-gray-700/50">
+            <CalendarTimeline tasks={tasks} />
+          </div>
+        </div>
+
         {/* Left Column - Calendar and Task List */}
-        <div className="w-1/3 space-y-4 flex flex-col">
+        <div className="w-full md:w-1/3 space-y-4 flex flex-col md:order-none order-last">
           <div className="rounded-lg p-4 border border-gray-700/50">
             <CalendarView tasks={tasks} />
           </div>
@@ -119,16 +129,6 @@ const Tasks = () => {
               onDeleteTask={handleDeleteTask}
               onEditTask={handleEditTask}
             />
-          </div>
-        </div>
-
-        {/* Right Column - Tasks Section and Timeline */}
-        <div className="w-2/3 space-y-4 flex flex-col flex-1">
-          <div className="rounded-lg overflow-auto border border-gray-700/50 custom-scrollbar min-h-[322px]">
-            <TasksSection tasks={tasks} />
-          </div>
-          <div className="rounded-lg border border-gray-700/50">
-            <CalendarTimeline tasks={tasks} />
           </div>
         </div>
       </div>
