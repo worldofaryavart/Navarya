@@ -62,7 +62,7 @@ const MailAgent = () => {
     if (user) {
       loadEmails();
     }
-  }, [user, currentFolder]);
+  }, [user, currentFolder, folders]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);

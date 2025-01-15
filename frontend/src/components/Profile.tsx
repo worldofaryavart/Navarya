@@ -1,33 +1,29 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { updateProfile } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+import { updateProfile, User } from 'firebase/auth';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { FiEdit2, FiSave, FiUpload } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import { getAuthInstance, waitForAuth } from '@/utils/config/firebase.config';
+import { auth } from '@/utils/config/firebase.config';
 
 const Profile: React.FC = () => {
-  const [user, setUser] = useState(getAuthInstance()?.currentUser);
+  const [user, setUser] = useState<User | null>(null);
   const [editing, setEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
-  const [profilePic, setProfilePic] = useState(user?.photoURL || '/default-profile.png');
+  const [displayName, setDisplayName] = useState('');
+  const [profilePic, setProfilePic] = useState('/default-profile.png');
 
   useEffect(() => {
-    const auth = getAuthInstance();
-    if (!auth) return;
-
-    // Wait for auth to initialize
-    waitForAuth().then(() => {
-      setUser(auth.currentUser);
-      setDisplayName(auth.currentUser?.displayName || '');
-    });
-
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
-      setDisplayName(user?.displayName || '');
+      if (user) {
+        setDisplayName(user.displayName || '');
+        setProfilePic(user.photoURL || '/default-profile.png');
+      }
     });
-    return unsubscribe;
+
+    return () => unsubscribe();
   }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

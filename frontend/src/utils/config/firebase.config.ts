@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, Auth } from "firebase/auth";
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -13,9 +13,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-export let app: FirebaseApp;
-export let auth: ReturnType<typeof getAuth>;
-export let db: ReturnType<typeof getFirestore>;
+let app: FirebaseApp;
+let auth: Auth;
+let db: ReturnType<typeof getFirestore>;
 
 if (typeof window !== 'undefined') {
   if (!getApps().length) {
@@ -27,7 +27,7 @@ if (typeof window !== 'undefined') {
   db = getFirestore(app);
 }
 
-// export { auth, db };
+export { app, auth, db };
 
 export const initFirebase = () => {
   if (typeof window !== 'undefined') {
