@@ -3,7 +3,7 @@
   flex-direction: column;
   max-width: 800px;
   margin: 0 auto;
-  background-color: #111827; /* Dark background matching TaskList */
+  background-color: #171d28; /* Dark background matching TaskList */
   border-radius: 8px;
   border: 1px solid #374151; /* Dark border */
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
@@ -13,7 +13,7 @@
 .aarya-calendar {
   width: 100%;
   border: none;
-  background-color: #111827; /* Dark background */
+  background-color: #171d28; /* Dark background */
   color: #e5e7eb; /* Light text */
 }
 

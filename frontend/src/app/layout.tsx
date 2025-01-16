@@ -18,8 +18,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-900`}>
-        <div className="min-h-screen bg-gray-900">
+      <body className={`${inter.className}`}>
+        <div className="min-h-screen">
           <LayoutProvider>
             <TaskProvider>
               {children}
