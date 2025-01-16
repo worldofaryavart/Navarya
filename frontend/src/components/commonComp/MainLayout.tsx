@@ -8,13 +8,13 @@ interface MainLayoutProps {
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const { isSidebarOpen } = useLayout();
+  const { isAISidebarOpen } = useLayout();
 
   return (
     <div
       className={`
         min-h-screen transition-all duration-300 ease-in-out
-        ${isSidebarOpen ? 'mr-96' : 'mr-0'}
+        ${isAISidebarOpen ? 'mr-96' : 'mr-0'}
       `}
     >
       {children}
