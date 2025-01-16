@@ -28,7 +28,7 @@ export default function Home() {
           </div>
           <div className="hidden md:flex space-x-8 items-center">
             <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
-            <a href="#about" className="text-gray-300 hover:text-white transition-colors">About</a>
+            <a href="/about" className="text-gray-300 hover:text-white transition-colors">About</a>
             <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
             <button 
               onClick={() => router.push('/signup')}

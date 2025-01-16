@@ -12,11 +12,6 @@ const AboutPage: React.FC = () => {
 
   const features = [
     {
-      icon: <FiUsers className="w-8 h-8" />,
-      title: "Expert Team",
-      description: "Our team consists of world-class AI researchers and engineers dedicated to pushing the boundaries of what is possible."
-    },
-    {
       icon: <FiTarget className="w-8 h-8" />,
       title: "Innovation Focus",
       description: "We are constantly innovating and developing cutting-edge AI solutions that solve real-world problems."
@@ -54,7 +49,7 @@ const AboutPage: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16"
         >
           {features.map((feature, index) => (
             <motion.div
@@ -81,7 +76,7 @@ const AboutPage: React.FC = () => {
             Our Mission
           </h2>
           <p className="text-lg text-gray-300 text-center max-w-4xl mx-auto">
-            At NavArya, we&apos;re on a mission to empower minds and expand horizons. We believe in creating a world where everyone has the power to unlock innovation and creativity to grow faster than ever.
+            NavArya is an AI agent dedicated to empowering businesses. We help companies boost productivity by automating repetitive tasks, saving valuable time, and enabling them to grow faster than ever before. Our mission is to revolutionize business operations through intelligent automation.
           </p>
         </motion.div>
 
