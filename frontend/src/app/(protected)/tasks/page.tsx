@@ -95,7 +95,7 @@ const Tasks = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 text-white">
+    <div className="container mx-auto p-4 text-white mt-16">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-gray-100">Task Scheduler</h1>
         <button
@@ -106,7 +106,7 @@ const Tasks = () => {
         </button>
       </div>
 
-      <div className="flex gap-4 h-[calc(200vh-6rem+5px)] md:flex-row flex-col">
+      <div className="flex gap-4 md:flex-row flex-col">
         {/* Right Column - Tasks Section and Timeline */}
         <div className="w-full md:w-2/3 space-y-4 flex flex-col flex-1">
           <div className="rounded-lg overflow-auto border border-gray-700/50 custom-scrollbar min-h-[322px]">
@@ -122,7 +122,7 @@ const Tasks = () => {
           <div className="rounded-lg p-4 border border-gray-700/50">
             <CalendarView tasks={tasks} />
           </div>
-          <div className="rounded-lg overflow-y-auto border border-gray-700/50 flex-1 custom-scrollbar">
+          <div className="rounded-lg overflow-y-auto border border-gray-700/50 custom-scrollbar h-[1223px]">
             <TaskList
               tasks={tasks}
               onUpdateTask={handleUpdateTask}

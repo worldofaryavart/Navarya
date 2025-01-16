@@ -67,7 +67,7 @@ const CalendarTimeline: React.FC<CalendarTimelineProps> = ({ tasks }) => {
                   {hourTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="bg-blue-500/20 rounded p-0.5 flex-shrink-0 border border-blue-500/30 max-w-[200px]"
+                      className="bg-blue-500/20 rounded p-2 flex-shrink-0 border border-blue-500/30 max-w-[200px]"
                     >
                       <h3 className="text-sm font-medium text-blue-300 truncate">{task.title}</h3>
                     </div>
