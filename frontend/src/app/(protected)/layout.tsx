@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { auth } from "@/utils/config/firebase.config";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/commonComp/Loader";
+import AIControlButton from '@/components/AIController/AIControlButton';
 
 export default function ProtectedLayout({
   children,
@@ -49,6 +50,8 @@ export default function ProtectedLayout({
               {children}
             </div>
           </main>
+          <AIControlButton />
+
         </div>
       )}
     </SidebarProvider>
