@@ -30,7 +30,7 @@ const AIControlButton: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [contextData, setContextData] = useState<ContextData>({});
   const { tasks, setTasks } = useTaskContext();
-  const { isSidebarOpen, setIsSidebarOpen } = useLayout();
+  const { isAISidebarOpen, setIsAISidebarOpen } = useLayout();
   const router = useRouter();
   const uiCommandHandler = new UICommandHandler(router);
   const aiCommandHandler = new AICommandHandler(router);
@@ -248,11 +248,11 @@ const AIControlButton: React.FC = () => {
     <>
       {/* Floating AI Control Button */}
       <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        onClick={() => setIsAISidebarOpen(!isAISidebarOpen)}  
         className={`
           fixed bottom-6 right-6 z-50
           w-16 h-16 rounded-full shadow-2xl 
-          ${isSidebarOpen ? "bg-purple-600" : "bg-purple-500 hover:bg-purple-600"}
+          ${isAISidebarOpen ? "bg-purple-600" : "bg-purple-500 hover:bg-purple-600"}
           text-white flex items-center justify-center
           transition-all duration-300
         `}
@@ -262,8 +262,8 @@ const AIControlButton: React.FC = () => {
 
       {/* AI Chat Sidebar */}
       <AIChatSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+        isOpen={isAISidebarOpen}
+        onClose={() => setIsAISidebarOpen(false)}
         messages={messages}
         inputValue={inputValue}
         setInputValue={setInputValue}

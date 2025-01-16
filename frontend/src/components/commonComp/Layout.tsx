@@ -5,15 +5,14 @@ import { FiMenu } from "react-icons/fi";
 import Sidebar from "./Sidebar";
 import AIControlButton from "../AIController/AIControlButton";
 import Header from "./Header";
-import { Task } from "@/types/taskTypes";
-import { useLayout } from "@/context/LayoutContext";
+import { useSidebar } from "@/context/SidebarContext";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const { isSidebarOpen } = useLayout();
+  const { isSidebarOpen } = useSidebar();
 
   return (
     <div className="flex min-h-screen ">

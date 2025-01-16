@@ -3,17 +3,17 @@
 import React, { createContext, useContext, useState } from 'react';
 
 interface LayoutContextType {
-  isSidebarOpen: boolean;
-  setIsSidebarOpen: (open: boolean) => void;
+  isAISidebarOpen: boolean;
+  setIsAISidebarOpen: (open: boolean) => void;
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
 
 export function LayoutProvider({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
 
   return (
-    <LayoutContext.Provider value={{ isSidebarOpen, setIsSidebarOpen }}>
+    <LayoutContext.Provider value={{  isAISidebarOpen, setIsAISidebarOpen }}>
       {children}
     </LayoutContext.Provider>
   );

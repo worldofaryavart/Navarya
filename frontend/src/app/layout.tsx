@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { LayoutProvider } from "@/context/LayoutContext";
 import { TaskProvider } from "@/context/TaskContext";
+import { SidebarProvider } from "@/context/SidebarContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,10 +22,12 @@ export default function RootLayout({
       <body className={`${inter.className}`}>
         <div className="min-h-screen">
           <LayoutProvider>
-            <TaskProvider>
+            <SidebarProvider>
               {children}
-            </TaskProvider>
-          </LayoutProvider>
+            </SidebarProvider>
+           {/*  <TaskProvider> */}
+            {/* </TaskProvider>*/}
+          </LayoutProvider> 
         </div>
       </body>
     </html>
