@@ -8,7 +8,7 @@ import { Conversation } from '@/types/types';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiClock, FiCalendar, FiMessageSquare, FiStar, FiTrello } from 'react-icons/fi';
 
-const WelcomeComponent = () => {
+const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
   const { conversations, loading: conversationsLoading, error, setConversations } = useConversations(user);
@@ -177,4 +177,4 @@ const WelcomeComponent = () => {
   );
 };
 
-export default WelcomeComponent;
+export default Dashboard;

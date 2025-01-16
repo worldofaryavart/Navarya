@@ -1,11 +1,11 @@
 "use client";
 
-import WelcomeComponent from "@/components/commonComp/Welcome";
+import Dashboard from "@/components/commonComp/Dashboard";
 
 export default function DashboardPage() {
   return (
-    <div className="container mx-auto">
-      <WelcomeComponent/>
+    <div className="container mx-auto mt-16">
+      <Dashboard/>
     </div>
   );
 }
