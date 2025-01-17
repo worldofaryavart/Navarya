@@ -1,5 +1,5 @@
 import { Task, NewTaskInput, TaskStatus, TaskPriority } from '@/types/taskTypes';
-import { addTask, deleteTask, getTasks, updateTask } from '@/utils/tasks/tasks';
+import { addTask, deleteTask, getTasks, updateTask } from '@/services/task_services/tasks';
 import { useUIStore } from '@/store/uiStateStore';
 import { Timestamp } from 'firebase/firestore';
 import { auth } from '@/utils/config/firebase.config';

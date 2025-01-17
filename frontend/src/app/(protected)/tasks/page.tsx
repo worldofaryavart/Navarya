@@ -5,7 +5,7 @@ import CalendarView from "@/components/TaskScheduler/CalendarView";
 import TaskFormModal from "@/components/TaskScheduler/TaskFormModal";
 import TaskList from "@/components/TaskScheduler/TaskList";
 import TasksSection from "@/components/TaskScheduler/TasksSection"; // Import TasksSection component
-import { addTask, deleteTask, getTasks, updateTask } from "@/utils/tasks/tasks";
+import { addTask, deleteTask, getTasks, updateTask } from "@/services/task_services/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
 import Loader from "@/components/commonComp/Loader";
 import { useTaskContext } from "@/context/TaskContext";

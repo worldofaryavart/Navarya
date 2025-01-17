@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Send, Mic, Loader2, HelpCircle, List, CheckCircle, Clock, Activity, Plus, PlusIcon, HistoryIcon } from 'lucide-react';
-import { ConversationInfo, getAllConversations } from '@/utils/aicontext/conversationService';
+import { ConversationInfo, getAllConversations } from '@/services/context_services/context';
 
 interface Message {
   role: 'user' | 'ai';

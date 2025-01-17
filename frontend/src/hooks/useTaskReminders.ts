@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { taskReminderService } from '@/services/taskReminderService';
+import { taskReminderService } from '@/services/reminder_services/taskReminderService';
 
 export const useTaskReminders = () => {
   const addReminder = useCallback(async (taskId: string, reminderTime: Date, recurring?: {

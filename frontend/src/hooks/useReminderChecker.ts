@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { Task } from '@/types/taskTypes';
-import { notificationService } from '@/services/notificationService';
+import { notificationService } from '@/services/notification_services/notificationService';
 import { useUIStore } from '@/store/uiStateStore';
 import { Timestamp } from 'firebase/firestore';
 

@@ -1,42 +1,41 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, Response
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Depends, Request, Response, Header
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 import os
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import auth, credentials, firestore
+from firebase_admin import credentials, firestore
 from models.reminder_models import ReminderCreate, Reminder
+from services.task_services import TaskService
+from services.reminder_service import ReminderService
+from services.processor_factory import ProcessorFactory
+from services.context_manager import ContextManager
+from utils.exceptions import TaskException, TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
 
 # Load environment variables
 load_dotenv()
 
-# Initialize Firebase
+# Initialize Firebase Admin
 cred = credentials.Certificate("firebase-credentials.json")
-default_app = firebase_admin.initialize_app(cred)
-
-# Get Firestore database
+firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-# Now import services that depend on Firebase
-from services.reminder_service import ReminderService
-from services.processor_factory import ProcessorFactory
-from services.context_manager import ContextManager
-
+# Initialize services
 reminder_service = ReminderService(db)
 context_manager = ContextManager(db)
+task_service = TaskService(db)
 
 app = FastAPI()
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://navarya.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000", "https://www.navarya.com", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
 # Dependency to verify Firebase token
@@ -47,10 +46,28 @@ async def verify_token(request: Request):
     
     token = authorization.split('Bearer ')[1]
     try:
-        decoded_token = auth.verify_id_token(token)
+        decoded_token = firebase_admin.auth.verify_id_token(token)
         return decoded_token
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.exception_handler(TaskException)
+async def task_exception_handler(request, exc: TaskException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.error_code,
+                "message": exc.detail,
+                "additional_info": exc.additional_info
+            }
+        }
+    )
+
+async def get_token(authorization: str = Header(...)):
+    if not authorization or not authorization.startswith('Bearer '):
+        raise UnauthorizedError("Invalid token format")
+    return authorization.split(' ')[1]
 
 # Task Models
 class TaskBase(BaseModel):
@@ -64,8 +81,6 @@ class Task(TaskBase):
     id: str
     user_id: str
 
-# Task endpoints
-
 @app.post("/api/process-command")
 async def process_command(task: TaskBase):
     """Process natural language commands using AI"""
@@ -78,6 +93,26 @@ async def process_command(task: TaskBase):
         print("Error processing command:", str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
+# Task endpoints
+@app.post("/api/tasks")
+async def add_task(task: Dict, token: str = Depends(get_token)):
+    return await task_service.add_task(task, token)
+
+@app.get("/api/tasks")
+async def get_tasks(token: str = Depends(get_token)):
+    return await task_service.get_tasks(token)
+
+@app.get("/api/tasks/{task_id}")
+async def get_task_by_id(task_id: str, token: str = Depends(get_token)):
+    return await task_service.get_task_by_id(task_id, token)
+
+@app.put("/api/tasks/{task_id}")
+async def update_task(task_id: str, task: Dict, token: str = Depends(get_token)):
+    return await task_service.update_task(task_id, task, token)
+
+@app.delete("/api/tasks/{task_id}")
+async def delete_task(task_id: str, token: str = Depends(get_token)):
+    return await task_service.delete_task(task_id, token)
 
 # Reminder endpoints
 

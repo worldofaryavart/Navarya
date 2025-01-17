@@ -1,7 +1,7 @@
 'use client';
 
 import { Task } from "@/types/taskTypes";
-import { getTasks } from "@/utils/tasks/tasks";
+import { getTasks } from "@/services/task_services/tasks";
 import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 

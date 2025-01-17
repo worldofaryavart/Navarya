@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { X, Send, Paperclip, Bot } from 'lucide-react';
 import { EmailDraft, Email } from '@/types/mailTypes';
-import { sendEmail, generateEmailResponse } from '@/utils/mail/mailService';
 
 interface ComposeEmailProps {
   onClose: () => void;
@@ -25,44 +24,44 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
   );
   const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
 
-  const handleSend = async () => {
-    try {
-      await sendEmail(draft);
-      onClose();
-    } catch (error) {
-      console.error('Error sending email:', error);
-    }
-  };
+  // const handleSend = async () => {
+  //   try {
+  //     await sendEmail(draft);
+  //     onClose();
+  //   } catch (error) {
+  //     console.error('Error sending email:', error);
+  //   }
+  // };
 
-  const handleAIAssist = async () => {
-    if (!replyToEmail) return;
+  // const handleAIAssist = async () => {
+  //   if (!replyToEmail) return;
 
-    setIsGeneratingResponse(true);
-    try {
-      // Create a minimal Email object from the replyToEmail string
-      const emailObject: Email = {
-        id: 'temp-id',
-        subject: '',
-        from: '',
-        to: [],
-        body: replyToEmail,
-        timestamp: new Date(),
-        read: true,
-        important: false,
-        labels: []
-      };
+  //   setIsGeneratingResponse(true);
+  //   try {
+  //     // Create a minimal Email object from the replyToEmail string
+  //     const emailObject: Email = {
+  //       id: 'temp-id',
+  //       subject: '',
+  //       from: '',
+  //       to: [],
+  //       body: replyToEmail,
+  //       timestamp: new Date(),
+  //       read: true,
+  //       important: false,
+  //       labels: []
+  //     };
       
-      const response = await generateEmailResponse(emailObject);
-      setDraft(prev => ({
-        ...prev,
-        body: response
-      }));
-    } catch (error) {
-      console.error('Error generating response:', error);
-    } finally {
-      setIsGeneratingResponse(false);
-    }
-  };
+  //     const response = await generateEmailResponse(emailObject);
+  //     setDraft(prev => ({
+  //       ...prev,
+  //       body: response
+  //     }));
+  //   } catch (error) {
+  //     console.error('Error generating response:', error);
+  //   } finally {
+  //     setIsGeneratingResponse(false);
+  //   }
+  // };
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
@@ -123,7 +122,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
         <div className="flex items-center justify-between p-4 border-t border-gray-700">
           <div className="flex items-center gap-4">
             <button
-              onClick={handleSend}
+              // onClick={handleSend}
               className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200"
             >
               <Send size={16} />
@@ -134,7 +133,7 @@ const ComposeEmail: React.FC<ComposeEmailProps> = ({
             </button>
             {replyToEmail && (
               <button
-                onClick={handleAIAssist}
+                // onClick={handleAIAssist}
                 className="flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors"
                 disabled={isGeneratingResponse}
               >
