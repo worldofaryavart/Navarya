@@ -1,6 +1,5 @@
 from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
-import json
 from enum import Enum
 from firebase_admin import firestore
 from pydantic import BaseModel

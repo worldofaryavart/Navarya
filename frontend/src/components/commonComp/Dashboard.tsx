@@ -50,7 +50,7 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+    <div className="min-h-screen p-4 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Section */}
         <motion.div
@@ -59,7 +59,7 @@ const Dashboard = () => {
           className="text-center mb-8"
         >
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-            NavArya Command Center
+           Navarya Dashboard
           </h1>
           <p className="text-gray-400 mt-2">All your AI-powered tools in one place</p>
         </motion.div>

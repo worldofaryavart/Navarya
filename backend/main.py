@@ -7,9 +7,6 @@ import os
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import auth, credentials, firestore
-import io
-import mimetypes
-from io import BytesIO
 from models.reminder_models import ReminderCreate, Reminder
 
 # Load environment variables
@@ -24,7 +21,6 @@ db = firestore.client()
 
 # Now import services that depend on Firebase
 from services.reminder_service import ReminderService
-# from services.task_processor import TaskProcessor
 from services.processor_factory import ProcessorFactory
 from services.context_manager import ContextManager
 
@@ -42,8 +38,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"]
 )
-
-# task_processor = TaskProcessor(db)
 
 # Dependency to verify Firebase token
 async def verify_token(request: Request):

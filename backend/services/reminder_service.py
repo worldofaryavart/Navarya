@@ -1,7 +1,4 @@
-import os
-import json
 from datetime import datetime
-import re
 from dateutil import parser
 import pytz
 from google.cloud import firestore
