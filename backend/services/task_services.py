@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional
 from datetime import datetime
 from utils.exceptions import TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
+from firebase_admin import firestore
 
 class TaskService:
     def __init__(self, db):
@@ -48,17 +49,48 @@ class TaskService:
     async def get_tasks(self, token: str) -> List[Dict]:
         try:
             user_id = await self.verify_user(token)
+            print(f"User ID: {user_id}")
             
             try:
-                tasks_ref = self.db.collection('tasks').where(filter=('userId', '==', user_id))
-                tasks = tasks_ref.stream()
-                return [{**task.to_dict(), 'id': task.id} for task in tasks]
+                print("Attempting to fetch tasks from Firestore")
+                # Create the base query
+                query = self.db.collection('tasks')
+
+                print("Created base query")
+                
+                # Add where clause
+                query = query.where('userId', '==', user_id)
+                print("Added user filter")
+                
+                # Add ordering
+                query = query.order_by('createdAt', direction=firestore.Query.DESCENDING)
+                print("Added ordering")
+                
+                # Execute the query
+                print("Executing query...")
+                tasks = query.stream()
+                print("Query executed")
+                
+                # Convert to list
+                print("Converting results")
+                result = []
+                for task in tasks:
+                    task_dict = task.to_dict()
+                    task_dict['id'] = task.id
+                    result.append(task_dict)
+                
+                print(f"Successfully fetched {len(result)} tasks")
+                return result
+                
             except Exception as e:
-                raise DatabaseError("fetching tasks")
+                print(f"Database error details: {str(e)}")
+                raise DatabaseError(f"Error fetching tasks: {str(e)}")
                 
         except UnauthorizedError as e:
+            print(f"Authorization error: {str(e)}")
             raise e
         except Exception as e:
+            print(f"Unexpected error: {str(e)}")
             raise DatabaseError(f"Error fetching tasks: {str(e)}")
 
     async def update_task(self, task_id: str, task_data: Dict, token: str) -> Dict:

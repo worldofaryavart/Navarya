@@ -65,9 +65,15 @@ async def task_exception_handler(request, exc: TaskException):
     )
 
 async def get_token(authorization: str = Header(...)):
-    if not authorization or not authorization.startswith('Bearer '):
-        raise UnauthorizedError("Invalid token format")
-    return authorization.split(' ')[1]
+    try:
+        if not authorization or not authorization.startswith('Bearer '):
+            raise UnauthorizedError("Invalid token format")
+        token = authorization.split(' ')[1]
+        print(f"Extracted token: {token[:10]}...")  
+        return token
+    except Exception as e:
+        print(f"Token extraction error: {str(e)}")  
+        raise UnauthorizedError(f"Token error: {str(e)}")
 
 # Task Models
 class TaskBase(BaseModel):
@@ -100,7 +106,12 @@ async def add_task(task: Dict, token: str = Depends(get_token)):
 
 @app.get("/api/tasks")
 async def get_tasks(token: str = Depends(get_token)):
-    return await task_service.get_tasks(token)
+    try:
+        print("Fetching tasks for token")  
+        return await task_service.get_tasks(token)
+    except Exception as e:
+        print(f"Error in get_tasks endpoint: {str(e)}")  
+        raise
 
 @app.get("/api/tasks/{task_id}")
 async def get_task_by_id(task_id: str, token: str = Depends(get_token)):
