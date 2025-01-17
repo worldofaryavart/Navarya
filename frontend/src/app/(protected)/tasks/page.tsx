@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import CalendarView from "@/components/TaskScheduler/CalendarView";
 import TaskFormModal from "@/components/TaskScheduler/TaskFormModal";
 import TaskList from "@/components/TaskScheduler/TaskList";
-import TasksSection from "@/components/TaskScheduler/TasksSection"; // Import TasksSection component
-import { addTask, deleteTask, getTasks, updateTask } from "@/services/task_services/tasks";
+import TasksSection from "@/components/TaskScheduler/TasksSection";
+import { addTask, deleteTask, updateTask } from "@/services/task_services/tasks";
 import { NewTaskInput, Task } from "@/types/taskTypes";
 import Loader from "@/components/commonComp/Loader";
 import { useTaskContext } from "@/context/TaskContext";
@@ -16,26 +16,8 @@ export const runtime = 'edge'
 
 const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const { tasks, setTasks } = useTaskContext();
+  const { tasks, setTasks, isLoading } = useTaskContext();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-
-  useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        if (typeof window !== 'undefined') {  // Only run on client side
-          const fetchedTasks = await getTasks();
-          setTasks(fetchedTasks);
-        }
-      } catch (error) {
-        console.error('Error loading tasks:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTasks();
-  }, [setTasks]);
 
   const handleOpenTaskModal = () => {
     setEditingTask(null);
@@ -55,7 +37,8 @@ const Tasks = () => {
   const handleAddTask = async (newTask: NewTaskInput) => {
     try {
       const addedTask = await addTask(newTask);
-      setTasks((prevTasks) => [...prevTasks, addedTask]);
+      setTasks(prevTasks => [...prevTasks, addedTask]);
+      handleCloseTaskModal();
     } catch (error) {
       console.error('Error adding task:', error);
     }
@@ -67,15 +50,13 @@ const Tasks = () => {
 
       const result = await updateTask(updatedTask);
       
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
           task.id === result.id ? { ...result, reminder: result.reminder || undefined } : task
         )
       );
 
-      if (isModalOpen) {
-        handleCloseTaskModal();
-      }
+      handleCloseTaskModal();
     } catch (error) {
       console.error("Failed to update task: ", error);
     }
@@ -84,9 +65,9 @@ const Tasks = () => {
   const handleDeleteTask = async (taskId: string) => {
     try {
       await deleteTask(taskId);
-      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
     } catch (error) {
-      console.error("Failed to delete task: ", error);
+      console.error('Error deleting task:', error);
     }
   };
 

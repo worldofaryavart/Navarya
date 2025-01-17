@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { useTaskContext } from '@/context/TaskContext';
 import { useLayout } from '@/context/LayoutContext';
@@ -23,6 +23,8 @@ interface ContextData {
   local?: any;
 }
 
+const CONTEXT_CACHE_DURATION = 60000; // 1 minute cache
+
 const AIControlButton: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -34,17 +36,35 @@ const AIControlButton: React.FC = () => {
   const router = useRouter();
   const uiCommandHandler = new UICommandHandler(router);
   const aiCommandHandler = new AICommandHandler(router);
+  
+  // Cache management
+  const contextCache = useRef<{[key: string]: { data: any, timestamp: number }}>({});
+  const lastContextFetch = useRef<{[key: string]: number}>({});
 
-  // Function to fetch context from backend
-  const fetchContext = async (contextType: string) => {
+  // Optimized context fetching with caching
+  const fetchContext = useCallback(async (contextType: string) => {
+    const now = Date.now();
+    const lastFetch = lastContextFetch.current[contextType] || 0;
+
+    // Return cached data if within cache duration
+    if (now - lastFetch < CONTEXT_CACHE_DURATION && contextCache.current[contextType]) {
+      console.log(`Using cached ${contextType} context`);
+      return contextCache.current[contextType].data;
+    }
+
     try {
+      console.log(`Fetching fresh ${contextType} context`);
       const response = await fetch(getApiUrl(`/api/context/${contextType}`), {
         headers: {
           'user-id': auth?.currentUser?.uid || 'anonymous'
         }
       });
+      
       if (response.ok) {
         const data = await response.json();
+        // Update cache
+        contextCache.current[contextType] = { data, timestamp: now };
+        lastContextFetch.current[contextType] = now;
         setContextData(prev => ({ ...prev, [contextType]: data }));
         return data;
       }
@@ -52,10 +72,10 @@ const AIControlButton: React.FC = () => {
       console.error(`Error fetching ${contextType} context:`, error);
     }
     return null;
-  };
+  }, []);
 
-  // Function to update context in backend
-  const updateContext = async (contextType: string, data: any) => {
+  // Optimized context updating with cache invalidation
+  const updateContext = useCallback(async (contextType: string, data: any) => {
     try {
       await fetch(getApiUrl(`/api/context/${contextType}`), {
         method: 'POST',
@@ -65,39 +85,56 @@ const AIControlButton: React.FC = () => {
         },
         body: JSON.stringify(data)
       });
+      
+      // Update cache
+      const now = Date.now();
+      contextCache.current[contextType] = { data, timestamp: now };
+      lastContextFetch.current[contextType] = now;
       setContextData(prev => ({ ...prev, [contextType]: data }));
     } catch (error) {
       console.error(`Error updating ${contextType} context:`, error);
     }
-  };
+  }, []);
 
+  // Load initial data
   useEffect(() => {
+    let mounted = true;
+    
     const loadHistory = async () => {
-      // Load conversation history
-      const history = await getConversationHistory();
-      if (history.length > 0) {
-        setMessages(history.map(msg => ({
-          role: msg.sender === 'user' ? 'user' : 'ai',
-          content: msg.content,
-          timestamp: msg.timestamp
-        })));
-      } else {
-        await startNewConversation();
-      }
+      try {
+        // Load conversation history only if none exists
+        if (messages.length === 0) {
+          const history = await getConversationHistory();
+          if (mounted && history.length > 0) {
+            setMessages(history.map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'ai',
+              content: msg.content,
+              timestamp: msg.timestamp
+            })));
+          } else if (mounted) {
+            await startNewConversation();
+          }
+        }
 
-      // Load context data
-      await Promise.all([
-        fetchContext('session'),
-        fetchContext('persistent')
-      ]);
+        // Load context data if needed
+        if (mounted && (!contextData.session || !contextData.persistent)) {
+          await Promise.all([
+            fetchContext('session'),
+            fetchContext('persistent')
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      }
     };
+
     loadHistory();
+    return () => { mounted = false; };
   }, []);
 
   const handleSubmit = async () => {
     if (!inputValue.trim()) return;
 
-    // Add user message
     const userMessage: Message = {
       role: 'user',
       content: inputValue,
@@ -106,70 +143,58 @@ const AIControlButton: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      // Store user message
       await saveMessage(inputValue, 'user');
-
       setIsProcessing(true);
-      try {
-        // Update session context with current conversation
-        const sessionContext = {
-          ...contextData.session,
-          currentTopic: inputValue,
-          recentMessages: messages.slice(-5)
-        };
-        await updateContext('session', sessionContext);
 
-        // Process command with context
-        const result = await AICommandHandler.processCommand(inputValue, router, {
-          sessionContext: contextData.session,
-          persistentContext: contextData.persistent
-        });
+      const sessionContext = {
+        ...contextData.session,
+        currentTopic: inputValue,
+        recentMessages: messages.slice(-5)
+      };
+      await updateContext('session', sessionContext);
 
-        console.log("result is : ", result);
+      const result = await AICommandHandler.processCommand(inputValue, router, {
+        sessionContext: contextData.session,
+        persistentContext: contextData.persistent
+      });
 
-        // Execute UI commands based on AI response
-        if (result.success) {
-          // Add AI response
-          const aiMessage: Message = {
-            role: 'ai',
-            content: result.message,
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, aiMessage]);
-
-          // Save AI response
-          await saveMessage(result.message, 'assistant');
-
-          // Update context based on the response
-          const updatedSessionContext = {
-            ...sessionContext,
-            lastSuccessfulCommand: {
-              command: inputValue,
-              result: result.message,
-              timestamp: new Date()
-            }
-          };
-          await updateContext('session', updatedSessionContext);
-
-          // If command was successful, refresh tasks
-          await refreshTasks();
-        }
-
-        setInputValue("");
-      } catch (error) {
-        console.error("Processing error", error);
-        const errorMessage: Message = {
+      if (result.success) {
+        const aiMessage: Message = {
           role: 'ai',
-          content: 'Sorry, I encountered an error processing your request.',
+          content: result.message,
           timestamp: new Date()
         };
-        setMessages(prev => [...prev, errorMessage]);
-        await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
-      } finally {
-        setIsProcessing(false);
+        setMessages(prev => [...prev, aiMessage]);
+        await saveMessage(result.message, 'assistant');
+
+        const updatedSessionContext = {
+          ...sessionContext,
+          lastSuccessfulCommand: {
+            command: inputValue,
+            result: result.message,
+            timestamp: new Date()
+          }
+        };
+        await updateContext('session', updatedSessionContext);
+
+        // Only refresh tasks if the command was successful and involved task operations
+        if (result.success && result.data?.tasksModified) {
+          await refreshTasks();
+        }
       }
+
+      setInputValue("");
     } catch (error) {
       console.error('Error processing command:', error);
+      const errorMessage: Message = {
+        role: 'ai',
+        content: 'Sorry, I encountered an error processing your request.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
+    } finally {
+      setIsProcessing(false);
     }
   };
 

@@ -2,7 +2,7 @@
 
 import { Task } from "@/types/taskTypes";
 import { getTasks } from "@/services/task_services/tasks";
-import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface TaskContextType {
@@ -20,16 +20,26 @@ export const TaskProvider: React.FC<{children: ReactNode }> = ({ children }) => 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { user, loading: authLoading } = useAuth();
+    const lastFetchTime = useRef<number>(0);
+    const FETCH_COOLDOWN = 60000; // 1 minute cooldown
 
-    const fetchTasks = useCallback(async () => {
-        if (isLoading || !user) return; // Don't fetch if loading or no user
+    const fetchTasks = useCallback(async (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastFetchTime.current < FETCH_COOLDOWN) {
+            console.log('Skipping fetch due to cooldown');
+            return;
+        }
+        
+        if (isLoading || !user) return;
         
         setIsLoading(true);
         setError(null);
         
         try {
+            console.log('Fetching tasks from API');
             const fetchedTasks = await getTasks();
             setTasks(fetchedTasks);
+            lastFetchTime.current = now;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch tasks';
             setError(errorMessage);
@@ -41,15 +51,15 @@ export const TaskProvider: React.FC<{children: ReactNode }> = ({ children }) => 
 
     useEffect(() => {
         if (!authLoading && user) {
-            fetchTasks();
+            fetchTasks(true); // Force fetch on initial load
         }
-    }, [fetchTasks, user, authLoading]); // Fetch when auth state changes
+    }, [user, authLoading]); // Remove fetchTasks from dependencies
 
     const value = {
         tasks,
         setTasks,
         fetchTasks,
-        isLoading: isLoading || authLoading,
+        isLoading,
         error
     };
 

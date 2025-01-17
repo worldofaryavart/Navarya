@@ -102,20 +102,26 @@ class TaskService:
                     query = query.order_by('createdAt', direction=firestore.Query.DESCENDING)
                     print("Added ordering")
 
-                    # Execute the query
+                    # Execute the query with timeout handling
                     print("Executing query...")
-                    tasks = query.stream()
-                    print("Query executed")
+                    tasks_list = list(query.stream())  # Convert stream to list immediately
+                    print(f"Query executed, got {len(tasks_list)} tasks")
 
-                    # Convert to list
+                    # Convert to list with progress logging
                     print("Converting results")
                     result = []
-                    for task in tasks:
-                        task_dict = task.to_dict()
-                        task_dict['id'] = task.id
-                        result.append(task_dict)
+                    for i, task in enumerate(tasks_list):
+                        try:
+                            task_dict = task.to_dict()
+                            task_dict['id'] = task.id
+                            result.append(task_dict)
+                            if (i + 1) % 10 == 0:  # Log progress every 10 tasks
+                                print(f"Processed {i + 1} tasks")
+                        except Exception as e:
+                            print(f"Error processing task {task.id}: {str(e)}")
+                            continue  # Skip problematic tasks instead of failing completely
 
-                    print(f"Successfully fetched {len(result)} tasks")
+                    print(f"Successfully fetched and processed {len(result)} tasks")
                     
                     # Cache the results
                     self._cache_tasks(user_id, result)
