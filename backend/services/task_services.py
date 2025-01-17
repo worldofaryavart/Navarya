@@ -1,11 +1,36 @@
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.exceptions import TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
 from firebase_admin import firestore
+import time
+from functools import lru_cache
 
 class TaskService:
     def __init__(self, db):
         self.db = db
+        self._task_cache = {}
+        self._last_fetch = {}
+        self._cache_duration = timedelta(minutes=5)  # Cache for 5 minutes
+
+    def _get_cached_tasks(self, user_id: str) -> Optional[List[Dict]]:
+        """Get cached tasks if they exist and are not expired"""
+        if user_id in self._task_cache:
+            last_fetch = self._last_fetch.get(user_id)
+            if last_fetch and datetime.now() - last_fetch < self._cache_duration:
+                return self._task_cache[user_id]
+        return None
+
+    def _cache_tasks(self, user_id: str, tasks: List[Dict]):
+        """Cache tasks for a user"""
+        self._task_cache[user_id] = tasks
+        self._last_fetch[user_id] = datetime.now()
+
+    def _clear_task_cache(self, user_id: str):
+        """Clear the cache for a specific user"""
+        if user_id in self._task_cache:
+            del self._task_cache[user_id]
+        if user_id in self._last_fetch:
+            del self._last_fetch[user_id]
 
     def validate_task_data(self, task_data: Dict) -> None:
         required_fields = ['title', 'description', 'priority']
@@ -37,6 +62,8 @@ class TaskService:
             try:
                 doc_ref = self.db.collection('tasks').document()
                 doc_ref.set(task_data)
+                # Clear cache when adding new task
+                self._clear_task_cache(user_id)
                 return {**task_data, 'id': doc_ref.id}
             except Exception as e:
                 raise DatabaseError("adding task")
@@ -50,42 +77,60 @@ class TaskService:
         try:
             user_id = await self.verify_user(token)
             print(f"User ID: {user_id}")
-            
-            try:
-                print("Attempting to fetch tasks from Firestore")
-                # Create the base query
-                query = self.db.collection('tasks')
 
-                print("Created base query")
-                
-                # Add where clause
-                query = query.where('userId', '==', user_id)
-                print("Added user filter")
-                
-                # Add ordering
-                query = query.order_by('createdAt', direction=firestore.Query.DESCENDING)
-                print("Added ordering")
-                
-                # Execute the query
-                print("Executing query...")
-                tasks = query.stream()
-                print("Query executed")
-                
-                # Convert to list
-                print("Converting results")
-                result = []
-                for task in tasks:
-                    task_dict = task.to_dict()
-                    task_dict['id'] = task.id
-                    result.append(task_dict)
-                
-                print(f"Successfully fetched {len(result)} tasks")
-                return result
-                
-            except Exception as e:
-                print(f"Database error details: {str(e)}")
-                raise DatabaseError(f"Error fetching tasks: {str(e)}")
-                
+            # Check cache first
+            cached_tasks = self._get_cached_tasks(user_id)
+            if cached_tasks is not None:
+                print("Returning cached tasks")
+                return cached_tasks
+
+            max_retries = 3
+            base_delay = 1  # Start with 1 second delay
+
+            for attempt in range(max_retries):
+                try:
+                    print(f"Attempt {attempt + 1} to fetch tasks from Firestore")
+                    # Create the base query
+                    query = self.db.collection('tasks')
+                    print("Created base query")
+
+                    # Add where clause
+                    query = query.where('userId', '==', user_id)
+                    print("Added user filter")
+
+                    # Add ordering
+                    query = query.order_by('createdAt', direction=firestore.Query.DESCENDING)
+                    print("Added ordering")
+
+                    # Execute the query
+                    print("Executing query...")
+                    tasks = query.stream()
+                    print("Query executed")
+
+                    # Convert to list
+                    print("Converting results")
+                    result = []
+                    for task in tasks:
+                        task_dict = task.to_dict()
+                        task_dict['id'] = task.id
+                        result.append(task_dict)
+
+                    print(f"Successfully fetched {len(result)} tasks")
+                    
+                    # Cache the results
+                    self._cache_tasks(user_id, result)
+                    return result
+
+                except Exception as e:
+                    if "Quota exceeded" in str(e):
+                        if attempt < max_retries - 1:  # Don't sleep on the last attempt
+                            delay = base_delay * (2 ** attempt)  # Exponential backoff
+                            print(f"Quota exceeded. Retrying in {delay} seconds...")
+                            time.sleep(delay)
+                            continue
+                    print(f"Database error details: {str(e)}")
+                    raise DatabaseError(f"Error fetching tasks: {str(e)}")
+
         except UnauthorizedError as e:
             print(f"Authorization error: {str(e)}")
             raise e
@@ -119,6 +164,8 @@ class TaskService:
                 }
                 
                 task_ref.update(updates)
+                # Clear cache when updating task
+                self._clear_task_cache(user_id)
                 return {'id': task_id, **updates}
             except Exception as e:
                 if isinstance(e, (TaskNotFoundError, UnauthorizedError)):
@@ -146,6 +193,8 @@ class TaskService:
                     raise UnauthorizedError("Not authorized to delete this task")
                 
                 task_ref.delete()
+                # Clear cache when deleting task
+                self._clear_task_cache(user_id)
                 return {"message": "Task deleted successfully", "id": task_id}
             except Exception as e:
                 if isinstance(e, (TaskNotFoundError, UnauthorizedError)):
