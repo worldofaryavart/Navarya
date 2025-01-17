@@ -50,7 +50,7 @@ class TaskService:
             user_id = await self.verify_user(token)
             
             try:
-                tasks_ref = self.db.collection('tasks').where('userId', '==', user_id)
+                tasks_ref = self.db.collection('tasks').where(filter=('userId', '==', user_id))
                 tasks = tasks_ref.stream()
                 return [{**task.to_dict(), 'id': task.id} for task in tasks]
             except Exception as e:
