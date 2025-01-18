@@ -11,6 +11,7 @@ class TaskService:
         self._task_cache = {}
         self._last_fetch = {}
         self._cache_duration = timedelta(minutes=5)  # Cache for 5 minutes
+        self.DEFAULT_PAGE_SIZE = 100
 
     def _get_cached_tasks(self, user_id: str) -> Optional[List[Dict]]:
         """Get cached tasks if they exist and are not expired"""
@@ -31,6 +32,12 @@ class TaskService:
             del self._task_cache[user_id]
         if user_id in self._last_fetch:
             del self._last_fetch[user_id]
+
+    def _serialize_timestamp(self, timestamp):
+        """Serialize Firestore timestamp to ISO format"""
+        if hasattr(timestamp, 'isoformat'):  # Check if timestamp has isoformat method
+            return timestamp.isoformat()
+        return timestamp
 
     def validate_task_data(self, task_data: Dict) -> None:
         required_fields = ['title', 'description', 'priority']
@@ -56,27 +63,29 @@ class TaskService:
             self.validate_task_data(task_data)
             
             task_data['userId'] = user_id
-            task_data['createdAt'] = datetime.utcnow()
+            task_data['createdAt'] = firestore.SERVER_TIMESTAMP
             task_data['status'] = task_data.get('status', 'Pending')
             
             try:
                 doc_ref = self.db.collection('tasks').document()
                 doc_ref.set(task_data)
-                # Clear cache when adding new task
                 self._clear_task_cache(user_id)
-                return {**task_data, 'id': doc_ref.id}
+                
+                # Get the created task with server timestamp
+                created_task = doc_ref.get().to_dict()
+                return {**created_task, 'id': doc_ref.id}
+                
             except Exception as e:
-                raise DatabaseError("adding task")
+                raise DatabaseError(f"Error adding task: {str(e)}")
                 
         except (UnauthorizedError, ValidationError, DatabaseError) as e:
             raise e
         except Exception as e:
             raise DatabaseError(f"Error adding task: {str(e)}")
 
-    async def get_tasks(self, token: str) -> List[Dict]:
+    async def get_tasks(self, token: str, page_size: int = None) -> List[Dict]:
         try:
             user_id = await self.verify_user(token)
-            
             # Check cache first
             cached_tasks = self._get_cached_tasks(user_id)
             if cached_tasks is not None:
@@ -88,16 +97,17 @@ class TaskService:
                     tasks_ref
                     .where('userId', '==', user_id)
                     .order_by('createdAt', direction=firestore.Query.DESCENDING)
+                    .limit(page_size or self.DEFAULT_PAGE_SIZE)
                 )
-                
-                docs = query.get()
-                
+
+                docs = query.stream()  # Using stream() for better memory usage
+
                 result = []
                 for doc in docs:
                     task_data = doc.to_dict()
                     task_data['id'] = doc.id
-                    if 'createdAt' in task_data and task_data['createdAt']:
-                        task_data['createdAt'] = task_data['createdAt'].isoformat()
+                    if 'createdAt' in task_data:
+                        task_data['createdAt'] = self._serialize_timestamp(task_data['createdAt'])
                     result.append(task_data)
                 
                 self._cache_tasks(user_id, result)
@@ -112,6 +122,19 @@ class TaskService:
         except Exception as e:
             raise DatabaseError(f"Error fetching tasks: {str(e)}")
 
+    @firestore.transactional
+    def _update_task_transaction(self, transaction, task_ref, updates, user_id):
+        snapshot = task_ref.get(transaction=transaction)
+        if not snapshot.exists:
+            raise TaskNotFoundError(task_ref.id)
+            
+        task_dict = snapshot.to_dict()
+        if task_dict['userId'] != user_id:
+            raise UnauthorizedError("Not authorized to update this task")
+        
+        transaction.update(task_ref, updates)
+        return {'id': task_ref.id, **updates}
+
     async def update_task(self, task_id: str, task_data: Dict, token: str) -> Dict:
         try:
             user_id = await self.verify_user(token)
@@ -119,15 +142,6 @@ class TaskService:
             
             try:
                 task_ref = self.db.collection('tasks').document(task_id)
-                task = task_ref.get()
-                
-                if not task.exists:
-                    raise TaskNotFoundError(task_id)
-                    
-                task_dict = task.to_dict()
-                if task_dict['userId'] != user_id:
-                    raise UnauthorizedError("Not authorized to update this task")
-                
                 updates = {
                     'title': task_data.get('title'),
                     'description': task_data.get('description'),
@@ -137,14 +151,15 @@ class TaskService:
                     'reminder': task_data.get('reminder')
                 }
                 
-                task_ref.update(updates)
-                # Clear cache when updating task
+                transaction = self.db.transaction()
+                result = self._update_task_transaction(transaction, task_ref, updates, user_id)
                 self._clear_task_cache(user_id)
-                return {'id': task_id, **updates}
+                return result
+                
             except Exception as e:
                 if isinstance(e, (TaskNotFoundError, UnauthorizedError)):
                     raise e
-                raise DatabaseError("updating task")
+                raise DatabaseError(f"Error updating task: {str(e)}")
                 
         except (UnauthorizedError, ValidationError, TaskNotFoundError, DatabaseError) as e:
             raise e
@@ -167,13 +182,13 @@ class TaskService:
                     raise UnauthorizedError("Not authorized to delete this task")
                 
                 task_ref.delete()
-                # Clear cache when deleting task
                 self._clear_task_cache(user_id)
                 return {"message": "Task deleted successfully", "id": task_id}
+                
             except Exception as e:
                 if isinstance(e, (TaskNotFoundError, UnauthorizedError)):
                     raise e
-                raise DatabaseError("deleting task")
+                raise DatabaseError(f"Error deleting task: {str(e)}")
                 
         except (UnauthorizedError, TaskNotFoundError, DatabaseError) as e:
             raise e
@@ -195,11 +210,15 @@ class TaskService:
                 if task_dict['userId'] != user_id:
                     raise UnauthorizedError("Not authorized to view this task")
                 
+                if 'createdAt' in task_dict:
+                    task_dict['createdAt'] = self._serialize_timestamp(task_dict['createdAt'])
+                
                 return {'id': task_id, **task_dict}
+                
             except Exception as e:
                 if isinstance(e, (TaskNotFoundError, UnauthorizedError)):
                     raise e
-                raise DatabaseError("fetching task")
+                raise DatabaseError(f"Error fetching task: {str(e)}")
                 
         except (UnauthorizedError, TaskNotFoundError, DatabaseError) as e:
             raise e
