@@ -3,9 +3,9 @@ import { Sparkles } from "lucide-react";
 import { useTaskContext } from '@/context/TaskContext';
 import { useLayout } from '@/context/LayoutContext';
 import AIChatSidebar from './AIChatSidebar';
-import { AICommandHandler } from "@/utils/ai/aiCommandHandler";
-import { getTasks } from "@/services/task_services/tasks";
-import { saveMessage, getConversationHistory, startNewConversation, getAllConversations } from "@/services/context_services/context";
+import { AICommandHandler } from "@/services/ai_cmd_process/process_cmd";
+// import { getTasks } from "@/services/task_services/tasks";
+import { saveMessage, getConversationHistory, startNewConversation } from "@/services/context_services/context";
 import { auth } from '@/utils/config/firebase.config';
 import { getApiUrl } from "@/utils/config/api.config";
 import UICommandHandler from '@/utils/ai/uiCommandHandler';
@@ -36,70 +36,70 @@ const AIControlButton: React.FC = () => {
   const router = useRouter();
   const uiCommandHandler = new UICommandHandler(router);
   const aiCommandHandler = new AICommandHandler(router);
-  
+
   // Cache management
-  const contextCache = useRef<{[key: string]: { data: any, timestamp: number }}>({});
-  const lastContextFetch = useRef<{[key: string]: number}>({});
+  const contextCache = useRef<{ [key: string]: { data: any, timestamp: number } }>({});
+  const lastContextFetch = useRef<{ [key: string]: number }>({});
 
   // Optimized context fetching with caching
-  const fetchContext = useCallback(async (contextType: string) => {
-    const now = Date.now();
-    const lastFetch = lastContextFetch.current[contextType] || 0;
+  // const fetchContext = useCallback(async (contextType: string) => {
+  //   const now = Date.now();
+  //   const lastFetch = lastContextFetch.current[contextType] || 0;
 
-    // Return cached data if within cache duration
-    if (now - lastFetch < CONTEXT_CACHE_DURATION && contextCache.current[contextType]) {
-      console.log(`Using cached ${contextType} context`);
-      return contextCache.current[contextType].data;
-    }
+  //   // Return cached data if within cache duration
+  //   if (now - lastFetch < CONTEXT_CACHE_DURATION && contextCache.current[contextType]) {
+  //     console.log(`Using cached ${contextType} context`);
+  //     return contextCache.current[contextType].data;
+  //   }
 
-    try {
-      console.log(`Fetching fresh ${contextType} context`);
-      const response = await fetch(getApiUrl(`/api/context/${contextType}`), {
-        headers: {
-          'user-id': auth?.currentUser?.uid || 'anonymous'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Update cache
-        contextCache.current[contextType] = { data, timestamp: now };
-        lastContextFetch.current[contextType] = now;
-        setContextData(prev => ({ ...prev, [contextType]: data }));
-        return data;
-      }
-    } catch (error) {
-      console.error(`Error fetching ${contextType} context:`, error);
-    }
-    return null;
-  }, []);
+  //   try {
+  //     console.log(`Fetching fresh ${contextType} context`);
+  //     const response = await fetch(getApiUrl(`/api/context/${contextType}`), {
+  //       headers: {
+  //         'user-id': auth?.currentUser?.uid || 'anonymous'
+  //       }
+  //     });
+
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       // Update cache
+  //       contextCache.current[contextType] = { data, timestamp: now };
+  //       lastContextFetch.current[contextType] = now;
+  //       setContextData(prev => ({ ...prev, [contextType]: data }));
+  //       return data;
+  //     }
+  //   } catch (error) {
+  //     console.error(`Error fetching ${contextType} context:`, error);
+  //   }
+  //   return null;
+  // }, []);
 
   // Optimized context updating with cache invalidation
-  const updateContext = useCallback(async (contextType: string, data: any) => {
-    try {
-      await fetch(getApiUrl(`/api/context/${contextType}`), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'user-id': auth?.currentUser?.uid || 'anonymous'
-        },
-        body: JSON.stringify(data)
-      });
-      
-      // Update cache
-      const now = Date.now();
-      contextCache.current[contextType] = { data, timestamp: now };
-      lastContextFetch.current[contextType] = now;
-      setContextData(prev => ({ ...prev, [contextType]: data }));
-    } catch (error) {
-      console.error(`Error updating ${contextType} context:`, error);
-    }
-  }, []);
+  // const updateContext = useCallback(async (contextType: string, data: any) => {
+  //   try {
+  //     await fetch(getApiUrl(`/api/context/${contextType}`), {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'user-id': auth?.currentUser?.uid || 'anonymous'
+  //       },
+  //       body: JSON.stringify(data)
+  //     });
+
+  //     // Update cache
+  //     const now = Date.now();
+  //     contextCache.current[contextType] = { data, timestamp: now };
+  //     lastContextFetch.current[contextType] = now;
+  //     setContextData(prev => ({ ...prev, [contextType]: data }));
+  //   } catch (error) {
+  //     console.error(`Error updating ${contextType} context:`, error);
+  //   }
+  // }, []);
 
   // Load initial data
   useEffect(() => {
     let mounted = true;
-    
+
     const loadHistory = async () => {
       try {
         // Load conversation history only if none exists
@@ -114,14 +114,6 @@ const AIControlButton: React.FC = () => {
           } else if (mounted) {
             await startNewConversation();
           }
-        }
-
-        // Load context data if needed
-        if (mounted && (!contextData.session || !contextData.persistent)) {
-          await Promise.all([
-            fetchContext('session'),
-            fetchContext('persistent')
-          ]);
         }
       } catch (error) {
         console.error('Error loading initial data:', error);
@@ -143,20 +135,23 @@ const AIControlButton: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      await saveMessage(inputValue, 'user');
       setIsProcessing(true);
 
-      const sessionContext = {
-        ...contextData.session,
-        currentTopic: inputValue,
-        recentMessages: messages.slice(-5)
-      };
-      await updateContext('session', sessionContext);
+      // const sessionContext = {
+      //   ...contextData.session,
+      //   currentTopic: inputValue,
+      //   recentMessages: messages.slice(-5)
+      // };
+      // await updateContext('session', sessionContext);
 
-      const result = await AICommandHandler.processCommand(inputValue, router, {
-        sessionContext: contextData.session,
-        persistentContext: contextData.persistent
-      });
+      // const result = await AICommandHandler.processCommand(userMessage:Message, router,
+        // {
+        //   sessionContext: contextData.session,
+        //   persistentContext: contextData.persistent
+        // }
+      // );
+
+      const result = await AICommandHandler.processCommand(userMessage, router);
 
       if (result.success) {
         const aiMessage: Message = {
@@ -165,22 +160,22 @@ const AIControlButton: React.FC = () => {
           timestamp: new Date()
         };
         setMessages(prev => [...prev, aiMessage]);
-        await saveMessage(result.message, 'assistant');
+        // await saveMessage(result.message, 'assistant');
 
-        const updatedSessionContext = {
-          ...sessionContext,
-          lastSuccessfulCommand: {
-            command: inputValue,
-            result: result.message,
-            timestamp: new Date()
-          }
-        };
-        await updateContext('session', updatedSessionContext);
+        // const updatedSessionContext = {
+        //   ...sessionContext,
+        //   lastSuccessfulCommand: {
+        //     command: inputValue,
+        //     result: result.message,
+        //     timestamp: new Date()
+        //   }
+        // };
+        // await updateContext('session', updatedSessionContext);
 
         // Only refresh tasks if the command was successful and involved task operations
-        if (result.success && result.data?.tasksModified) {
-          await refreshTasks();
-        }
+        // if (result.success && result.data?.tasksModified) {
+        //   await refreshTasks();
+        // }
       }
 
       setInputValue("");
@@ -195,15 +190,6 @@ const AIControlButton: React.FC = () => {
       await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const refreshTasks = async () => {
-    try {
-      const updatedTasks = await getTasks();
-      setTasks(updatedTasks);
-    } catch (error) {
-      console.error('Error refreshing tasks:', error);
     }
   };
 
@@ -237,13 +223,13 @@ const AIControlButton: React.FC = () => {
       if (success) {
         setMessages([]);
         // Reset session context
-        const emptySessionContext = {
-          currentTopic: '',
-          recentMessages: [],
-          lastSuccessfulCommand: null
-        };
-        await updateContext('session', emptySessionContext);
-        setContextData(prev => ({ ...prev, session: emptySessionContext }));
+        // const emptySessionContext = {
+        //   currentTopic: '',
+        //   recentMessages: [],
+        //   lastSuccessfulCommand: null
+        // };
+        // await updateContext('session', emptySessionContext);
+        // setContextData(prev => ({ ...prev, session: emptySessionContext }));
       }
     } catch (error) {
       console.error('Error starting new conversation:', error);
@@ -273,7 +259,7 @@ const AIControlButton: React.FC = () => {
     <>
       {/* Floating AI Control Button */}
       <button
-        onClick={() => setIsAISidebarOpen(!isAISidebarOpen)}  
+        onClick={() => setIsAISidebarOpen(!isAISidebarOpen)}
         className={`
           fixed bottom-6 right-6 z-50
           w-16 h-16 rounded-full shadow-2xl 

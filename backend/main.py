@@ -14,6 +14,8 @@ from services.processor_factory import ProcessorFactory
 from services.context_manager import ContextManager
 from services.conversation_history import ConversationHistoryService
 from utils.exceptions import TaskException, TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
+from datetime import datetime
+from enum import Enum
 
 # Load environment variables
 load_dotenv()
@@ -78,23 +80,38 @@ async def get_token(authorization: str = Header(...)):
         raise UnauthorizedError(f"Token error: {str(e)}")
 
 # Task Models
-class TaskBase(BaseModel):
+class Role(str, Enum):
+    USER = 'user'
+    AI = 'ai'
+
+class Message(BaseModel):
+    role: Role
     content: str
-    context: Optional[dict] = None
+    timestamp: datetime
 
-class TaskCreate(TaskBase):
-    pass
+# class TaskBase(BaseModel):
+#     content: str
+#     role: 'user' | 'ai'
+#     timestamp: datetime
 
-class Task(TaskBase):
-    id: str
-    user_id: str
+
+# class TaskCreate(TaskBase):
+#     pass
+
+# class Task(TaskBase):
+#     id: str
+    # user_id: str
 
 @app.post("/api/process-command")
-async def process_command(task: TaskBase):
+async def process_command(message: Message, user = Depends(verify_token)):
     """Process natural language commands using AI"""
     try:
+        # Save the message using user id from the verified token
+        await conversation_service.save_message(user['uid'], message.content, message.role.value)
+        
+        # Process the message content
         processor_factory = ProcessorFactory(db)
-        result = await processor_factory.process_with_context(task.content, task.context)
+        result = await processor_factory.process_with_context(message.content)
         print("Processing result:", result)
         return result
     except Exception as e:
