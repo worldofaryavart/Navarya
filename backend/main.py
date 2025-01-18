@@ -12,6 +12,7 @@ from services.task_services import TaskService
 from services.reminder_service import ReminderService
 from services.processor_factory import ProcessorFactory
 from services.context_manager import ContextManager
+from services.conversation_history import ConversationHistoryService
 from utils.exceptions import TaskException, TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
 
 # Load environment variables
@@ -26,6 +27,7 @@ db = firestore.client()
 reminder_service = ReminderService(db)
 context_manager = ContextManager(db)
 task_service = TaskService(db)
+conversation_service = ConversationHistoryService(db)
 
 app = FastAPI()
 
@@ -240,6 +242,27 @@ async def clear_context(context_type: str, request: Request):
     except Exception as e:
         print(f"Error in clear_context: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Conversation endpoints
+@app.post("/api/conversations/message")
+async def save_message(content: str, sender: str, user = Depends(verify_token)):
+    return await conversation_service.save_message(user['uid'], content, sender)
+
+@app.get("/api/conversations/history")
+async def get_conversation_history(conversation_id: Optional[str] = None, user = Depends(verify_token)):
+    return await conversation_service.get_conversation_history(user['uid'], conversation_id)
+
+@app.post("/api/conversations/new")
+async def start_new_conversation(user = Depends(verify_token)):
+    return await conversation_service.start_new_conversation(user['uid'])
+
+@app.get("/api/conversations")
+async def get_all_conversations(
+    page_size: int = 6,
+    last_doc: Optional[Dict] = None,
+    user = Depends(verify_token)
+):
+    return await conversation_service.get_all_conversations(user['uid'], page_size, last_doc)
 
 if __name__ == "__main__":
     import uvicorn

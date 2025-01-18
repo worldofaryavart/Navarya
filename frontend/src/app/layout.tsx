@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { LayoutProvider } from "@/context/LayoutContext";
-import { TaskProvider } from "@/context/TaskContext";
 import { SidebarProvider } from "@/context/SidebarContext";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -25,8 +24,6 @@ export default function RootLayout({
             <SidebarProvider>
               {children}
             </SidebarProvider>
-           {/*  <TaskProvider> */}
-            {/* </TaskProvider>*/}
           </LayoutProvider> 
         </div>
       </body>

@@ -76,72 +76,40 @@ class TaskService:
     async def get_tasks(self, token: str) -> List[Dict]:
         try:
             user_id = await self.verify_user(token)
-            print(f"User ID: {user_id}")
-
+            
             # Check cache first
             cached_tasks = self._get_cached_tasks(user_id)
             if cached_tasks is not None:
-                print("Returning cached tasks")
                 return cached_tasks
 
-            max_retries = 3
-            base_delay = 1  # Start with 1 second delay
-
-            for attempt in range(max_retries):
-                try:
-                    print(f"Attempt {attempt + 1} to fetch tasks from Firestore")
-                    # Create the base query
-                    query = self.db.collection('tasks')
-                    print("Created base query")
-
-                    # Add where clause
-                    query = query.where('userId', '==', user_id)
-                    print("Added user filter")
-
-                    # Add ordering
-                    query = query.order_by('createdAt', direction=firestore.Query.DESCENDING)
-                    print("Added ordering")
-
-                    # Execute the query with timeout handling
-                    print("Executing query...")
-                    tasks_list = list(query.stream())  # Convert stream to list immediately
-                    print(f"Query executed, got {len(tasks_list)} tasks")
-
-                    # Convert to list with progress logging
-                    print("Converting results")
-                    result = []
-                    for i, task in enumerate(tasks_list):
-                        try:
-                            task_dict = task.to_dict()
-                            task_dict['id'] = task.id
-                            result.append(task_dict)
-                            if (i + 1) % 10 == 0:  # Log progress every 10 tasks
-                                print(f"Processed {i + 1} tasks")
-                        except Exception as e:
-                            print(f"Error processing task {task.id}: {str(e)}")
-                            continue  # Skip problematic tasks instead of failing completely
-
-                    print(f"Successfully fetched and processed {len(result)} tasks")
-                    
-                    # Cache the results
-                    self._cache_tasks(user_id, result)
-                    return result
-
-                except Exception as e:
-                    if "Quota exceeded" in str(e):
-                        if attempt < max_retries - 1:  # Don't sleep on the last attempt
-                            delay = base_delay * (2 ** attempt)  # Exponential backoff
-                            print(f"Quota exceeded. Retrying in {delay} seconds...")
-                            time.sleep(delay)
-                            continue
-                    print(f"Database error details: {str(e)}")
-                    raise DatabaseError(f"Error fetching tasks: {str(e)}")
+            try:
+                tasks_ref = self.db.collection('tasks')
+                query = (
+                    tasks_ref
+                    .where('userId', '==', user_id)
+                    .order_by('createdAt', direction=firestore.Query.DESCENDING)
+                )
+                
+                docs = query.get()
+                
+                result = []
+                for doc in docs:
+                    task_data = doc.to_dict()
+                    task_data['id'] = doc.id
+                    if 'createdAt' in task_data and task_data['createdAt']:
+                        task_data['createdAt'] = task_data['createdAt'].isoformat()
+                    result.append(task_data)
+                
+                self._cache_tasks(user_id, result)
+                return result
+                
+            except Exception as e:
+                print(f"Database error details: {str(e)}")
+                raise DatabaseError(f"Error fetching tasks: {str(e)}")
 
         except UnauthorizedError as e:
-            print(f"Authorization error: {str(e)}")
             raise e
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
             raise DatabaseError(f"Error fetching tasks: {str(e)}")
 
     async def update_task(self, task_id: str, task_data: Dict, token: str) -> Dict:
