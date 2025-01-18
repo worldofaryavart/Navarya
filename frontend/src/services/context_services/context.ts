@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/utils/config/api.config';
 import { auth } from '@/utils/config/firebase.config';
 
 export interface Message {
@@ -28,44 +29,51 @@ export interface ConversationsResponse {
   lastDoc?: any;
 }
 
-export const saveMessage = async (content: string, sender: 'user' | 'assistant') => {
-  try {
-    const response = await fetch('/api/conversations/message', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${auth?.currentUser?.getIdToken()}`
-      },
-      body: JSON.stringify({ content, sender })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to save message');
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error saving message:', error);
-    return false;
-  }
+const getAuthToken = async () => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  const token = await user.getIdToken();
+  return token;
 };
+
+// export const saveMessage = async (content: string, sender: 'user' | 'assistant') => {
+//   try {
+//     const response = await fetch('/api/conversations/message', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': `Bearer ${auth?.currentUser?.getIdToken()}`
+//       },
+//       body: JSON.stringify({ content, sender })
+//     });
+
+//     if (!response.ok) {
+//       throw new Error('Failed to save message');
+//     }
+
+//     return true;
+//   } catch (error) {
+//     console.error('Error saving message:', error);
+//     return false;
+//   }
+// };
 
 export const getConversationHistory = async (conversationId?: string): Promise<Message[]> => {
   try {
-    const url = new URL('/api/conversations/history', window.location.origin);
-    if (conversationId) {
-      url.searchParams.append('conversation_id', conversationId);
-    }
-
-    const response = await fetch(url.toString(), {
+    const token = await getAuthToken();
+    const response = await fetch(getApiUrl(`/api/conversations/history${conversationId ? `/${conversationId}` : '/'}`), {
       headers: {
-        'Authorization': `Bearer ${await auth?.currentUser?.getIdToken()}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
     if (!response.ok) {
-      throw new Error('Failed to get conversation history');
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch tasks');
     }
+
+    // return await response.json() as Task[];
+
 
     const data = await response.json();
     return data.map((msg: any) => ({
@@ -81,13 +89,13 @@ export const getConversationHistory = async (conversationId?: string): Promise<M
 
 export const startNewConversation = async (): Promise<boolean> => {
   try {
-    const response = await fetch('/api/conversations/new', {
+    const token = await getAuthToken();
+    const response = await fetch(getApiUrl(`/api/conversations/new`), {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${await auth?.currentUser?.getIdToken()}`
+        'Authorization': `Bearer ${token}`
       }
     });
-
     if (!response.ok) {
       throw new Error('Failed to start new conversation');
     }
@@ -104,7 +112,8 @@ export const getAllConversations = async (
   lastDoc?: any
 ): Promise<ConversationsResponse> => {
   try {
-    const url = new URL('/api/conversations', window.location.origin);
+    const token = await getAuthToken();
+    const url = new URL(getApiUrl('/api/conversations'), window.location.origin);
     url.searchParams.append('page_size', pageSize.toString());
     if (lastDoc) {
       url.searchParams.append('last_doc', JSON.stringify(lastDoc));
@@ -112,15 +121,17 @@ export const getAllConversations = async (
 
     const response = await fetch(url.toString(), {
       headers: {
-        'Authorization': `Bearer ${await auth?.currentUser?.getIdToken()}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
     if (!response.ok) {
-      throw new Error('Failed to get conversations');
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch conversations');
     }
 
     const data = await response.json();
+
     return {
       conversations: data.conversations.map((conv: any) => ({
         id: conv.id,

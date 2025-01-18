@@ -61,34 +61,58 @@ class ConversationHistoryService:
 
     async def get_conversation_history(self, user_id: str, conversation_id: Optional[str] = None) -> List[Message]:
         try:
-            target_conversation_id = conversation_id
-            
-            if not target_conversation_id:
+            if conversation_id:
+                # Get messages from the specific conversation
+                conv_ref = self.db.collection('conversations').document(conversation_id)
+                conv_doc = conv_ref.get()
+                
+                if not conv_doc.exists:
+                    print(f'Conversation {conversation_id} not found')
+                    return []
+                    
+                # Verify user has access to this conversation
+                if conv_doc.get('userId') != user_id:
+                    print(f'User {user_id} not authorized to access conversation {conversation_id}')
+                    return []
+                    
+                messages_ref = conv_ref.collection('messages')
+                messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).stream()
+            else:
                 # Get the active conversation
                 active_conv_ref = self.db.collection('conversations')
                 query = active_conv_ref.where('userId', '==', user_id)\
                                      .where('active', '==', True)\
-                                     .order_by('updatedAt', direction=firestore.Query.DESCENDING)
+                                     .order_by('updatedAt', direction=firestore.Query.DESCENDING)\
+                                     .limit(1)
                 
-                docs = query.get()
-                if not docs:
+                docs = query.stream()
+                active_conversations = list(docs)
+                
+                if not active_conversations:
+                    print(f"No active conversations found for user {user_id}")
                     return []
-                target_conversation_id = docs[0].id
+                    
+                messages_ref = active_conversations[0].reference.collection('messages')
+                messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).stream()
 
-            # Get messages from the conversation
-            messages_ref = self.db.collection(f'conversations/{target_conversation_id}/messages')
-            messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).get()
-
-            return [
-                Message(
-                    content=msg.get('content'),
-                    sender=msg.get('sender'),
-                    timestamp=msg.get('timestamp')
-                )
-                for msg in messages
-            ]
+            # Convert messages to list
+            message_list = []
+            for msg in messages:
+                msg_data = msg.to_dict()
+                if not all(key in msg_data for key in ['content', 'sender', 'timestamp']):
+                    print(f"Skipping message {msg.id} due to missing required fields")
+                    continue
+                    
+                message_list.append(Message(
+                    content=msg_data['content'],
+                    sender=msg_data['sender'],
+                    timestamp=msg_data['timestamp']
+                ))
+            
+            return message_list
+            
         except Exception as e:
-            print('Error getting conversation history:', str(e))
+            print(f'Error getting conversation history: {str(e)}')
             return []
 
     async def start_new_conversation(self, user_id: str) -> bool:

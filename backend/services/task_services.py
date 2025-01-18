@@ -122,7 +122,6 @@ class TaskService:
         except Exception as e:
             raise DatabaseError(f"Error fetching tasks: {str(e)}")
 
-    @firestore.transactional
     def _update_task_transaction(self, transaction, task_ref, updates, user_id):
         snapshot = task_ref.get(transaction=transaction)
         if not snapshot.exists:
@@ -142,17 +141,23 @@ class TaskService:
             
             try:
                 task_ref = self.db.collection('tasks').document(task_id)
-                updates = {
+                updates = {k: v for k, v in {
                     'title': task_data.get('title'),
                     'description': task_data.get('description'),
                     'status': task_data.get('status'),
                     'priority': task_data.get('priority'),
                     'dueDate': task_data.get('dueDate'),
                     'reminder': task_data.get('reminder')
-                }
+                }.items() if v is not None}  # Only include non-None values
+                
+                # Execute the transaction
+                @firestore.transactional
+                def update_transaction(transaction):
+                    return self._update_task_transaction(transaction, task_ref, updates, user_id)
                 
                 transaction = self.db.transaction()
-                result = self._update_task_transaction(transaction, task_ref, updates, user_id)
+                result = update_transaction(transaction)
+                
                 self._clear_task_cache(user_id)
                 return result
                 

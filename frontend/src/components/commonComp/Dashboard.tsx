@@ -1,35 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import NewConversationModal from '../Learning/NewConversationModal';
 import { useAuth } from '@/hooks/useAuth';
-import { createConversation } from '@/utils/topic/topicService';
-import { useConversations } from '@/hooks/useConversations';
 import { Conversation } from '@/types/types';
 import { useRouter } from 'next/navigation';
 import { FiPlus, FiClock, FiCalendar, FiMessageSquare, FiStar, FiTrello } from 'react-icons/fi';
 
 const Dashboard = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
-  const { conversations, loading: conversationsLoading, error, setConversations } = useConversations(user);
   const router = useRouter();
 
-  const handleNewConversation = async (topic: string, description: string) => {
-    if (!user) {
-      console.error("User not authenticated");
-      return;
-    }
-
-    try {
-      const newConversation = await createConversation(user, description, topic);
-      if (newConversation) {
-        setConversations(prevConversations => [...prevConversations, newConversation]);
-        router.push(`/topic/${newConversation.id}`);
-      }
-    } catch (error) {
-      console.error("Failed to create conversation: ", error);
-    }
-  };
 
   const upcomingFeatures = [
     { title: "Voice Commands", description: "Control your AI assistant with voice" },
@@ -103,43 +82,6 @@ const Dashboard = () => {
               <FiMessageSquare className="text-purple-400" />
               Quick Actions
             </h2>
-            <div className="space-y-3">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="w-full p-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 transition-colors"
-              >
-                <FiPlus /> New Topic
-              </button>
-              <button
-                onClick={() => router.push('/conversations')}
-                className="w-full p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-2 transition-colors"
-              >
-                <FiMessageSquare /> Recent Chats
-              </button>
-            </div>
-          </DashboardCard>
-
-          {/* Recent Conversations */}
-          <DashboardCard>
-            <h2 className="text-xl font-semibold text-white mb-4">Recent Conversations</h2>
-            {conversationsLoading ? (
-              <div className="text-gray-400">Loading...</div>
-            ) : (
-              <div className="space-y-3">
-                {conversations.slice(0, 3).map((conv: Conversation) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => router.push(`/topic/${conv.id}`)}
-                    className="p-3 rounded-lg bg-gray-700/50 hover:bg-gray-700 cursor-pointer transition-colors"
-                  >
-                    <p className="text-white font-medium">{conv.conversationTitle}</p>
-                    <p className="text-sm text-gray-400 truncate">
-                      {conv.conversationHistory[0]?.content.substring(0, 40)}...
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
           </DashboardCard>
 
           {/* Upcoming Features */}
@@ -162,17 +104,6 @@ const Dashboard = () => {
           </DashboardCard>
         </div>
       </div>
-
-      <AnimatePresence>
-        {isModalOpen && (
-          <NewConversationModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onCreateConversation={handleNewConversation}
-            onSubmit={handleNewConversation}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 };

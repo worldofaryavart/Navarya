@@ -5,7 +5,7 @@ import { useLayout } from '@/context/LayoutContext';
 import AIChatSidebar from './AIChatSidebar';
 import { AICommandHandler } from "@/services/ai_cmd_process/process_cmd";
 // import { getTasks } from "@/services/task_services/tasks";
-import { saveMessage, getConversationHistory, startNewConversation } from "@/services/context_services/context";
+import {  getConversationHistory, startNewConversation } from "@/services/context_services/context";
 import { auth } from '@/utils/config/firebase.config';
 import { getApiUrl } from "@/utils/config/api.config";
 import UICommandHandler from '@/utils/ai/uiCommandHandler';
@@ -187,7 +187,6 @@ const AIControlButton: React.FC = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
-      await saveMessage('Sorry, I encountered an error processing your request.', 'assistant');
     } finally {
       setIsProcessing(false);
     }
@@ -244,12 +243,14 @@ const AIControlButton: React.FC = () => {
   const handleConversationSelect = async (conversationId: string) => {
     try {
       // Get messages for the selected conversation
-      const messages = await getConversationHistory(); // You might want to add a parameter for conversationId
-      setMessages(messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'ai',
-        content: msg.content,
-        timestamp: msg.timestamp
-      })));
+      const history = await getConversationHistory(conversationId);
+      if (history.length > 0) {
+        setMessages(history.map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'ai',
+          content: msg.content,
+          timestamp: msg.timestamp
+        })));
+      }
     } catch (error) {
       console.error('Error loading conversation:', error);
     }

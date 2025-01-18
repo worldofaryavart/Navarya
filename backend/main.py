@@ -82,7 +82,7 @@ async def get_token(authorization: str = Header(...)):
 # Task Models
 class Role(str, Enum):
     USER = 'user'
-    AI = 'ai'
+    AI = 'assistant'
 
 class Message(BaseModel):
     role: Role
@@ -265,8 +265,12 @@ async def clear_context(context_type: str, request: Request):
 async def save_message(content: str, sender: str, user = Depends(verify_token)):
     return await conversation_service.save_message(user['uid'], content, sender)
 
-@app.get("/api/conversations/history")
-async def get_conversation_history(conversation_id: Optional[str] = None, user = Depends(verify_token)):
+@app.get("/api/conversations/history/")
+async def get_active_conversation_history(user = Depends(verify_token)):
+    return await conversation_service.get_conversation_history(user['uid'])
+
+@app.get("/api/conversations/history/{conversation_id}")
+async def get_specific_conversation_history(conversation_id: str, user = Depends(verify_token)):
     return await conversation_service.get_conversation_history(user['uid'], conversation_id)
 
 @app.post("/api/conversations/new")
