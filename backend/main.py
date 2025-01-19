@@ -11,8 +11,7 @@ from models.reminder_models import ReminderCreate, Reminder
 from services.task_services import TaskService
 from services.reminder_service import ReminderService
 from services.processor_factory import ProcessorFactory
-from services.context_manager import ContextManager, ContextType
-from services.conversation_history import ConversationHistoryService
+from services.conversation_history import ConversationHistoryService, Message, ConversationInfo, ConversationsResponse
 from utils.exceptions import TaskException, TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
 from datetime import datetime
 from enum import Enum
@@ -27,7 +26,6 @@ db = firestore.client()
 
 # Initialize services
 reminder_service = ReminderService(db)
-context_manager = ContextManager(db)
 task_service = TaskService(db)
 conversation_service = ConversationHistoryService(db)
 
@@ -53,7 +51,6 @@ async def verify_token(request: Request):
         token = auth_header.split(' ')[1]
         decoded_token = firebase_admin.auth.verify_id_token(token)
         
-        # Include both uid and the original token in the returned object
         return {'uid': decoded_token['uid'], 'token': token}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -76,142 +73,70 @@ async def get_token(authorization: str = Header(...)):
         if not authorization or not authorization.startswith('Bearer '):
             raise UnauthorizedError("Invalid token format")
         token = authorization.split(' ')[1]
-        print(f"Extracted token: {token[:10]}...")  
         return token
     except Exception as e:
-        print(f"Token extraction error: {str(e)}")  
         raise UnauthorizedError(f"Token error: {str(e)}")
 
-# Task Models
 class Role(str, Enum):
     USER = 'user'
     AI = 'assistant'
 
-class Message(BaseModel):
+class MessageRequest(BaseModel):
     role: Role
     content: str
-    timestamp: datetime
-
-# class TaskBase(BaseModel):
-#     content: str
-#     role: 'user' | 'ai'
-#     timestamp: datetime
-
-
-# class TaskCreate(TaskBase):
-#     pass
-
-# class Task(TaskBase):
-#     id: str
-    # user_id: str
 
 @app.post("/api/process-command")
-async def process_command(message: Message, user = Depends(verify_token)):
+async def process_command(message: MessageRequest, user = Depends(verify_token)):
     """Process natural language commands using AI"""
     try:
         user_id = user['uid']
         
-        # 1. Save the user's message
+        # Get or create active conversation
+        conversations = await conversation_service.get_conversation_history(user_id)
+        conversation_id = None
+        
+        if not conversations:
+            # Start new conversation if none exists
+            success = await conversation_service.start_new_conversation(user_id)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to create new conversation")
+            conversations = await conversation_service.get_conversation_history(user_id)
+        
+        if conversations:
+            # Get the first active conversation
+            conversation_id = conversations[0].id if hasattr(conversations[0], 'id') else None
+        
+        if not conversation_id:
+            raise HTTPException(status_code=500, detail="Failed to get active conversation")
+        
+        # Save user message
         await conversation_service.save_message(user_id, message.content, message.role.value)
         
-        # 2. Update context with user's message
-        context_manager = ContextManager(db)
-        session_context = await context_manager.get_context(user_id, ContextType.SESSION) or {}
+        # Get conversation context
+        context = await conversation_service.get_conversation_context(conversation_id)
         
-        # Update session context with current message
-        if 'conversation_history' not in session_context:
-            session_context['conversation_history'] = []
-        session_context['conversation_history'].append({
-            'message': message.content,
-            'timestamp': datetime.utcnow().isoformat(),
-            'role': 'user'
-        })
-        print("session_context:", session_context)
-        await context_manager.store_context(user_id, ContextType.SESSION, session_context)
-        
-        # 3. Process the message with merged context
+        # Process command
         processor_factory = ProcessorFactory(db)
-        merged_context = await context_manager.merge_contexts(user_id)
-        print("merged context: ", merged_context)
-        result = await processor_factory.process_with_context(message.content, merged_context)
+        result = await processor_factory.process_with_context(message.content, context)
         
-        print("AI processing result:", result)
+        # Update context with AI response
+        context_updates = {
+            'last_ai_response': result.get('message', ''),
+            'task_results': result.get('data', {})
+        }
+        await conversation_service.update_conversation_context(conversation_id, context_updates)
         
-        # 4. Handle task operations based on the action
-        task_service = TaskService(db)
-        if result.get('success') and result.get('action'):
-            action = result['action']
-            data = result.get('data', {})
-            
-            if action == 'create_task':
-                task_result = await task_service.add_task(data, user['token'])
-                result['data'] = task_result
-            
-            elif action == 'list_tasks':
-                tasks = await task_service.get_tasks(user['token'])
-                if data.get('filter'):
-                    # Apply filters from the AI result
-                    filter_criteria = data['filter']
-                    if filter_criteria.get('status'):
-                        tasks = [t for t in tasks if t.get('status') == filter_criteria['status']]
-                    if filter_criteria.get('priority'):
-                        tasks = [t for t in tasks if t.get('priority') == filter_criteria['priority']]
-                    # Add more filters as needed
-                result['data'] = tasks
-            
-            elif action == 'update_task':
-                if data.get('description') and data.get('updates'):
-                    # Find task by description
-                    tasks = await task_service.get_tasks(user['token'])
-                    task_to_update = next(
-                        (t for t in tasks if t['title'].lower() in data['description'].lower()),
-                        None
-                    )
-                    if task_to_update:
-                        task_result = await task_service.update_task(
-                            task_to_update['id'],
-                            {**task_to_update, **data['updates']},
-                            user['token']
-                        )
-                        result['data'] = task_result
-            
-            elif action == 'delete_task':
-                if data.get('description'):
-                    # Find task by description
-                    tasks = await task_service.get_tasks(user['token'])
-                    task_to_delete = next(
-                        (t for t in tasks if t['title'].lower() in data['description'].lower()),
-                        None
-                    )
-                    if task_to_delete:
-                        await task_service.delete_task(task_to_delete['id'], user['token'])
-                        result['data'] = {'deleted': task_to_delete['id']}
-            
-            elif action == 'batch_operations':
-                if data.get('operations'):
-                    batch_results = []
-                    for op in data['operations']:
-                        if op['type'] == 'create_task':
-                            task_result = await task_service.add_task(op['data'], user['token'])
-                            batch_results.append({'type': 'create', 'result': task_result})
-                        # Add other batch operations as needed
-                    result['data'] = {'batch_results': batch_results}
-        
-        # 5. Update context with AI response and task results
-        session_context['conversation_history'].append({
-            'message': result['message'],
-            'timestamp': datetime.utcnow().isoformat(),
-            'role': 'assistant'
-        })
-        await context_manager.store_context(user_id, ContextType.SESSION, session_context)
-        
-        # 6. Save the AI response message
-        await conversation_service.save_message(user_id, result['message'], 'assistant')
+        # Save AI response
+        await conversation_service.save_message(
+            user_id,
+            result.get('message', 'No response generated'),
+            Role.AI.value
+        )
         
         return result
     except Exception as e:
-        print("Error processing command:", str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Error in process_command: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Task endpoints
 @app.post("/api/tasks")
@@ -220,12 +145,7 @@ async def add_task(task: Dict, token: str = Depends(get_token)):
 
 @app.get("/api/tasks")
 async def get_tasks(token: str = Depends(get_token)):
-    try:
-        print("Fetching tasks for token")  
-        return await task_service.get_tasks(token)
-    except Exception as e:
-        print(f"Error in get_tasks endpoint: {str(e)}")  
-        raise
+    return await task_service.get_tasks(token)
 
 @app.get("/api/tasks/{task_id}")
 async def get_task_by_id(task_id: str, token: str = Depends(get_token)):
@@ -240,7 +160,6 @@ async def delete_task(task_id: str, token: str = Depends(get_token)):
     return await task_service.delete_task(task_id, token)
 
 # Reminder endpoints
-
 @app.get("/api/reminders")
 async def get_reminders(user = Depends(verify_token)):
     try:
@@ -260,13 +179,8 @@ async def trigger_reminder(reminder_id: str, user = Depends(verify_token)):
 
 # Task reminder endpoints
 @app.put("/api/tasks/{task_id}/reminder")
-async def add_task_reminder(
-    task_id: str,
-    reminder: ReminderCreate,
-    user = Depends(verify_token)
-):
+async def add_task_reminder(task_id: str, reminder: ReminderCreate, user = Depends(verify_token)):
     try:
-        print(f"Adding reminder for task {task_id} with data: {reminder}")
         result = reminder_service.add_task_reminder(
             task_id=task_id,
             user_id=user['uid'],
@@ -275,14 +189,10 @@ async def add_task_reminder(
         )
         return result
     except Exception as e:
-        print(f"Error adding reminder: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/tasks/{task_id}/reminder")
-async def remove_task_reminder(
-    task_id: str,
-    user = Depends(verify_token)
-):
+async def remove_task_reminder(task_id: str, user = Depends(verify_token)):
     try:
         reminder_service.remove_task_reminder(task_id)
         return {"message": "Reminder removed successfully"}
@@ -290,77 +200,22 @@ async def remove_task_reminder(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/tasks/{task_id}/reminders")
-async def get_task_reminders(
-    task_id: str,
-    user = Depends(verify_token)
-):
+async def get_task_reminders(task_id: str, user = Depends(verify_token)):
     try:
-        reminders = reminder_service.get_task_reminders(task_id)
-        return reminders
+        return reminder_service.get_task_reminders(task_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/tasks/{task_id}/reminder/notification")
 async def update_reminder_notification(task_id: str, user = Depends(verify_token)):
-    """Mark a reminder's notification as sent"""
     try:
-        print(f"Updating notification for task {task_id}")
-        reminder = await reminder_service.mark_notification_sent(task_id)
-        print(f"Successfully updated notification for task {task_id}")
+        await reminder_service.mark_notification_sent(task_id)
         return {"success": True}
     except Exception as e:
-        print(f"Error updating notification: {str(e)}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# New endpoints for context management
-@app.get("/api/context/{context_type}")
-async def get_context(context_type: str, request: Request):
-    """Get user context by type"""
-    try:
-        user_id = request.headers.get("user-id", "anonymous")
-        context = await context_manager.get_context(user_id, context_type)
-        if context is None:
-            raise HTTPException(status_code=404, detail="Context not found")
-        return context
-    except Exception as e:
-        print(f"Error in get_context: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/context/{context_type}")
-async def store_context(context_type: str, data: dict, request: Request):
-    """Store user context by type"""
-    try:
-        user_id = request.headers.get("user-id", "anonymous")
-        success = await context_manager.store_context(user_id, context_type, data)
-        if success:
-            return {"message": "Context stored successfully"}
-        raise HTTPException(status_code=500, detail="Failed to store context")
-    except Exception as e:
-        print(f"Error in store_context: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/context/{context_type}")
-async def clear_context(context_type: str, request: Request):
-    """Clear user context by type"""
-    try:
-        user_id = request.headers.get("user-id", "anonymous")
-        success = await context_manager.clear_context(user_id, context_type)
-        if success:
-            return {"message": "Context cleared successfully"}
-        raise HTTPException(status_code=500, detail="Failed to clear context")
-    except Exception as e:
-        print(f"Error in clear_context: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Conversation endpoints
-@app.post("/api/conversations/message")
-async def save_message(content: str, sender: str, user = Depends(verify_token)):
-    return await conversation_service.save_message(user['uid'], content, sender)
-
-@app.get("/api/conversations/history/")
+@app.get("/api/conversations/history")
 async def get_active_conversation_history(user = Depends(verify_token)):
     return await conversation_service.get_conversation_history(user['uid'])
 

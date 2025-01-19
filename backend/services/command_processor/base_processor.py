@@ -34,9 +34,7 @@ class BaseCommandProcessor(ABC):
         self, 
         message: str, 
         context_prompt: str = "",
-        session_context: Optional[Dict] = None, 
-        persistent_context: Optional[Dict] = None, 
-        current_time: Optional[str] = None
+        conversation_context: Optional[Dict[str, Any]] = None
     ) -> Dict[Any, Any]:
         try:
             current_time = time.time()
@@ -52,6 +50,9 @@ class BaseCommandProcessor(ABC):
             system_prompt = f"""System: {self.get_system_prompt()}
 
 Current Date: {datetime.now().strftime("%Y-%m-%d")}
+
+Conversation Context:
+{json.dumps(conversation_context, indent=2) if conversation_context else "No context available"}
 
 {context_prompt}
 
@@ -75,6 +76,7 @@ INTENT CLASSIFICATION:
    - action: the action taken (e.g., "list_tasks", "create_task")
    - data: any relevant data or filter criteria
    - message: a natural language response to the user
+   - context_updates: any updates that should be made to the conversation context
 
 User Message: {message}
 """
@@ -131,9 +133,18 @@ User Message: {message}
                 intent = json.loads(intent_str)
                 
                 # Process the command response
-                print("parts[1]", parts[1].split('}', 1)[1].strip())
                 command_response = self.process_ai_response(parts[1].split('}', 1)[1].strip())
                 command_response['intent'] = intent
+                
+                # Add context updates if not present
+                if 'context_updates' not in command_response:
+                    command_response['context_updates'] = {
+                        'last_action': command_response.get('action'),
+                        'last_action_result': command_response.get('data'),
+                        'last_message': message,
+                        'last_response': command_response.get('message'),
+                        'timestamp': datetime.utcnow().isoformat()
+                    }
                 
                 return command_response
             except json.JSONDecodeError:

@@ -1,9 +1,11 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from firebase_admin import firestore
 from pydantic import BaseModel
+from .context_manager import SimpleContextManager
 
 class Message(BaseModel):
+    id: Optional[str] = None
     content: str
     timestamp: datetime
     sender: str
@@ -23,6 +25,7 @@ class ConversationsResponse(BaseModel):
 class ConversationHistoryService:
     def __init__(self, db: firestore.Client):
         self.db = db
+        self.context_manager = SimpleContextManager(db)
 
     async def save_message(self, user_id: str, content: str, sender: str) -> bool:
         try:
@@ -32,26 +35,36 @@ class ConversationHistoryService:
                                  .where('active', '==', True)\
                                  .order_by('updatedAt', direction=firestore.Query.DESCENDING)
             
-            docs = query.get()
+            docs = list(query.stream())
             
             if not docs:
                 # Create new conversation
-                new_conversation = active_conv_ref.add({
+                new_conv_ref = active_conv_ref.document()
+                new_conv_ref.set({
                     'userId': user_id,
                     'createdAt': firestore.SERVER_TIMESTAMP,
                     'updatedAt': firestore.SERVER_TIMESTAMP,
-                    'active': True
-                })[1]
-                conversation_id = new_conversation.id
+                    'active': True,
+                    'context': {}  # Initialize empty context
+                })
+                conversation_id = new_conv_ref.id
             else:
                 conversation_id = docs[0].id
 
             # Add message to the messages subcollection
             messages_ref = active_conv_ref.document(conversation_id).collection('messages')
-            messages_ref.add({
+            message_ref = messages_ref.document()
+            message_ref.set({
                 'content': content,
                 'sender': sender,
                 'timestamp': firestore.SERVER_TIMESTAMP
+            })
+
+            # Update context with the latest message for context awareness
+            await self.context_manager.update_context(conversation_id, {
+                'last_message': content,
+                'last_sender': sender,
+                'message_count': firestore.Increment(1)
             })
 
             return True
@@ -71,7 +84,8 @@ class ConversationHistoryService:
                     return []
                     
                 # Verify user has access to this conversation
-                if conv_doc.get('userId') != user_id:
+                conv_data = conv_doc.to_dict()
+                if conv_data.get('userId') != user_id:
                     print(f'User {user_id} not authorized to access conversation {conversation_id}')
                     return []
                     
@@ -85,14 +99,13 @@ class ConversationHistoryService:
                                      .order_by('updatedAt', direction=firestore.Query.DESCENDING)\
                                      .limit(1)
                 
-                docs = query.stream()
-                active_conversations = list(docs)
+                docs = list(query.stream())
                 
-                if not active_conversations:
+                if not docs:
                     print(f"No active conversations found for user {user_id}")
                     return []
                     
-                messages_ref = active_conversations[0].reference.collection('messages')
+                messages_ref = docs[0].reference.collection('messages')
                 messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).stream()
 
             # Convert messages to list
@@ -104,6 +117,7 @@ class ConversationHistoryService:
                     continue
                     
                 message_list.append(Message(
+                    id=msg.id,
                     content=msg_data['content'],
                     sender=msg_data['sender'],
                     timestamp=msg_data['timestamp']
@@ -121,21 +135,23 @@ class ConversationHistoryService:
             active_conv_ref = self.db.collection('conversations')
             query = active_conv_ref.where('userId', '==', user_id).where('active', '==', True)
             
-            docs = query.get()
+            docs = list(query.stream())
             
             # Update all active conversations to inactive
             batch = self.db.batch()
             for doc in docs:
                 doc_ref = active_conv_ref.document(doc.id)
                 batch.update(doc_ref, {'active': False})
-            batch.commit()
+            await batch.commit()
 
-            # Create new conversation
-            active_conv_ref.add({
+            # Create new conversation with empty context
+            new_conv_ref = active_conv_ref.document()
+            await new_conv_ref.set({
                 'userId': user_id,
                 'createdAt': firestore.SERVER_TIMESTAMP,
                 'updatedAt': firestore.SERVER_TIMESTAMP,
-                'active': True
+                'active': True,
+                'context': {}  # Initialize empty context
             })
 
             return True
@@ -153,7 +169,7 @@ class ConversationHistoryService:
             if last_doc:
                 query = query.start_after(last_doc)
 
-            docs = query.get()
+            docs = list(query.stream())
             conversations = []
             has_more = False
             last_visible = None
@@ -168,9 +184,10 @@ class ConversationHistoryService:
                 data = doc.to_dict()
                 
                 # Get first message
-                messages_ref = self.db.collection(f'conversations/{doc.id}/messages')
-                first_message_query = messages_ref.order_by('timestamp').limit(1).get()
-                first_message = first_message_query[0].get('content') if first_message_query else ''
+                messages_ref = doc.reference.collection('messages')
+                first_message_query = messages_ref.order_by('timestamp').limit(1).stream()
+                first_messages = list(first_message_query)
+                first_message = first_messages[0].get('content') if first_messages else ''
 
                 conversations.append(
                     ConversationInfo(
@@ -190,3 +207,11 @@ class ConversationHistoryService:
         except Exception as e:
             print('Error getting all conversations:', str(e))
             return ConversationsResponse(conversations=[], has_more=False)
+
+    async def get_conversation_context(self, conversation_id: str) -> Dict[str, Any]:
+        """Get the context for a specific conversation"""
+        return await self.context_manager.get_context(conversation_id)
+
+    async def update_conversation_context(self, conversation_id: str, context_updates: Dict[str, Any]) -> bool:
+        """Update the context for a specific conversation"""
+        return await self.context_manager.update_context(conversation_id, context_updates)
