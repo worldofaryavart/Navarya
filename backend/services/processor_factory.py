@@ -62,10 +62,12 @@ class ProcessorFactory:
         try:
             # Get appropriate processor
             processor = await self.get_processor(message)
+            print("processor:", processor)
 
             # Extract relevant context
             session_context = context.get('session', {}) if context else {}
             persistent_context = context.get('persistent', {}) if context else {}
+            print("persistent_context:", persistent_context)
             current_time = context.get('currentTime') if context else None
 
             # Build comprehensive context prompt
@@ -75,6 +77,8 @@ class ProcessorFactory:
                 persistent_context, 
                 current_time
             )
+
+            print("context_prompt:", context_prompt)
 
             # Process message with context
             result = await processor.process_message(

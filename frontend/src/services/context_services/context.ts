@@ -61,19 +61,38 @@ const getAuthToken = async () => {
 export const getConversationHistory = async (conversationId?: string): Promise<Message[]> => {
   try {
     const token = await getAuthToken();
-    const response = await fetch(getApiUrl(`/api/conversations/history${conversationId ? `/${conversationId}` : '/'}`), {
+    const response = await fetch(getApiUrl(`/api/conversations/history${conversationId ? `/${conversationId}` : ''}`), {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Failed to fetch tasks');
+    if (response.status === 401) {
+      // Token expired, try to refresh and retry once
+      const newToken = await auth.currentUser?.getIdToken(true);
+      if (newToken) {
+        const retryResponse = await fetch(getApiUrl(`/api/conversations/history${conversationId ? `/${conversationId}` : ''}`), {
+          headers: {
+            'Authorization': `Bearer ${newToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (retryResponse.ok) {
+          const data = await retryResponse.json();
+          return data.map((msg: any) => ({
+            content: msg.content,
+            sender: msg.sender,
+            timestamp: new Date(msg.timestamp)
+          }));
+        }
+      }
+      throw new Error('Authentication failed');
     }
 
-    // return await response.json() as Task[];
-
+    if (!response.ok) {
+      throw new Error('Failed to fetch conversation history');
+    }
 
     const data = await response.json();
     return data.map((msg: any) => ({

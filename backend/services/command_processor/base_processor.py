@@ -115,6 +115,7 @@ User Message: {message}
                 }
 
             content = ai_response['choices'][0]['message']['content'].strip()
+            print("content is : ", content)
             
             # Split the response into intent and command parts
             parts = content.split("INTENT CLASSIFICATION:")
@@ -130,6 +131,7 @@ User Message: {message}
                 intent = json.loads(intent_str)
                 
                 # Process the command response
+                print("parts[1]", parts[1].split('}', 1)[1].strip())
                 command_response = self.process_ai_response(parts[1].split('}', 1)[1].strip())
                 command_response['intent'] = intent
                 

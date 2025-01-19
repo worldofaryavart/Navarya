@@ -11,7 +11,7 @@ from models.reminder_models import ReminderCreate, Reminder
 from services.task_services import TaskService
 from services.reminder_service import ReminderService
 from services.processor_factory import ProcessorFactory
-from services.context_manager import ContextManager
+from services.context_manager import ContextManager, ContextType
 from services.conversation_history import ConversationHistoryService
 from utils.exceptions import TaskException, TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
 from datetime import datetime
@@ -44,16 +44,19 @@ app.add_middleware(
 
 # Dependency to verify Firebase token
 async def verify_token(request: Request):
-    authorization = request.headers.get("Authorization")
-    if not authorization or not authorization.startswith('Bearer '):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    
-    token = authorization.split('Bearer ')[1]
+    """Verify Firebase ID token from Authorization header"""
     try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            raise HTTPException(status_code=401, detail="No valid authorization header")
+        
+        token = auth_header.split(' ')[1]
         decoded_token = firebase_admin.auth.verify_id_token(token)
-        return decoded_token
+        
+        # Include both uid and the original token in the returned object
+        return {'uid': decoded_token['uid'], 'token': token}
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail=str(e))
 
 @app.exception_handler(TaskException)
 async def task_exception_handler(request, exc: TaskException):
@@ -106,13 +109,105 @@ class Message(BaseModel):
 async def process_command(message: Message, user = Depends(verify_token)):
     """Process natural language commands using AI"""
     try:
-        # Save the message using user id from the verified token
-        await conversation_service.save_message(user['uid'], message.content, message.role.value)
+        user_id = user['uid']
         
-        # Process the message content
+        # 1. Save the user's message
+        await conversation_service.save_message(user_id, message.content, message.role.value)
+        
+        # 2. Update context with user's message
+        context_manager = ContextManager(db)
+        session_context = await context_manager.get_context(user_id, ContextType.SESSION) or {}
+        
+        # Update session context with current message
+        if 'conversation_history' not in session_context:
+            session_context['conversation_history'] = []
+        session_context['conversation_history'].append({
+            'message': message.content,
+            'timestamp': datetime.utcnow().isoformat(),
+            'role': 'user'
+        })
+        print("session_context:", session_context)
+        await context_manager.store_context(user_id, ContextType.SESSION, session_context)
+        
+        # 3. Process the message with merged context
         processor_factory = ProcessorFactory(db)
-        result = await processor_factory.process_with_context(message.content)
-        print("Processing result:", result)
+        merged_context = await context_manager.merge_contexts(user_id)
+        print("merged context: ", merged_context)
+        result = await processor_factory.process_with_context(message.content, merged_context)
+        
+        print("AI processing result:", result)
+        
+        # 4. Handle task operations based on the action
+        task_service = TaskService(db)
+        if result.get('success') and result.get('action'):
+            action = result['action']
+            data = result.get('data', {})
+            
+            if action == 'create_task':
+                task_result = await task_service.add_task(data, user['token'])
+                result['data'] = task_result
+            
+            elif action == 'list_tasks':
+                tasks = await task_service.get_tasks(user['token'])
+                if data.get('filter'):
+                    # Apply filters from the AI result
+                    filter_criteria = data['filter']
+                    if filter_criteria.get('status'):
+                        tasks = [t for t in tasks if t.get('status') == filter_criteria['status']]
+                    if filter_criteria.get('priority'):
+                        tasks = [t for t in tasks if t.get('priority') == filter_criteria['priority']]
+                    # Add more filters as needed
+                result['data'] = tasks
+            
+            elif action == 'update_task':
+                if data.get('description') and data.get('updates'):
+                    # Find task by description
+                    tasks = await task_service.get_tasks(user['token'])
+                    task_to_update = next(
+                        (t for t in tasks if t['title'].lower() in data['description'].lower()),
+                        None
+                    )
+                    if task_to_update:
+                        task_result = await task_service.update_task(
+                            task_to_update['id'],
+                            {**task_to_update, **data['updates']},
+                            user['token']
+                        )
+                        result['data'] = task_result
+            
+            elif action == 'delete_task':
+                if data.get('description'):
+                    # Find task by description
+                    tasks = await task_service.get_tasks(user['token'])
+                    task_to_delete = next(
+                        (t for t in tasks if t['title'].lower() in data['description'].lower()),
+                        None
+                    )
+                    if task_to_delete:
+                        await task_service.delete_task(task_to_delete['id'], user['token'])
+                        result['data'] = {'deleted': task_to_delete['id']}
+            
+            elif action == 'batch_operations':
+                if data.get('operations'):
+                    batch_results = []
+                    for op in data['operations']:
+                        if op['type'] == 'create_task':
+                            task_result = await task_service.add_task(op['data'], user['token'])
+                            batch_results.append({'type': 'create', 'result': task_result})
+                        # Add other batch operations as needed
+                    result['data'] = {'batch_results': batch_results}
+        
+        # 5. Update context with AI response and task results
+        session_context['conversation_history'].append({
+            'message': result['message'],
+            'timestamp': datetime.utcnow().isoformat(),
+            'role': 'assistant'
+        })
+        await context_manager.store_context(user_id, ContextType.SESSION, session_context)
+        
+        # 6. Save the AI response message
+        await conversation_service.save_message(user_id, result['message'], 'assistant')
+        
         return result
     except Exception as e:
         print("Error processing command:", str(e))
