@@ -34,7 +34,7 @@ class SimpleContextManager:
             else:
                 # Initialize context if it doesn't exist
                 context = {}
-                await doc_ref.set({'context': context})
+                doc_ref.set({'context': context})
                 self._context_cache[conversation_id] = ConversationContext(
                     conversation_id=conversation_id,
                     context=context
@@ -52,7 +52,7 @@ class SimpleContextManager:
             
             if not doc.exists:
                 # Create document if it doesn't exist
-                await doc_ref.set({
+                doc_ref.set({
                     'context': updates,
                     'createdAt': firestore.SERVER_TIMESTAMP,
                     'updatedAt': firestore.SERVER_TIMESTAMP
@@ -61,7 +61,7 @@ class SimpleContextManager:
                 # Update existing context
                 current_context = doc.to_dict().get('context', {})
                 current_context.update(updates)
-                await doc_ref.update({
+                doc_ref.update({
                     'context': current_context,
                     'updatedAt': firestore.SERVER_TIMESTAMP
                 })
@@ -81,7 +81,7 @@ class SimpleContextManager:
         """Clear context for a specific conversation"""
         try:
             doc_ref = self.conversations_ref.document(conversation_id)
-            await doc_ref.update({
+            doc_ref.update({
                 'context': {},
                 'updatedAt': firestore.SERVER_TIMESTAMP
             })

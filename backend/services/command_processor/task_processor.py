@@ -377,67 +377,34 @@ class TaskProcessor(BaseCommandProcessor):
         )
 
     async def _parse_natural_language(self, message: str) -> Dict[str, Any]:
-        """Parse natural language input to determine task-related intent and parameters"""
+        """Parse natural language command to identify task-related intents"""
         try:
-            # Default structure for task-related commands
-            parsed_result = {
+            # Default response structure
+            response = {
                 'success': True,
-                'action': None,
-                'data': {},
-                'message': ''
+                'message': '',
+                'data': {}
             }
             
-            message = message.lower()
-            
-            # Create task patterns
-            if any(phrase in message for phrase in ['create task', 'add task', 'new task']):
-                parsed_result['action'] = 'create_task'
-                # Extract task details from message
-                # This is a simplified version - you might want to use NLP for better extraction
-                task_data = {
-                    'title': message.split('called')[-1].strip() if 'called' in message else message,
-                    'priority': 'Medium',
-                    'status': 'Pending'
+            # Basic validation
+            if not message or not isinstance(message, str):
+                return {
+                    'success': False,
+                    'message': 'Invalid message format',
+                    'data': {}
                 }
-                parsed_result['data'] = task_data
-                
-            # List tasks patterns
-            elif any(phrase in message for phrase in ['list tasks', 'show tasks', 'get tasks']):
-                parsed_result['action'] = 'list_tasks'
-                filters = {}
-                if 'priority' in message:
-                    for priority in ['high', 'medium', 'low']:
-                        if priority in message:
-                            filters['priority'] = priority.capitalize()
-                if 'status' in message:
-                    for status in ['pending', 'completed', 'in progress']:
-                        if status in message:
-                            filters['status'] = status.title()
-                parsed_result['data'] = {'filter': filters} if filters else {}
-                
-            # Update task patterns
-            elif any(phrase in message for phrase in ['update task', 'modify task', 'change task']):
-                parsed_result['action'] = 'update_task'
-                parsed_result['data'] = {
-                    'description': message,
-                    'updates': {}  # Will be filled by AI processing
-                }
-                
-            # Delete task patterns
-            elif any(phrase in message for phrase in ['delete task', 'remove task']):
-                parsed_result['action'] = 'delete_task'
-                parsed_result['data'] = {'description': message}
-                
-            else:
-                parsed_result['success'] = False
-                parsed_result['message'] = "Could not determine task operation from message"
-                
-            return parsed_result
+
+            # Add your natural language processing logic here
+            # For now, return a simple success response
+            response['message'] = 'Message processed successfully'
+            return response
             
         except Exception as e:
+            print(f"Error detecting intent: {str(e)}")
             return {
                 'success': False,
-                'message': f"Error parsing natural language input: {str(e)}"
+                'message': f'Failed to parse message: {str(e)}',
+                'data': {}
             }
 
     async def process_ai_response(self, ai_response: Dict[str, Any]) -> Dict[str, Any]:

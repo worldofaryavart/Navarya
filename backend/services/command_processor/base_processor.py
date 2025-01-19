@@ -26,8 +26,8 @@ class BaseCommandProcessor(ABC):
         pass
 
     @abstractmethod
-    def process_ai_response(self, content: str) -> Dict[Any, Any]:
-        """Process the AI response"""
+    async def process_ai_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
+        """Process the AI response and return structured data"""
         pass
 
     async def process_message(
@@ -133,7 +133,11 @@ User Message: {message}
                 intent = json.loads(intent_str)
                 
                 # Process the command response
-                command_response = self.process_ai_response(parts[1].split('}', 1)[1].strip())
+                command_response = await self.process_ai_response({
+                    'success': True,
+                    'message': parts[1].split('}', 1)[1].strip(),
+                    'data': {}
+                })
                 command_response['intent'] = intent
                 
                 # Add context updates if not present
