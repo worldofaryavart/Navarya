@@ -460,7 +460,10 @@ class TaskProcessor(BaseCommandProcessor):
             response = ai_response.get('response')
             action = response.get('action')
             data = response.get('data', {})
+            intent = ai_response.get('intent')
+            context_updates = response.get('context_updates')
             
+            # Validate action and data
             if not action:
                 return {
                     'success': False,
@@ -476,9 +479,11 @@ class TaskProcessor(BaseCommandProcessor):
             # Return processed response
             return {
                 'success': True,
+                'intent': intent,
                 'action': action,
                 'data': data,
-                'message': ai_response.get('message', 'Task operation processed successfully')
+                'message': response.get('message', 'Task operation processed successfully'),
+                'context_updates': context_updates
             }
             
         except Exception as e:

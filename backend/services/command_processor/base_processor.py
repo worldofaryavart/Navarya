@@ -209,8 +209,10 @@ User Message: {message}
                     json_end_idx = response_str.find(json_str) + len(json_str)
                     additional_data = response_str[json_end_idx:].strip()
                     
+                    #adding intent in result
                     ai_result = {
                         "success": True,
+                        "intent": intent, 
                         "response": response,
                     }
                     
