@@ -57,10 +57,11 @@ class TaskService:
         except Exception as e:
             raise UnauthorizedError("Invalid or expired token")
 
-    async def add_task(self, task_data: Dict, token: str) -> Dict:
+    async def add_task(self, task_data: Dict, user_id: str) -> Dict:
         try:
-            user_id = await self.verify_user(token)
+            # user_id = await self.verify_user(token)
             self.validate_task_data(task_data)
+            print("user id in add _task : ", user_id)
             
             task_data['userId'] = user_id
             task_data['createdAt'] = firestore.SERVER_TIMESTAMP

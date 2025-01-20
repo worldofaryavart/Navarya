@@ -96,7 +96,7 @@ class ProcessorFactory:
             print(f"Error detecting processor: {e}")
             return self._processors[ProcessorType.TASK]
 
-    async def process_with_context(self, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_with_context(self, message: str, context: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """Process a message with conversation context"""
         try:
             # Check if it's a follow-up question
@@ -113,10 +113,12 @@ class ProcessorFactory:
             context_prompt = await self._build_context_prompt(message, context)
             
             # Process message
+            print("ready to process in prcessor factory.. \n\n")
             result = await processor.process_message(
                 message=message,
                 context_prompt=context_prompt,
-                conversation_context=context
+                conversation_context=context, 
+                user_token=user_token
             )
 
             # Enhance result with follow-up handling

@@ -117,7 +117,7 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
         
         # Process command
         processor_factory = ProcessorFactory(db)
-        result = await processor_factory.process_with_context(message.content, context)
+        result = await processor_factory.process_with_context(message.content, context, user_id)
         
         # Update context with AI response
         context_updates = {
@@ -141,7 +141,8 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
 # Task endpoints
 @app.post("/api/tasks")
 async def add_task(task: Dict, token: str = Depends(get_token)):
-    return await task_service.add_task(task, token)
+    user_id = user['uid']
+    return await task_service.add_task(task, user_id)
 
 @app.get("/api/tasks")
 async def get_tasks(token: str = Depends(get_token)):

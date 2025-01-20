@@ -108,7 +108,9 @@ User Message: {message}
                 }
 
             ai_response = response.json()
+            print("\n\n")
             print("Raw AI response:", ai_response)
+            print("\n\n")
             
             if not ai_response.get('choices') or not ai_response['choices'][0].get('message'):
                 return {
@@ -131,26 +133,103 @@ User Message: {message}
                 # Extract intent from the first JSON block in the response
                 intent_str = parts[1].split('}')[0] + '}'
                 intent = json.loads(intent_str)
+                print("intent is : ", intent)
+                print("\n\n")
                 
-                # Process the command response
-                command_response = await self.process_ai_response({
-                    'success': True,
-                    'message': parts[1].split('}', 1)[1].strip(),
-                    'data': {}
-                })
-                command_response['intent'] = intent
+                # Get everything after the intent JSON
+                response_str = parts[1].split('}', 1)[1].strip()
+                print("response_str is : ", response_str)
+                print("\n\n")
                 
-                # Add context updates if not present
-                if 'context_updates' not in command_response:
-                    command_response['context_updates'] = {
-                        'last_action': command_response.get('action'),
-                        'last_action_result': command_response.get('data'),
-                        'last_message': message,
-                        'last_response': command_response.get('message'),
-                        'timestamp': datetime.utcnow().isoformat()
+                def extract_json_object(text):
+                    # Find the first opening brace
+                    start_idx = text.find('{')
+                    if start_idx == -1:
+                        return None
+                    
+                    # Initialize counters
+                    brace_count = 0
+                    in_string = False
+                    escape_next = False
+                    
+                    # Find the matching closing brace
+                    for i in range(start_idx, len(text)):
+                        char = text[i]
+                        
+                        if escape_next:
+                            escape_next = False
+                            continue
+                            
+                        if char == '\\':
+                            escape_next = True
+                            continue
+                            
+                        if char == '"' and not escape_next:
+                            in_string = not in_string
+                            continue
+                            
+                        if not in_string:
+                            if char == '{':
+                                brace_count += 1
+                            elif char == '}':
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    # Found complete JSON object
+                                    return text[start_idx:i + 1]
+                    
+                    return None
+                
+                # Extract just the JSON object
+                json_str = extract_json_object(response_str)
+                if not json_str:
+                    return {
+                        "success": False,
+                        "message": "No valid JSON object found in response"
                     }
                 
-                return command_response
+                print("Extracted JSON string:", json_str)
+                print("\n\n")
+                
+                try:
+                    # Parse the JSON object
+                    response = json.loads(json_str)
+                    
+                    # Convert any integer keys to strings in context_updates if they exist
+                    if 'context_updates' in response and 'task_results' in response['context_updates']:
+                        task_results = response['context_updates']['task_results']
+                        if isinstance(task_results, dict):
+                            response['context_updates']['task_results'] = {
+                                str(k): v for k, v in task_results.items()
+                            }
+                    
+                    print("response is : ", response)
+                    print("\n\n")
+                    
+                    # Get any text after the JSON object as additional data
+                    json_end_idx = response_str.find(json_str) + len(json_str)
+                    additional_data = response_str[json_end_idx:].strip()
+                    
+                    ai_result = {
+                        "success": True,
+                        "response": response,
+                    }
+                    
+                    if additional_data:
+                        ai_result["additional_data"] = additional_data
+                        
+                    print("ai_result in base processor is : ", ai_result)
+                    print("\n\n")
+                    
+                    # Process the AI response
+                    return ai_result
+                except json.JSONDecodeError as e:
+                    print(f"JSON parsing error: {e}")
+                    print(f"Problematic JSON string: {json_str}")
+                    return {
+                        "success": False,
+                        "message": "Failed to parse AI response",
+                        "error_details": str(e)
+                    }
             except json.JSONDecodeError:
                 return {
                     "success": False,

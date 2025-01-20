@@ -60,18 +60,25 @@ class TaskProcessor(BaseCommandProcessor):
         
         Always validate input data and provide clear error messages."""
 
-    async def process_message(self, message: str, context_prompt: str = "", conversation_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def process_message(self, message: str, context_prompt: str = "", conversation_context: Optional[Dict[str, Any]] = None, user_token: str = "") -> Dict[str, Any]:
         """Process user message with enhanced error handling"""
         try:
+            print("ready to process in task processor 2.. \n\n")
             parsed_result = await self._parse_natural_language(message)
+            print("parsed_result: ", parsed_result)
+            print('\n\n')
             if not parsed_result['success']:
                 return parsed_result
                 
             ai_result = await super().process_message(message, context_prompt, conversation_context)
+            print("ai_result: ", ai_result)
+            print('\n\n')
             if not ai_result.get('success'):
                 return ai_result
                 
-            processed_result = await self.process_ai_response(ai_result)
+            processed_result = await self.process_ai_response(ai_result, user_token)
+            print("processed_result: ", processed_result)
+            print('\n\n')
             return processed_result
             
         except TaskValidationError as e:
@@ -122,7 +129,7 @@ class TaskProcessor(BaseCommandProcessor):
     def _validate_task_data(self, data: Dict[str, Any]) -> TaskData:
         """Validate and convert task data"""
         if not data.get('title'):
-            raise TaskValidationError("Task title is required")
+            raise TaskValidationError("Task Name is required")
             
         try:
             task_data = TaskData(
@@ -171,6 +178,7 @@ class TaskProcessor(BaseCommandProcessor):
 
     async def _create_task(self, data: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """Create task with validated data"""
+        print("data in create task is  ", data)
         task_data = self._validate_task_data(data)
         task_dict = {
             'title': task_data.title,
@@ -407,10 +415,11 @@ class TaskProcessor(BaseCommandProcessor):
                 'data': {}
             }
 
-    async def process_ai_response(self, ai_response: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_ai_response(self, ai_response: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """Process the AI's response for task-related operations"""
         try:
             # Validate AI response structure
+            print("ready to process in task processor 3.. \n\n")
             if not isinstance(ai_response, dict):
                 return {
                     'success': False,
@@ -418,8 +427,9 @@ class TaskProcessor(BaseCommandProcessor):
                 }
                 
             # Extract action and data from AI response
-            action = ai_response.get('action')
-            data = ai_response.get('data', {})
+            response = ai_response.get('response')
+            action = response.get('action')
+            data = response.get('data', {})
             
             if not action:
                 return {
@@ -427,27 +437,11 @@ class TaskProcessor(BaseCommandProcessor):
                     'message': 'No action specified in AI response'
                 }
                 
-            # Validate and process based on action type
-            if action == 'create_task':
-                if not data.get('title'):
-                    return {
-                        'success': False,
-                        'message': 'Task title is required'
-                    }
-                    
-            elif action == 'update_task':
-                if not data.get('description') or not data.get('updates'):
-                    return {
-                        'success': False,
-                        'message': 'Task description and updates are required'
-                    }
-                    
-            elif action == 'delete_task':
-                if not data.get('description'):
-                    return {
-                        'success': False,
-                        'message': 'Task description is required for deletion'
-                    }
+            handler_result = await self._handle_task_action(response, user_token)
+            print("handler_reulst is  ", handler_result)
+            if not handler_result['success']:
+                return handler_result
+            
                     
             # Return processed response
             return {
