@@ -226,6 +226,7 @@ async def get_specific_conversation_history(conversation_id: str, user = Depends
 
 @app.post("/api/conversations/new")
 async def start_new_conversation(user = Depends(verify_token)):
+    print("conversation started")
     return await conversation_service.start_new_conversation(user['uid'])
 
 @app.get("/api/conversations")

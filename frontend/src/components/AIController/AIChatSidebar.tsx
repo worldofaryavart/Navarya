@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Send, Mic, Loader2, HelpCircle, List, CheckCircle, Clock, Activity, Plus, PlusIcon, HistoryIcon } from 'lucide-react';
-import { ConversationInfo, getAllConversations } from '@/services/context_services/context';
+import { ConversationInfo, getAllConversations } from '@/services/conversation_service/conversation';
 
 interface Message {
-  role: 'user' | 'ai';
+  role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   type?: 'help' | 'list' | 'success' | 'error';
@@ -403,7 +403,7 @@ const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
                         <span className="text-[10px]">U</span>
                       </div>
                     )}
-                    {message.role === 'ai' && (
+                    {message.role === 'assistant' && (
                       <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
                         <span className="text-[10px]">A</span>
                       </div>

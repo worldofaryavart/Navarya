@@ -4,7 +4,7 @@ import { auth } from '@/utils/config/firebase.config';
 export interface Message {
   content: string;
   timestamp: Date;
-  sender: 'user' | 'assistant';
+  sender: 'user' | 'ai';
 }
 
 export interface Conversation {
@@ -35,28 +35,6 @@ const getAuthToken = async () => {
   const token = await user.getIdToken();
   return token;
 };
-
-// export const saveMessage = async (content: string, sender: 'user' | 'assistant') => {
-//   try {
-//     const response = await fetch('/api/conversations/message', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'Authorization': `Bearer ${auth?.currentUser?.getIdToken()}`
-//       },
-//       body: JSON.stringify({ content, sender })
-//     });
-
-//     if (!response.ok) {
-//       throw new Error('Failed to save message');
-//     }
-
-//     return true;
-//   } catch (error) {
-//     console.error('Error saving message:', error);
-//     return false;
-//   }
-// };
 
 export const getConversationHistory = async (conversationId?: string): Promise<Message[]> => {
   try {

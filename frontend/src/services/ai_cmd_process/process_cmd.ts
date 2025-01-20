@@ -11,7 +11,7 @@ interface CommandResult {
 }
 
 interface Message {
-    role: 'user' | 'ai';
+    role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
 }
