@@ -31,13 +31,50 @@ class TaskData:
     due_date: Optional[datetime] = None
     priority: TaskPriority = TaskPriority.MEDIUM
     status: TaskStatus = TaskStatus.PENDING
-    reminder: Optional[Dict[str, Any]] = None
+    reminder: Optional[datetime] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert TaskData to dictionary with standardized field names"""
+        return {
+            'title': self.title,
+            'description': self.description,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'priority': self.priority.value,
+            'status': self.status.value,
+            'reminder': self.reminder.isoformat() if self.reminder else None
+        }
 
 class TaskValidationError(Exception):
     """Custom exception for task validation errors"""
     pass
 
 class TaskProcessor(BaseCommandProcessor):
+    FIELD_MAPPING = {
+        # Title variations
+        'task_name': 'title',
+        'name': 'title',
+        'task': 'title',
+        
+        # Due date variations
+        'due': 'due_date',
+        'deadline': 'due_date',
+        'due_time': 'due_date',
+        
+        # Reminder variations
+        'reminder_date': 'reminder',
+        'reminder_time': 'reminder',
+        'remind_at': 'reminder',
+        'alert': 'reminder',
+        
+        # Priority variations
+        'task_priority': 'priority',
+        'importance': 'priority',
+        
+        # Status variations
+        'task_status': 'status',
+        'state': 'status'
+    }
+    
     def __init__(self, db):
         super().__init__(db)
         self.task_service = TaskService(db)
@@ -126,67 +163,65 @@ class TaskProcessor(BaseCommandProcessor):
         except Exception as e:
             return self._error_response(f"Error in {action}: {str(e)}", "action_error")
 
+    def _normalize_field_names(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize field names to match our standard schema"""
+        normalized = {}
+        for key, value in data.items():
+            # Convert key to lowercase for case-insensitive matching
+            lower_key = key.lower()
+            # Use mapped field name if exists, otherwise use original
+            normalized_key = self.FIELD_MAPPING.get(lower_key, key)
+            normalized[normalized_key] = value
+        return normalized
+    
+    def _parse_datetime(self, value: Any) -> Optional[datetime]:
+        """Parse datetime from various formats"""
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                # Try parsing ISO format
+                return datetime.fromisoformat(value)
+            except ValueError:
+                try:
+                    # Try parsing with dateutil parser as fallback
+                    return parser.parse(value)
+                except:
+                    return None
+        return None
+    
     def _validate_task_data(self, data: Dict[str, Any]) -> TaskData:
-        """Validate and convert task data"""
-        if not data.get('title'):
-            raise TaskValidationError("Task Name is required")
+        """Validate and convert task data with normalized field names"""
+        # Normalize field names first
+        normalized_data = self._normalize_field_names(data)
+        
+        if not normalized_data.get('title'):
+            raise TaskValidationError("Task title is required")
             
         try:
+            # Parse dates
+            due_date = self._parse_datetime(normalized_data.get('due_date'))
+            reminder = self._parse_datetime(normalized_data.get('reminder'))
+            
             task_data = TaskData(
-                title=data['title'],
-                description=data.get('description'),
-                priority=TaskPriority(data.get('priority', 'Medium')),
-                status=TaskStatus(data.get('status', 'Pending'))
+                title=normalized_data['title'],
+                description=normalized_data.get('description'),
+                priority=TaskPriority(normalized_data.get('priority', 'Medium')),
+                status=TaskStatus(normalized_data.get('status', 'Pending')),
+                due_date=due_date,
+                reminder=reminder
             )
-            
-            if data.get('dueDate'):
-                task_data.due_date = parser.parse(data['dueDate'])
-                
-            if data.get('reminder'):
-                self._validate_reminder_data(data['reminder'])
-                task_data.reminder = data['reminder']
-                
             return task_data
-            
         except ValueError as e:
             raise TaskValidationError(f"Invalid task data: {str(e)}")
-
-    def _validate_reminder_data(self, reminder: Dict[str, Any]) -> None:
-        """Validate reminder data"""
-        if not reminder.get('time'):
-            raise TaskValidationError("Reminder time is required")
-            
-        try:
-            if isinstance(reminder['time'], str):
-                parser.parse(reminder['time'])
-                
-            if reminder.get('recurring'):
-                recurring = reminder['recurring']
-                if not isinstance(recurring, dict):
-                    raise TaskValidationError("Recurring must be a dictionary")
-                    
-                if 'type' not in recurring:
-                    raise TaskValidationError("Recurring type is required")
-                    
-                RecurrenceType(recurring['type'])
-                
-                if recurring.get('endDate'):
-                    parser.parse(recurring['endDate'])
-                    
-        except ValueError as e:
-            raise TaskValidationError(f"Invalid reminder data: {str(e)}")
 
     async def _create_task(self, data: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """Create task with validated data"""
         print("data in create task is  ", data)
         task_data = self._validate_task_data(data)
-        task_dict = {
-            'title': task_data.title,
-            'description': task_data.description,
-            'priority': task_data.priority.value,
-            'status': task_data.status.value,
-            'dueDate': task_data.due_date.isoformat() if task_data.due_date else None
-        }
+        task_dict = task_data.to_dict()
         
         task_result = await self.task_service.add_task(task_dict, user_token)
         
@@ -199,20 +234,15 @@ class TaskProcessor(BaseCommandProcessor):
         
         return self._success_response('create_task', task_result, "Task created successfully")
 
-    async def _add_reminder(self, task_id: str, user_id: str, reminder_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _add_reminder(self, task_id: str, user_id: str, reminder_time: datetime) -> Dict[str, Any]:
         """Add reminder with validation"""
-        self._validate_reminder_data(reminder_data)
+        reminder_time = self.timezone.localize(reminder_time)
         
-        reminder_time = parser.parse(reminder_data['time']) if isinstance(reminder_data['time'], str) else reminder_data['time']
-        
-        if reminder_time.tzinfo is None:
-            reminder_time = self.timezone.localize(reminder_time)
-            
         return self.reminder_service.add_task_reminder(
             task_id=task_id,
             user_id=user_id,
             reminder_time=reminder_time,
-            recurring=reminder_data.get('recurring')
+            recurring=None
         )
 
     async def _list_tasks(self, data: Dict[str, Any], user_token: str) -> Dict[str, Any]:

@@ -40,14 +40,32 @@ class TaskService:
         return timestamp
 
     def validate_task_data(self, task_data: Dict) -> None:
-        required_fields = ['title', 'description', 'priority']
+        required_fields = ['title']  # Only title is truly required
         missing_fields = [field for field in required_fields if not task_data.get(field)]
         if missing_fields:
             raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
-        
-        priority = task_data.get('priority', '').lower()
-        if priority not in ['low', 'medium', 'high']:
-            raise ValidationError("Priority must be one of: low, medium, high")
+            
+        # Validate date fields if present
+        date_fields = ['due_date', 'reminder']
+        for field in date_fields:
+            if field in task_data and task_data[field]:
+                try:
+                    if isinstance(task_data[field], str):
+                        datetime.fromisoformat(task_data[field])
+                except ValueError:
+                    raise ValidationError(f"Invalid date format for {field}")
+                    
+        # Validate priority if present
+        if 'priority' in task_data:
+            valid_priorities = ['High', 'Medium', 'Low']
+            if task_data['priority'] not in valid_priorities:
+                raise ValidationError(f"Invalid priority. Must be one of: {', '.join(valid_priorities)}")
+                
+        # Validate status if present
+        if 'status' in task_data:
+            valid_statuses = ['Pending', 'In Progress', 'Completed']
+            if task_data['status'] not in valid_statuses:
+                raise ValidationError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
 
     async def verify_user(self, token: str) -> str:
         try:
@@ -147,7 +165,7 @@ class TaskService:
                     'description': task_data.get('description'),
                     'status': task_data.get('status'),
                     'priority': task_data.get('priority'),
-                    'dueDate': task_data.get('dueDate'),
+                    'due_date': task_data.get('due_date'),
                     'reminder': task_data.get('reminder')
                 }.items() if v is not None}  # Only include non-None values
                 
