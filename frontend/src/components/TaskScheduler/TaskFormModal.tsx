@@ -13,15 +13,17 @@ interface FormData extends Partial<Omit<Task, 'dueDate' | 'reminder'>> {
 interface TaskFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (task: Partial<Task>) => void;
-  initialData?: Task;
+  onAddTask: (task: NewTaskInput) => Promise<void>;
+  onUpdateTask: (task: Task) => Promise<void>;
+  editTask: Task | null;
 }
 
 const TaskFormModal: React.FC<TaskFormModalProps> = ({
   isOpen,
   onClose,
-  onSubmit,
-  initialData,
+  onAddTask,
+  onUpdateTask,
+  editTask,
 }) => {
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -33,26 +35,26 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
   });
 
   useEffect(() => {
-    if (initialData) {
+    if (editTask) {
       // Convert dates to the format expected by datetime-local input
       const processedData: FormData = {
-        ...initialData,
-        dueDate: initialData.dueDate 
-          ? formatDateForInput(new Date(initialData.dueDate.seconds * 1000))
+        ...editTask,
+        dueDate: editTask.dueDate 
+          ? formatDateForInput(new Date(editTask.dueDate.seconds * 1000))
           : '',
-        reminder: initialData.reminder
-          ? formatDateForInput(new Date(initialData.reminder.time.seconds * 1000))
+        reminder: editTask.reminder
+          ? formatDateForInput(new Date(editTask.reminder.time.seconds * 1000))
           : '',
       };
       setFormData(processedData);
     }
-  }, [initialData]);
+  }, [editTask]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Convert dates to Firestore format before submitting
-    const submissionData: Partial<Task> = {
+    const submissionData = {
       ...formData,
       dueDate: formData.dueDate 
         ? { 
@@ -71,8 +73,16 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
         : undefined
     };
 
-    onSubmit(submissionData);
-    onClose();
+    try {
+      if (editTask) {
+        await onUpdateTask({ ...submissionData, id: editTask.id } as Task);
+      } else {
+        await onAddTask(submissionData as NewTaskInput);
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error submitting task:', error);
+    }
   };
 
   if (!isOpen) return null;
@@ -81,7 +91,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl text-gray-800 font-semibold">{initialData ? "Edit Task" : "Add New Task"}</h2>
+          <h2 className="text-xl text-gray-800 font-semibold">{editTask ? "Edit Task" : "Add New Task"}</h2>
           <button
             onClick={onClose}
             className="text-gray-600 hover:text-gray-900"
@@ -220,7 +230,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {initialData ? "Update Task" : "Add Task"}
+              {editTask ? "Update Task" : "Add Task"}
             </button>
           </div>
         </form>
