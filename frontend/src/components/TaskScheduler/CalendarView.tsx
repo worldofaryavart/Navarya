@@ -6,6 +6,7 @@ import "react-calendar/dist/Calendar.css";
 import "../../css/AaryaCalendar.css";
 import { Task } from "@/types/taskTypes";
 import { useUIStore } from "@/store/uiStateStore";
+import { parseDateFromDisplay } from "@/utils/dateUtils";
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -16,9 +17,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
 
   // Helper function to convert any date format to Date object
   const convertToDate = (date: any): Date => {
-    if (date && typeof date === 'object' && 'seconds' in date) {
-      return new Date(date.seconds * 1000);
+    if (!date) return new Date();
+
+    if (typeof date === 'string') {
+      if (date.includes('at') && date.includes('UTC')) {
+        return parseDateFromDisplay(date);
+      }
+      return new Date(date);
     }
+
     return new Date(date);
   };
 

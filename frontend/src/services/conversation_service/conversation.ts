@@ -74,7 +74,7 @@ export const getConversationHistory = async (conversationId?: string): Promise<M
     }
 
     const data = await response.json();
-    return data.map((msg: any) => ({
+    return data.messages.map((msg: any) => ({
       content: msg.content,
       sender: msg.sender,
       timestamp: new Date(msg.timestamp)

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from utils.exceptions import TaskNotFoundError, UnauthorizedError, ValidationError, DatabaseError
 from firebase_admin import firestore
 import time
+import pytz
 from functools import lru_cache
 
 class TaskService:
@@ -12,6 +13,7 @@ class TaskService:
         self._last_fetch = {}
         self._cache_duration = timedelta(minutes=5)  # Cache for 5 minutes
         self.DEFAULT_PAGE_SIZE = 100
+        self.timezone = pytz.timezone('Asia/Kolkata')  # IST timezone
 
     def _get_cached_tasks(self, user_id: str) -> Optional[List[Dict]]:
         """Get cached tasks if they exist and are not expired"""
@@ -33,35 +35,75 @@ class TaskService:
         if user_id in self._last_fetch:
             del self._last_fetch[user_id]
 
-    def _serialize_timestamp(self, timestamp):
-        """Serialize Firestore timestamp to ISO format"""
-        if hasattr(timestamp, 'isoformat'):  # Check if timestamp has isoformat method
-            return timestamp.isoformat()
-        return timestamp
+    def _serialize_timestamp(self, timestamp) -> str:
+        """Convert Firestore timestamp to formatted string"""
+        if timestamp is None:
+            return None
+            
+        if isinstance(timestamp, type(firestore.SERVER_TIMESTAMP)):
+            return None
+            
+        try:
+            # Convert to datetime if it's a Firestore Timestamp
+            if isinstance(timestamp, firestore.Timestamp):
+                dt = timestamp.datetime
+            elif isinstance(timestamp, datetime):
+                dt = timestamp
+            else:
+                return str(timestamp)
+                
+            # Convert to IST timezone
+            ist_dt = dt.astimezone(self.timezone)
+            return ist_dt.strftime("%d %B %Y at %H:%M:%S UTC+5:30")
+        except Exception as e:
+            print(f"Error serializing timestamp: {str(e)}")
+            return str(timestamp)
+
+    def _parse_date_to_timestamp(self, date_str: Optional[str]) -> Optional[datetime]:
+        """Convert date string to Firestore Timestamp"""
+        if not date_str:
+            return None
+            
+        try:
+            # Try parsing the formatted string
+            if isinstance(date_str, str) and "at" in date_str:
+                # Remove UTC offset and parse
+                date_str = date_str.split(" UTC")[0]
+                dt = datetime.strptime(date_str, "%d %B %Y at %H:%M:%S")
+                # Add timezone info
+                dt = self.timezone.localize(dt)
+            else:
+                # Try parsing as ISO format or other formats
+                dt = datetime.fromisoformat(str(date_str))
+                if dt.tzinfo is None:
+                    dt = self.timezone.localize(dt)
+            
+            return dt
+        except ValueError as e:
+            raise ValidationError(f"Invalid date format: {str(e)}")
 
     def validate_task_data(self, task_data: Dict) -> None:
-        required_fields = ['title']  # Only title is truly required
+        required_fields = ['title']
         missing_fields = [field for field in required_fields if not task_data.get(field)]
         if missing_fields:
             raise ValidationError(f"Missing required fields: {', '.join(missing_fields)}")
             
-        # Validate date fields if present
+        # Validate and convert date fields if present
         date_fields = ['due_date', 'reminder']
         for field in date_fields:
             if field in task_data and task_data[field]:
                 try:
-                    if isinstance(task_data[field], str):
-                        datetime.fromisoformat(task_data[field])
+                    # Convert to timestamp format
+                    task_data[field] = self._parse_date_to_timestamp(task_data[field])
                 except ValueError:
                     raise ValidationError(f"Invalid date format for {field}")
                     
-        # Validate priority if present
+        # Validate other fields
         if 'priority' in task_data:
             valid_priorities = ['High', 'Medium', 'Low']
             if task_data['priority'] not in valid_priorities:
                 raise ValidationError(f"Invalid priority. Must be one of: {', '.join(valid_priorities)}")
                 
-        # Validate status if present
         if 'status' in task_data:
             valid_statuses = ['Pending', 'In Progress', 'Completed']
             if task_data['status'] not in valid_statuses:
@@ -77,9 +119,14 @@ class TaskService:
 
     async def add_task(self, task_data: Dict, user_id: str) -> Dict:
         try:
-            # user_id = await self.verify_user(token)
             self.validate_task_data(task_data)
             print("user id in add _task : ", user_id)
+            
+            # Convert date fields to Firestore timestamps
+            if 'due_date' in task_data:
+                task_data['due_date'] = task_data['due_date']
+            if 'reminder' in task_data:
+                task_data['reminder'] = task_data['reminder']
             
             task_data['userId'] = user_id
             task_data['createdAt'] = firestore.SERVER_TIMESTAMP
@@ -92,6 +139,14 @@ class TaskService:
                 
                 # Get the created task with server timestamp
                 created_task = doc_ref.get().to_dict()
+                # Serialize timestamps for response
+                if 'createdAt' in created_task:
+                    created_task['createdAt'] = self._serialize_timestamp(created_task['createdAt'])
+                if 'due_date' in created_task:
+                    created_task['due_date'] = self._serialize_timestamp(created_task['due_date'])
+                if 'reminder' in created_task:
+                    created_task['reminder'] = self._serialize_timestamp(created_task['reminder'])
+                
                 return {**created_task, 'id': doc_ref.id}
                 
             except Exception as e:
@@ -125,8 +180,12 @@ class TaskService:
                 for doc in docs:
                     task_data = doc.to_dict()
                     task_data['id'] = doc.id
-                    if 'createdAt' in task_data:
-                        task_data['createdAt'] = self._serialize_timestamp(task_data['createdAt'])
+                    
+                    # Serialize all timestamp fields
+                    for field in ['createdAt', 'due_date', 'reminder']:
+                        if field in task_data:
+                            task_data[field] = self._serialize_timestamp(task_data[field])
+                    
                     result.append(task_data)
                 
                 self._cache_tasks(user_id, result)

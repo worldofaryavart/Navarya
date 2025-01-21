@@ -38,10 +38,10 @@ class TaskData:
         return {
             'title': self.title,
             'description': self.description,
-            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'due_date': self.due_date,  
             'priority': self.priority.value,
             'status': self.status.value,
-            'reminder': self.reminder.isoformat() if self.reminder else None
+            'reminder': self.reminder  
         }
 
 class TaskValidationError(Exception):
@@ -178,16 +178,34 @@ class TaskProcessor(BaseCommandProcessor):
         """Parse datetime from various formats"""
         if not value:
             return None
+            
         if isinstance(value, datetime):
+            # Ensure datetime has timezone info
+            if value.tzinfo is None:
+                return self.timezone.localize(value)
             return value
+            
         if isinstance(value, str):
             try:
+                # Try parsing our standard format first ("21 January 2025 at 11:44:27 UTC+5:30")
+                if "at" in value and "UTC" in value:
+                    # Remove UTC offset and parse
+                    clean_date = value.split(" UTC")[0]
+                    dt = datetime.strptime(clean_date, "%d %B %Y at %H:%M:%S")
+                    return self.timezone.localize(dt)
+                    
                 # Try parsing ISO format
-                return datetime.fromisoformat(value)
+                dt = datetime.fromisoformat(value)
+                if dt.tzinfo is None:
+                    return self.timezone.localize(dt)
+                return dt
             except ValueError:
                 try:
                     # Try parsing with dateutil parser as fallback
-                    return parser.parse(value)
+                    dt = parser.parse(value)
+                    if dt.tzinfo is None:
+                        return self.timezone.localize(dt)
+                    return dt
                 except:
                     return None
         return None
@@ -280,10 +298,13 @@ class TaskProcessor(BaseCommandProcessor):
             
         if filters.get('due_date'):
             try:
-                due_date = parser.parse(filters['due_date']).date()
-                filtered_tasks = [t for t in filtered_tasks if t.get('dueDate') and 
-                                parser.parse(t['dueDate']).date() == due_date]
-            except ValueError:
+                # Parse the filter date using our datetime parser
+                filter_date = self._parse_datetime(filters['due_date'])
+                if filter_date:
+                    filter_date = filter_date.date()
+                    filtered_tasks = [t for t in filtered_tasks if t.get('due_date') and 
+                                    self._parse_datetime(t['due_date']).date() == filter_date]
+            except (ValueError, AttributeError):
                 pass
                 
         return filtered_tasks

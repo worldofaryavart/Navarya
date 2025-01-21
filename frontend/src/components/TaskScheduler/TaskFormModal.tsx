@@ -2,84 +2,76 @@
 
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { Task, NewTaskInput, TaskPriority, TaskStatus } from "@/types/taskTypes";
+import { Task, NewTaskInput, TaskPriority, TaskStatus, TaskReminder, FirestoreTimestamp } from "@/types/taskTypes";
+import { formatDateForInput, formatDateToDisplay, parseDateFromDisplay } from "@/utils/dateUtils";
+
+interface FormData extends Partial<Omit<Task, 'dueDate' | 'reminder'>> {
+  dueDate?: string;
+  reminder?: string;
+}
 
 interface TaskFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddTask: (task: NewTaskInput) => void;
-  onUpdateTask?: (task: Task) => void;
-  editTask?: Task | null;
+  onSubmit: (task: Partial<Task>) => void;
+  initialData?: Task;
 }
 
 const TaskFormModal: React.FC<TaskFormModalProps> = ({
   isOpen,
   onClose,
-  onAddTask,
-  onUpdateTask,
-  editTask,
+  onSubmit,
+  initialData,
 }) => {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [priority, setPriority] = useState<TaskPriority>("Medium");
-  const [status, setStatus] = useState<TaskStatus>("Pending");
+  const [formData, setFormData] = useState<FormData>({
+    title: '',
+    description: '',
+    priority: 'Medium',
+    status: 'Pending',
+    dueDate: '',
+    reminder: '',
+  });
 
-  // Reset form when modal closes
   useEffect(() => {
-    if (!isOpen) {
-      setTitle("");
-      setDescription("");
-      setDueDate("");
-      setPriority("Medium");
-      setStatus("Pending");
+    if (initialData) {
+      // Convert dates to the format expected by datetime-local input
+      const processedData: FormData = {
+        ...initialData,
+        dueDate: initialData.dueDate 
+          ? formatDateForInput(new Date(initialData.dueDate.seconds * 1000))
+          : '',
+        reminder: initialData.reminder
+          ? formatDateForInput(new Date(initialData.reminder.time.seconds * 1000))
+          : '',
+      };
+      setFormData(processedData);
     }
-  }, [isOpen]);
-
-  // Populate form when editing
-  useEffect(() => {
-    if (editTask) {
-      setTitle(editTask.title);
-      setDescription(editTask.description || "");
-      // Handle Firestore Timestamp for dueDate
-      if (editTask.dueDate) {
-        const date = typeof editTask.dueDate === 'object' && ('seconds' in editTask.dueDate)
-          ? new Date(editTask.dueDate.seconds * 1000)
-          : new Date(editTask.dueDate);
-        setDueDate(date.toISOString().split('T')[0]);
-      } else {
-        setDueDate("");
-      }
-      setPriority(editTask.priority);
-      setStatus(editTask.status);
-    }
-  }, [editTask]);
-
-  const capitalizeFirstLetter = (value: string) => {
-    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-  };
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const taskData = {
-      title,
-      description,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      priority: capitalizeFirstLetter(priority) as TaskPriority,
-      status,
+    
+    // Convert dates to Firestore format before submitting
+    const submissionData: Partial<Task> = {
+      ...formData,
+      dueDate: formData.dueDate 
+        ? { 
+            seconds: new Date(formData.dueDate).getTime() / 1000,
+            nanoseconds: 0
+          } as FirestoreTimestamp
+        : null,
+      reminder: formData.reminder 
+        ? {
+            time: {
+              seconds: new Date(formData.reminder).getTime() / 1000,
+              nanoseconds: 0
+            },
+            notificationSent: false
+          } as TaskReminder
+        : undefined
     };
 
-    if (editTask && onUpdateTask) {
-      onUpdateTask({
-        ...taskData,
-        id: editTask.id,
-        createdAt: editTask.createdAt,
-      } as Task);
-    } else {
-      onAddTask(taskData as NewTaskInput);
-    }
-
+    onSubmit(submissionData);
     onClose();
   };
 
@@ -89,7 +81,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl text-gray-800 font-semibold">{editTask ? "Edit Task" : "Add New Task"}</h2>
+          <h2 className="text-xl text-gray-800 font-semibold">{initialData ? "Edit Task" : "Add New Task"}</h2>
           <button
             onClick={onClose}
             className="text-gray-600 hover:text-gray-900"
@@ -109,8 +101,8 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
             <input
               id="title"
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
               maxLength={100}
@@ -126,8 +118,8 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
             </label>
             <textarea
               id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
               maxLength={500}
@@ -143,11 +135,11 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
             </label>
             <input
               id="dueDate"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              type="datetime-local"
+              value={formData.dueDate}
+              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min={new Date().toISOString().split('T')[0]} // Prevent selecting past dates
+              min={new Date().toISOString().split('T')[0]}
             />
           </div>
 
@@ -160,8 +152,8 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
             </label>
             <select
               id="priority"
-              value={priority}
-              onChange={(e) => setPriority(e.target.value as TaskPriority)}
+              value={formData.priority}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value as TaskPriority })}
               className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="Low">Low</option>
@@ -170,15 +162,54 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
             </select>
           </div>
 
+          <div>
+            <label
+              htmlFor="status"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Status
+            </label>
+            <select
+              id="status"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as TaskStatus })}
+              className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="reminder"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Reminder
+            </label>
+            <input
+              id="reminder"
+              type="datetime-local"
+              value={formData.reminder}
+              onChange={(e) => setFormData({ ...formData, reminder: e.target.value })}
+              className="w-full px-3 py-2 text-gray-800 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+
           <div className="flex justify-end space-x-2">
             <button
               type="button"
               onClick={() => {
-                setTitle("");
-                setDescription("");
-                setDueDate("");
-                setPriority("Medium");
-                setStatus("Pending");
+                setFormData({
+                  title: '',
+                  description: '',
+                  priority: 'Medium',
+                  status: 'Pending',
+                  dueDate: '',
+                  reminder: '',
+                });
                 onClose();
               }}
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
@@ -189,7 +220,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {editTask ? "Update Task" : "Add Task"}
+              {initialData ? "Update Task" : "Add Task"}
             </button>
           </div>
         </form>

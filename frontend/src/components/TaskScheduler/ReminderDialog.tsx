@@ -23,6 +23,7 @@ import { useTaskReminders } from '@/hooks/useTaskReminders';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
+import { formatDateForInput, formatDateToDisplay, parseDateFromDisplay } from "@/utils/dateUtils";
 
 interface ReminderDialogProps {
   task: Task;
@@ -51,15 +52,15 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
         : new Date(task.reminder.time.seconds * 1000);
 
       setFormState({
-        reminderTime: time.toISOString().slice(0, 16),
+        reminderTime: formatDateForInput(time),
         isRecurring: !!task.reminder.recurring,
         frequency: task.reminder.recurring?.frequency || 'daily',
         interval: task.reminder.recurring?.interval || 1,
         endDate: task.reminder.recurring?.endDate
-          ? (task.reminder.recurring.endDate instanceof Date
+          ? formatDateForInput(task.reminder.recurring.endDate instanceof Date
             ? task.reminder.recurring.endDate
             : new Date(task.reminder.recurring.endDate.seconds * 1000)
-          ).toISOString().slice(0, 16)
+          )
           : '',
       });
     } else {
@@ -67,7 +68,7 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
       const defaultTime = new Date();
       defaultTime.setMinutes(defaultTime.getMinutes() + 30);
       setFormState({
-        reminderTime: defaultTime.toISOString().slice(0, 16),
+        reminderTime: formatDateForInput(defaultTime),
         isRecurring: false,
         frequency: 'daily',
         interval: 1,
@@ -80,7 +81,7 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
     if (!reminderTime) return '';
 
     const now = new Date();
-    const reminder = new Date(reminderTime);
+    const reminder = parseDateFromDisplay(reminderTime);
     const diff = reminder.getTime() - now.getTime();
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
@@ -99,7 +100,7 @@ const ReminderDialog = ({ task, open, onClose, onSuccess, onUpdateTask }: Remind
       console.log("Submitting reminder with form state:", formState);
       
       // Convert the reminder time to a Date object
-      const reminderDate = new Date(formState.reminderTime);
+      const reminderDate = parseDateFromDisplay(formState.reminderTime);
       
       let recurring = undefined;
       if (formState.isRecurring && formState.frequency !== 'once') {

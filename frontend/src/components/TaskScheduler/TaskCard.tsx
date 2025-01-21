@@ -13,12 +13,14 @@ import { cn } from '@/lib/utils';
 import ReminderDialog from './ReminderDialog';
 import { Badge } from '@/components/ui/badge';
 import { useReminderChecker } from '@/hooks/useReminderChecker';
+import { formatDateToDisplay } from "@/utils/dateUtils";
 
 interface TaskCardProps {
   task: Task;
   onUpdateTask: (task: Task) => void;
-  onDeleteTask: (taskId: string) => void;
-  onEditTask: (task: Task) => void;
+  onDeleteTask?: (taskId: string) => void;
+  onEditTask?: (task: Task) => void;
+  onStatusChange?: (taskId: string, newStatus: string) => void;
 }
 
 const TaskCard = memo(({
@@ -26,6 +28,7 @@ const TaskCard = memo(({
   onUpdateTask,
   onDeleteTask,
   onEditTask,
+  onStatusChange,
 }: TaskCardProps) => {
   const [showReminderDialog, setShowReminderDialog] = useState(false);
 
@@ -78,40 +81,65 @@ const TaskCard = memo(({
     setShowReminderDialog(true);
   }, []);
 
-  const formatReminderTime = useCallback((time: Date | { seconds: number }) => {
-    if (typeof window === 'undefined') return '';
+  const formatReminderTime = useCallback((time: Date | { seconds: number } | string | undefined) => {
+    if (typeof window === 'undefined' || !time) return '';
     
-    const date = time instanceof Date ? time : new Date(time.seconds * 1000);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
+    try {
+      if (time instanceof Date) {
+        return formatDateToDisplay(time.toISOString());
+      }
+      
+      if (typeof time === 'string') {
+        return time; // Already formatted by the backend
+      }
+      
+      if ('seconds' in time) {
+        const date = new Date(time.seconds * 1000);
+        return formatDateToDisplay(date.toISOString());
+      }
+      
+      return '';
+    } catch (error) {
+      console.error('Error formatting reminder time:', error);
+      return '';
+    }
   }, []);
 
   const getReminderStatus = useCallback(() => {
     if (!task.reminder) return null;
 
-    const now = new Date();
-    const reminderTime = task.reminder.time instanceof Date 
-      ? task.reminder.time 
-      : new Date(task.reminder.time.seconds * 1000);
+    try {
+      const now = new Date();
+      let reminderTime: Date;
 
-    if (reminderTime < now) {
-      return task.reminder.notificationSent ? 'triggered' : 'overdue';
+      if (task.reminder.time instanceof Date) {
+        reminderTime = task.reminder.time;
+      } else if (typeof task.reminder.time === 'string') {
+        reminderTime = new Date(task.reminder.time);
+      } else if (task.reminder.time && 'seconds' in task.reminder.time) {
+        reminderTime = new Date(task.reminder.time.seconds * 1000);
+      } else {
+        return null;
+      }
+
+      if (reminderTime < now) {
+        return task.reminder.notificationSent ? 'triggered' : 'overdue';
+      }
+      
+      // Calculate time until reminder
+      const diff = reminderTime.getTime() - now.getTime();
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (days > 0) return `in ${days}d`;
+      if (hours > 0) return `in ${hours}h`;
+      if (minutes > 0) return `in ${minutes}m`;
+      return 'now';
+    } catch (error) {
+      console.error('Error getting reminder status:', error);
+      return null;
     }
-    
-    // Calculate time until reminder
-    const diff = reminderTime.getTime() - now.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `in ${days}d`;
-    if (hours > 0) return `in ${hours}h`;
-    if (minutes > 0) return `in ${minutes}m`;
-    return 'now';
   }, [task.reminder]);
 
   const getReminderLabel = useCallback(() => {
@@ -221,20 +249,24 @@ const TaskCard = memo(({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
-            <DropdownMenuItem 
-              onClick={() => onEditTask(task)}
-              className="text-gray-100 focus:bg-gray-700 focus:text-gray-100"
-            >
-              <Edit2 className="h-4 w-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-red-400 focus:bg-gray-700 focus:text-red-400"
-              onClick={() => onDeleteTask(task.id)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
+            {onEditTask && (
+              <DropdownMenuItem 
+                onClick={() => onEditTask(task)}
+                className="text-gray-100 focus:bg-gray-700 focus:text-gray-100"
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+            )}
+            {onDeleteTask && (
+              <DropdownMenuItem
+                className="text-red-400 focus:bg-gray-700 focus:text-red-400"
+                onClick={() => onDeleteTask(task.id)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
