@@ -72,42 +72,56 @@ class ConversationHistoryService:
             print('Error saving message:', str(e))
             return False
 
-    async def get_conversation_history(self, user_id: str, conversation_id: Optional[str] = None) -> List[Message]:
+    async def get_conversation_history(self, user_id: str, conversation_id: Optional[str] = None) -> dict:
         try:
+            conversation_data = None
             if conversation_id:
                 # Get messages from the specific conversation
+                print("conversation id is present")
                 conv_ref = self.db.collection('conversations').document(conversation_id)
                 conv_doc = conv_ref.get()
                 
                 if not conv_doc.exists:
                     print(f'Conversation {conversation_id} not found')
-                    return []
+                    return {'conversation': None, 'messages': []}
                     
                 # Verify user has access to this conversation
                 conv_data = conv_doc.to_dict()
                 if conv_data.get('userId') != user_id:
                     print(f'User {user_id} not authorized to access conversation {conversation_id}')
-                    return []
-                    
+                    return {'conversation': None, 'messages': []}
+                
+                conversation_data = {
+                    'id': conv_doc.id,
+                    **conv_data
+                }    
                 messages_ref = conv_ref.collection('messages')
                 messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).stream()
             else:
                 # Get the active conversation
+                print("finding active conversaton")
                 active_conv_ref = self.db.collection('conversations')
+                print("active check 1")
                 query = active_conv_ref.where('userId', '==', user_id)\
                                      .where('active', '==', True)\
                                      .order_by('updatedAt', direction=firestore.Query.DESCENDING)\
                                      .limit(1)
-                
+                print("active 2 check")
                 docs = list(query.stream())
-                
+                print("active check 3")
                 if not docs:
                     print(f"No active conversations found for user {user_id}")
-                    return []
-                    
-                messages_ref = docs[0].reference.collection('messages')
+                    return {'conversation': None, 'messages': []}
+                
+                conv_doc = docs[0]
+                conversation_data = {
+                    'id': conv_doc.id,
+                    **conv_doc.to_dict()
+                }
+                messages_ref = conv_doc.reference.collection('messages')
+                print("active check 4")
                 messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).stream()
-
+                print("active check 5")
             # Convert messages to list
             message_list = []
             for msg in messages:
@@ -123,36 +137,45 @@ class ConversationHistoryService:
                     timestamp=msg_data['timestamp']
                 ))
             
-            return message_list
+            return {
+                'conversation': conversation_data,
+                'messages': message_list
+            }
             
         except Exception as e:
             print(f'Error getting conversation history: {str(e)}')
-            return []
+            return {'conversation': None, 'messages': []}
 
     async def start_new_conversation(self, user_id: str) -> bool:
         try:
             # Set all existing conversations to inactive
+            print("starting conversation in conversation history")
             active_conv_ref = self.db.collection('conversations')
+            print("check 1")
             query = active_conv_ref.where('userId', '==', user_id).where('active', '==', True)
-            
+            print("check 2")
             docs = list(query.stream())
-            
+            print("check 3")
             # Update all active conversations to inactive
             batch = self.db.batch()
+            print("check 4")
             for doc in docs:
                 doc_ref = active_conv_ref.document(doc.id)
                 batch.update(doc_ref, {'active': False})
-            await batch.commit()
-
+            print("check 5")
+            batch.commit()
+            print("check 6")
             # Create new conversation with empty context
             new_conv_ref = active_conv_ref.document()
-            await new_conv_ref.set({
+            print("check 7")
+            new_conv_ref.set({
                 'userId': user_id,
                 'createdAt': firestore.SERVER_TIMESTAMP,
                 'updatedAt': firestore.SERVER_TIMESTAMP,
                 'active': True,
                 'context': {}  # Initialize empty context
             })
+            print("check 8")
 
             return True
         except Exception as e:

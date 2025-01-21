@@ -93,18 +93,18 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
         
         # Get or create active conversation
         conversations = await conversation_service.get_conversation_history(user_id)
-        conversation_id = None
         
-        if not conversations:
+        if not conversations['conversation']:
             # Start new conversation if none exists
-            success = await conversation_service.start_new_conversation(user_id)
-            if not success:
-                raise HTTPException(status_code=500, detail="Failed to create new conversation")
-            conversations = await conversation_service.get_conversation_history(user_id)
-        
-        if conversations:
-            # Get the first active conversation
-            conversation_id = conversations[0].id if hasattr(conversations[0], 'id') else None
+            print("conversation doesn't exist")
+            # success = await conversation_service.start_new_conversation(user_id)
+            # if not success:
+            #     raise HTTPException(status_code=500, detail="Failed to create new conversation")
+            # conversations = await conversation_service.get_conversation_history(user_id)
+        else:
+            # Get the conversation ID from the conversation data
+            conversation_id = conversations['conversation']['id']
+            print("conversation id is ", conversation_id)
         
         if not conversation_id:
             raise HTTPException(status_code=500, detail="Failed to get active conversation")
@@ -118,6 +118,8 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
         # Process command
         processor_factory = ProcessorFactory(db)
         result = await processor_factory.process_with_context(message.content, context, user_id)
+
+        print("result in process _command: ", result)
         
         # Update context with AI response
         context_updates = {

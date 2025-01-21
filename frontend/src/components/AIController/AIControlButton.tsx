@@ -35,7 +35,8 @@ const AIControlButton: React.FC = () => {
               timestamp: msg.timestamp
             })));
           } else if (mounted) {
-            await startNewConversation();
+            console.log("mounted")
+            // await startNewConversation();
           }
         }
       } catch (error) {

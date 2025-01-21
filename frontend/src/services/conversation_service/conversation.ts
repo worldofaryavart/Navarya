@@ -58,7 +58,8 @@ export const getConversationHistory = async (conversationId?: string): Promise<M
         });
         if (retryResponse.ok) {
           const data = await retryResponse.json();
-          return data.map((msg: any) => ({
+          console.log("data is : ", data)
+          return data.messages.map((msg: any) => ({
             content: msg.content,
             sender: msg.sender,
             timestamp: new Date(msg.timestamp)

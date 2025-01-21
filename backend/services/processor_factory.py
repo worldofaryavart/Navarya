@@ -91,6 +91,7 @@ class ProcessorFactory:
         """Get appropriate processor using AI intent detection"""
         try:
             intent = await self._detect_intent(message)
+            print("intent in get_processor is : ", intent)
             return self._processors.get(intent.domain, self._processors[ProcessorType.TASK])
         except Exception as e:
             print(f"Error detecting processor: {e}")

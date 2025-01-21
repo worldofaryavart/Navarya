@@ -5,6 +5,7 @@ import requests
 from datetime import datetime
 import time
 from abc import ABC, abstractmethod
+from google.cloud.firestore import Increment
 
 class BaseCommandProcessor(ABC):
     def __init__(self, db):
@@ -14,6 +15,11 @@ class BaseCommandProcessor(ABC):
         self.min_interval = 5
         if not self.TOGETHER_API_KEY:
             raise ValueError("TOGETHER_API_KEY not found in environment variables")
+
+    def firestore_object_handler(self, obj):
+        if isinstance(obj, Increment):
+            return str(obj._value)  # Convert Increment to its value
+        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
     @abstractmethod
     def get_system_prompt(self) -> str:
@@ -52,7 +58,7 @@ class BaseCommandProcessor(ABC):
 Current Date: {datetime.now().strftime("%Y-%m-%d")}
 
 Conversation Context:
-{json.dumps(conversation_context, indent=2) if conversation_context else "No context available"}
+{json.dumps(conversation_context, indent=2, default=self.firestore_object_handler) if conversation_context else "No context available"}
 
 {context_prompt}
 
@@ -209,6 +215,13 @@ User Message: {message}
                     json_end_idx = response_str.find(json_str) + len(json_str)
                     additional_data = response_str[json_end_idx:].strip()
                     
+                    # Process the AI response
+                    if 'context_updates' in response:
+                        # Convert any Firestore types in context_updates to serializable format
+                        response['context_updates'] = json.loads(
+                            json.dumps(response['context_updates'], default=self.firestore_object_handler)
+                        )
+                    
                     #adding intent in result
                     ai_result = {
                         "success": True,
@@ -222,7 +235,6 @@ User Message: {message}
                     print("ai_result in base processor is : ", ai_result)
                     print("\n\n")
                     
-                    # Process the AI response
                     return ai_result
                 except json.JSONDecodeError as e:
                     print(f"JSON parsing error: {e}")
