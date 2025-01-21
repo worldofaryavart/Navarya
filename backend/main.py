@@ -6,7 +6,7 @@ from typing import List, Optional, Dict
 import os
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, auth
 from models.reminder_models import ReminderCreate, Reminder
 from services.task_services import TaskService
 from services.reminder_service import ReminderService
@@ -49,7 +49,7 @@ async def verify_token(request: Request):
             raise HTTPException(status_code=401, detail="No valid authorization header")
         
         token = auth_header.split(' ')[1]
-        decoded_token = firebase_admin.auth.verify_id_token(token)
+        decoded_token = auth.verify_id_token(token)
         
         return {'uid': decoded_token['uid'], 'token': token}
     except Exception as e:
