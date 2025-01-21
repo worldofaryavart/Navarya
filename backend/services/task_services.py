@@ -157,9 +157,8 @@ class TaskService:
         except Exception as e:
             raise DatabaseError(f"Error adding task: {str(e)}")
 
-    async def get_tasks(self, token: str, page_size: int = None) -> List[Dict]:
+    async def get_tasks(self, user_id: str, page_size: int = None) -> List[Dict]:
         try:
-            user_id = await self.verify_user(token)
             # Check cache first
             cached_tasks = self._get_cached_tasks(user_id)
             if cached_tasks is not None:
@@ -212,9 +211,8 @@ class TaskService:
         transaction.update(task_ref, updates)
         return {'id': task_ref.id, **updates}
 
-    async def update_task(self, task_id: str, task_data: Dict, token: str) -> Dict:
+    async def update_task(self, task_id: str, task_data: Dict, user_id: str) -> Dict:
         try:
-            user_id = await self.verify_user(token)
             self.validate_task_data(task_data)
             
             try:
@@ -249,10 +247,8 @@ class TaskService:
         except Exception as e:
             raise DatabaseError(f"Error updating task: {str(e)}")
 
-    async def delete_task(self, task_id: str, token: str) -> Dict:
+    async def delete_task(self, task_id: str, user_id: str) -> Dict:
         try:
-            user_id = await self.verify_user(token)
-            
             try:
                 task_ref = self.db.collection('tasks').document(task_id)
                 task = task_ref.get()
@@ -278,10 +274,8 @@ class TaskService:
         except Exception as e:
             raise DatabaseError(f"Error deleting task: {str(e)}")
 
-    async def get_task_by_id(self, task_id: str, token: str) -> Dict:
+    async def get_task_by_id(self, task_id: str, user_id: str) -> Dict:
         try:
-            user_id = await self.verify_user(token)
-            
             try:
                 task_ref = self.db.collection('tasks').document(task_id)
                 task = task_ref.get()

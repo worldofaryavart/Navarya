@@ -142,25 +142,29 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
 
 # Task endpoints
 @app.post("/api/tasks")
-async def add_task(task: Dict, token: str = Depends(get_token)):
+async def add_task(task: Dict, user = Depends(verify_token)):
     user_id = user['uid']
     return await task_service.add_task(task, user_id)
 
 @app.get("/api/tasks")
-async def get_tasks(token: str = Depends(get_token)):
-    return await task_service.get_tasks(token)
+async def get_tasks(user = Depends(verify_token)):
+    user_id = user['uid']
+    return await task_service.get_tasks(user_id)
 
 @app.get("/api/tasks/{task_id}")
-async def get_task_by_id(task_id: str, token: str = Depends(get_token)):
-    return await task_service.get_task_by_id(task_id, token)
+async def get_task_by_id(task_id: str, user = Depends(verify_token)):
+    user_id = user['uid']
+    return await task_service.get_task_by_id(task_id, user_id)
 
 @app.put("/api/tasks/{task_id}")
-async def update_task(task_id: str, task: Dict, token: str = Depends(get_token)):
-    return await task_service.update_task(task_id, task, token)
+async def update_task(task_id: str, task: Dict, user = Depends(verify_token)):
+    user_id = user['uid']
+    return await task_service.update_task(task_id, task, user_id)
 
 @app.delete("/api/tasks/{task_id}")
-async def delete_task(task_id: str, token: str = Depends(get_token)):
-    return await task_service.delete_task(task_id, token)
+async def delete_task(task_id: str, user = Depends(verify_token)):
+    user_id = user['uid']
+    return await task_service.delete_task(task_id, user_id)
 
 # Reminder endpoints
 @app.get("/api/reminders")
