@@ -1,6 +1,7 @@
 import React from 'react';
-import { Task } from '@/types/taskTypes';
+import { Task, FirestoreTimestamp } from '@/types/taskTypes';
 import { useUIStore } from '@/store/uiStateStore';
+import { formatDateToDisplay, parseDateFromDisplay } from '@/utils/dateUtils';
 
 interface CalendarTimelineProps {
   tasks: Task[];
@@ -10,26 +11,46 @@ const CalendarTimeline: React.FC<CalendarTimelineProps> = ({ tasks }) => {
   const { selectedDate } = useUIStore();
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
-  // Helper function to convert any date format to Date object
-  const convertToDate = (date: any): Date => {
-    if (date && typeof date === 'object' && 'seconds' in date) {
-      return new Date(date.seconds * 1000);
+  const convertToDate = (value: FirestoreTimestamp | Date | string | null | undefined): Date => {
+    if (!value) return new Date();
+    
+    // If it's already a Date object
+    if (value instanceof Date) {
+      return value;
     }
-    return new Date(date);
+    
+    // If it's a Firestore timestamp object
+    if (typeof value === 'object' && 'seconds' in value) {
+      return new Date(value.seconds * 1000);
+    }
+    
+    // If it's a formatted display string
+    if (typeof value === 'string' && value.includes('UTC')) {
+      return parseDateFromDisplay(value);
+    }
+    
+    // If it's an ISO string or any other date string
+    return new Date(value);
+  };
+
+  // Helper function to check if two dates are the same day
+  const isSameDay = (date1: Date | null, date2: Date | null): boolean => {
+    if (!date1 || !date2) return false;
+    return date1.toDateString() === date2.toDateString();
   };
 
   // Helper function to check if a date is today
-  const isToday = (dateToCheck: Date) => {
-    const today = new Date();
-    return dateToCheck.toDateString() === today.toDateString();
+  const isToday = (date: Date | null): boolean => {
+    if (!date) return false;
+    return isSameDay(date, new Date());
   };
 
   // Get tasks for the selected date
   const getSelectedDateTasks = () => {
+    const compareDate = selectedDate ? convertToDate(selectedDate) : new Date();
     return tasks.filter(task => {
       const taskDate = convertToDate(task.dueDate);
-      const compareDate = selectedDate || new Date();
-      return taskDate.toDateString() === compareDate.toDateString();
+      return taskDate && isSameDay(taskDate, compareDate);
     });
   };
 
@@ -37,12 +58,11 @@ const CalendarTimeline: React.FC<CalendarTimelineProps> = ({ tasks }) => {
     const selectedDateTasks = getSelectedDateTasks();
     return selectedDateTasks.filter(task => {
       const taskDate = convertToDate(task.dueDate);
-      return taskDate.getHours() === hour;
+      return taskDate && taskDate.getHours() === hour;
     });
   };
 
-
-  const displayDate = selectedDate || new Date();
+  const displayDate = selectedDate ? convertToDate(selectedDate) : new Date();
 
   return (
     <div className="rounded-lg p-4 h-full overflow-y-auto">
@@ -51,7 +71,7 @@ const CalendarTimeline: React.FC<CalendarTimelineProps> = ({ tasks }) => {
           {isToday(displayDate) ? "Today's Timeline" : "Timeline"}
         </h2>
         <span className="text-sm text-gray-400">
-          ({displayDate.toLocaleDateString()})
+          ({formatDateToDisplay(displayDate.toISOString())})
         </span>
       </div>
       <div className="space-y-2">
@@ -70,7 +90,9 @@ const CalendarTimeline: React.FC<CalendarTimelineProps> = ({ tasks }) => {
                       className="bg-blue-500/20 rounded p-2 flex-shrink-0 border border-blue-500/30 max-w-[200px]"
                     >
                       <h3 className="text-sm font-medium text-blue-300 truncate">{task.title}</h3>
-                      <p className="text-xs text-gray-300 truncate">{task.description}</p>
+                      {task.description && (
+                        <p className="text-xs text-gray-300 truncate">{task.description}</p>
+                      )}
                     </div>
                   ))}
                 </div>
