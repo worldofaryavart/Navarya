@@ -11,3 +11,7 @@ google-auth-httplib2==0.1.1
 google-api-python-client==2.108.0
 firebase-admin==6.2.0
 numpy==1.26.2
+langchain==0.0.352
+chromadb==0.4.22
+sentence-transformers==2.2.2
+python-dateparser==1.2.0
