@@ -8,18 +8,6 @@ export default function Home() {
   
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
-      {/* Top Banner */}
-      {/* <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500">
-        <div className="container mx-auto px-6 py-3 text-center relative overflow-hidden">
-          <div className="relative z-10">
-            <span className="text-sm font-medium">
-              Experience the future of AI assistance - NavArya Beta is now live! →
-            </span>
-          </div>
-          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
-        </div>
-      </div> */}
-
       {/* Navigation */}
       <nav className="border-b border-gray-800 backdrop-blur-sm bg-black/30 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
