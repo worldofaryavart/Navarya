@@ -9,8 +9,6 @@ import requests
 import os
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from firebase_admin import firestore
-from services.rag_service import RAGService
 
 class ProcessorType(Enum):
     TASK = 'tasks'
@@ -66,9 +64,8 @@ class ContextPromptBuilder:
         return "\n".join(self.sections)
 
 class ProcessorFactory:
-    def __init__(self, db: firestore.Client):
+    def __init__(self, db):
         self.db = db
-        self.rag_service = RAGService()  # Initialize RAG service
         self.TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
         if not self.TOGETHER_API_KEY:
             raise ValueError("TOGETHER_API_KEY not found in environment variables")
@@ -100,60 +97,43 @@ class ProcessorFactory:
             print(f"Error detecting processor: {e}")
             return self._processors[ProcessorType.TASK]
 
-    async def process_with_context(self, user_input: str, context: Dict[str, Any], user_id: str) -> Dict:
-        """Process user input using RAG and context"""
+    async def process_with_context(self, message: str, context: Dict[str, Any], user_token: str) -> Dict[str, Any]:
+        """Process a message with conversation context"""
         try:
-            # Process command using RAG
-            rag_result = await self.rag_service.process_task_command(user_input)
+            # Check if it's a follow-up question
+            is_followup = await self._is_followup_question(message, context)
             
-            if not rag_result['success']:
-                return {
-                    'message': f"Failed to process command: {rag_result.get('error', 'Unknown error')}",
-                    'success': False
-                }
+            if is_followup:
+                message = await self._resolve_followup_reference(message, context)
+                print(f"Resolved follow-up message: {message}")
+
+            # Get processor based on intent
+            processor = await self.get_processor(message)
             
-            # Validate the generated task data
-            validation_result = await self.rag_service.validate_task_data(rag_result['task_data'])
+            # Build context prompt
+            context_prompt = await self._build_context_prompt(message, context)
             
-            if not validation_result['success']:
-                return {
-                    'message': f"Invalid task data: {', '.join(validation_result.get('errors', ['Unknown error']))}",
-                    'success': False
-                }
-            
-            # Store task in database
-            task_ref = self.db.collection('users').document(user_id).collection('tasks').document()
-            task_data = validation_result['task_data']
-            task_data['id'] = task_ref.id
-            task_data['user_id'] = user_id
-            task_data['created_at'] = firestore.SERVER_TIMESTAMP
-            
-            await task_ref.set(task_data)
-            
-            # Prepare response message
-            response_message = (
-                f"✅ Created task: {task_data['title']}\n"
-                f"📝 Description: {task_data['description']}\n"
-                f"⏰ Due: {task_data['due_date']}\n"
-                f"🎯 Priority: {task_data['priority']}"
+            # Process message
+            print("ready to process in prcessor factory.. \n\n")
+            result = await processor.process_message(
+                message=message,
+                context_prompt=context_prompt,
+                conversation_context=context, 
+                user_token=user_token
             )
+
+            # Enhance result with follow-up handling
+            result['expects_followup'] = self._might_expect_followup(result)
+            result['was_followup'] = is_followup
             
-            if 'tags' in task_data and task_data['tags']:
-                response_message += f"\n🏷️ Tags: {', '.join(task_data['tags'])}"
-            
-            if 'reminder' in task_data:
-                response_message += f"\n⏰ Reminder set for: {task_data['reminder']['time']}"
-            
-            return {
-                'message': response_message,
-                'data': task_data,
-                'success': True
-            }
-            
+            return result
+
         except Exception as e:
+            print(f"Error processing message: {e}")
             return {
-                'message': f"Error processing command: {str(e)}",
-                'success': False
+                'success': False,
+                'message': 'Error processing your request. Please try again.',
+                'error': str(e)
             }
 
     async def _build_context_prompt(self, message: str, context: Dict[str, Any]) -> str:
