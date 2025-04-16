@@ -90,17 +90,13 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
     """Process natural language commands using AI"""
     try:
         user_id = user['uid']
+        print("user id is:  ", user_id)
         
         # Get or create active conversation
         conversations = await conversation_service.get_conversation_history(user_id)
         
         if not conversations['conversation']:
-            # Start new conversation if none exists
             print("conversation doesn't exist")
-            # success = await conversation_service.start_new_conversation(user_id)
-            # if not success:
-            #     raise HTTPException(status_code=500, detail="Failed to create new conversation")
-            # conversations = await conversation_service.get_conversation_history(user_id)
         else:
             # Get the conversation ID from the conversation data
             conversation_id = conversations['conversation']['id']
@@ -114,6 +110,8 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
         
         # Get conversation context
         context = await conversation_service.get_conversation_context(conversation_id)
+        print("context is : ", context)
+        print("\n\n\n")
         
         # Process command
         processor_factory = ProcessorFactory(db)

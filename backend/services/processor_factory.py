@@ -1,15 +1,25 @@
-from typing import Dict, Any, Optional, List, Type
-from services.command_processor.base_processor import BaseCommandProcessor
-from services.command_processor.task_processor import TaskProcessor
+from typing import Dict, Any, List
+from enum import Enum
+from dataclasses import dataclass
 from datetime import datetime
 import json
-import numpy as np
-from enum import Enum
-import requests
 import os
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
+import requests
+import numpy as np
+from services.command_processor.task_processor import TaskProcessor
 
+from dotenv import load_dotenv
+# Ensure your .env is loaded early (if you use dotenv in other modules as well)
+load_dotenv()
+
+# Import asynchronous OpenAI client
+# from openai import AsyncOpenAI
+
+# Set up your DeepSeek API key and client configuration
+# client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.ai")
+
+
+# Enum for processor domains
 class ProcessorType(Enum):
     TASK = 'tasks'
     EMAIL = 'email'
@@ -17,6 +27,7 @@ class ProcessorType(Enum):
     CHAT = 'chat'
     GENERAL = 'general'
 
+# Data class to hold intent information
 @dataclass
 class Intent:
     domain: ProcessorType
@@ -24,61 +35,28 @@ class Intent:
     confidence: float
     parameters: Dict[str, Any]
 
-class ContextPromptBuilder:
-    """Helper class to build context prompts"""
-    def __init__(self):
-        self.sections: List[str] = []
-    
-    def add_conversation_history(self, history: List[Dict[str, Any]]) -> None:
-        """Add conversation history to the prompt"""
-        history_text = "\nConversation History:"
-        for msg in history:
-            history_text += f"\n{msg['role'].title()}: {msg['content']}"
-            if msg.get('result'):
-                history_text += f"\nAction: {json.dumps(msg['result'], indent=2)}"
-        self.sections.append(history_text)
-    
-    def add_action_context(self, action: str, result: Dict[str, Any]) -> None:
-        """Add last action and its result to the prompt"""
-        self.sections.append(f"\nLast Action: {action}")
-        if result:
-            self.sections.append(f"Result: {json.dumps(result, indent=2)}")
-    
-    def add_domain_context(self, domain: str, data: Any) -> None:
-        """Add domain-specific context to the prompt"""
-        self.sections.append(f"\n{domain.title()} Context:")
-        self.sections.append(json.dumps(data, indent=2))
-    
-    def add_time_context(self, current_time: datetime) -> None:
-        """Add current time context to the prompt"""
-        self.sections.append(f"\nCurrent Time: {current_time.isoformat()}")
-    
-    def add_instructions(self, instructions: List[str]) -> None:
-        """Add processing instructions to the prompt"""
-        self.sections.append("\nInstructions:")
-        for instruction in instructions:
-            self.sections.append(f"- {instruction}")
-    
-    def build(self) -> str:
-        """Build the final prompt string"""
-        return "\n".join(self.sections)
-
+# Factory for creating and managing processors
 class ProcessorFactory:
     def __init__(self, db):
         self.db = db
+        # Load together API key for additional services (e.g., embeddings)
         self.TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
+        self.DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+        if not self.DEEPSEEK_API_KEY:
+            raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
         if not self.TOGETHER_API_KEY:
             raise ValueError("TOGETHER_API_KEY not found in environment variables")
             
-        self._processors: Dict[ProcessorType, BaseCommandProcessor] = {
+        # Initialize your processor instances
+        self._processors: Dict[ProcessorType, Any] = {
             ProcessorType.TASK: TaskProcessor(db),
-            # Add more processors as needed
+            # Add additional processors as needed
         }
         
-        # Cache for embeddings
+        # Cache for embeddings to avoid duplicate API calls
         self._embedding_cache: Dict[str, List[float]] = {}
         
-        # Define actions that likely need follow-ups
+        # Actions that might trigger follow-up questions
         self._followup_likely_actions = {
             'list_tasks': True,
             'create_task': True,
@@ -86,35 +64,46 @@ class ProcessorFactory:
             'show_details': True,
             'filter_results': True
         }
-
-    async def get_processor(self, message: str) -> BaseCommandProcessor:
-        """Get appropriate processor using AI intent detection"""
+    
+    async def get_processor(self, message: str) -> Any:
+        """Determine the appropriate processor using intent detection."""
         try:
             intent = await self._detect_intent(message)
-            print("intent in get_processor is : ", intent)
+            print("Detected intent:", intent)
+            # Return the processor corresponding to the detected domain or a default
             return self._processors.get(intent.domain, self._processors[ProcessorType.TASK])
         except Exception as e:
             print(f"Error detecting processor: {e}")
             return self._processors[ProcessorType.TASK]
 
-    async def process_with_context(self, message: str, context: Dict[str, Any], user_token: str) -> Dict[str, Any]:
-        """Process a message with conversation context"""
+    async def process_with_context(
+        self, message: str, context: Dict[str, Any], user_token: str
+    ) -> Dict[str, Any]:
+        """Process a message along with conversation context."""
         try:
-            # Check if it's a follow-up question
+            # Determine if the message is a follow-up and resolve references if needed
             is_followup = await self._is_followup_question(message, context)
-            
             if is_followup:
                 message = await self._resolve_followup_reference(message, context)
                 print(f"Resolved follow-up message: {message}")
 
-            # Get processor based on intent
+            # Retrieve the processor based on intent
             processor = await self.get_processor(message)
+            print("processor is : ", processor)
             
-            # Build context prompt
+            # Build a context prompt for the AI
             context_prompt = await self._build_context_prompt(message, context)
+
+            print("details that are necessary to know: ")
+            print("\n\n\n")
+            print("context prompt is: ", context_prompt)
+            print("message is: ", message)
+            print("context is: ", context)
+            print("user token is: ", user_token)
+            print("\n\n\n")
+
             
-            # Process message
-            print("ready to process in prcessor factory.. \n\n")
+            # Process the message with the selected processor
             result = await processor.process_message(
                 message=message,
                 context_prompt=context_prompt,
@@ -122,7 +111,7 @@ class ProcessorFactory:
                 user_token=user_token
             )
 
-            # Enhance result with follow-up handling
+            # Enhance result with follow-up information
             result['expects_followup'] = self._might_expect_followup(result)
             result['was_followup'] = is_followup
             
@@ -137,79 +126,104 @@ class ProcessorFactory:
             }
 
     async def _build_context_prompt(self, message: str, context: Dict[str, Any]) -> str:
-        """Build a comprehensive context prompt for the AI"""
-        prompt_builder = ContextPromptBuilder()
-        
-        # Add conversation history
+        """Construct a comprehensive context prompt for the AI."""
+        # Example: using a separate prompt builder class might make sense,
+        # but here we combine elements directly.
+        prompt_lines = []
+
+        # Add a short conversation history if available
         if context.get('conversation_history'):
-            prompt_builder.add_conversation_history(context['conversation_history'][-5:])
+            history = context['conversation_history'][-5:]
+            prompt_lines.append("Conversation history:")
+            for line in history:
+                prompt_lines.append(line)
         
-        # Add active context
+        # Include the last action and its result if available
         if context.get('last_action'):
-            prompt_builder.add_action_context(
-                action=context['last_action'],
-                result=context.get('last_action_result', {})
-            )
+            prompt_lines.append(f"Last action: {context['last_action']}")
+            prompt_lines.append(f"Result: {json.dumps(context.get('last_action_result', {}))}")
         
-        # Add domain-specific context
+        # Domain-specific context (example for tasks)
         if context.get('tasks'):
-            prompt_builder.add_domain_context('tasks', context['tasks'])
+            prompt_lines.append("Tasks:")
+            prompt_lines.append(json.dumps(context['tasks']))
         
         # Add time context
-        prompt_builder.add_time_context(datetime.utcnow())
+        prompt_lines.append(f"Current time (UTC): {datetime.utcnow().isoformat()}")
+
+        # Dynamic instructions for the AI
+        dynamic_instructions = self._get_dynamic_instructions(context)
+        if dynamic_instructions:
+            prompt_lines.append("Instructions:")
+            prompt_lines.extend(dynamic_instructions)
         
-        # Add dynamic instructions
-        prompt_builder.add_instructions(self._get_dynamic_instructions(context))
-        
-        return prompt_builder.build()
+        return "\n".join(prompt_lines)
 
     def _get_dynamic_instructions(self, context: Dict[str, Any]) -> List[str]:
-        """Get dynamic instructions based on context"""
+        """Produce additional dynamic instructions based on the context."""
         instructions = [
-            "Maintain context from previous messages when relevant",
-            "Consider task status, priority, and due dates",
-            "Handle relative time references (today, tomorrow, next week)",
-            "Reference previous tasks or actions when mentioned",
-            "Resolve pronouns (it, that, this) based on context"
+            "Maintain context from previous messages when relevant.",
+            "Consider task status, priority, and due dates.",
+            "Handle relative time references (today, tomorrow, etc.).",
+            "Reference previous tasks or actions when mentioned.",
+            "Resolve pronouns (it, that, this) based on context."
         ]
         
-        # Add context-specific instructions
+        # Enhance instructions based on the last action
         if context.get('last_action') == 'list_tasks':
             instructions.extend([
-                "Reference tasks by their listed numbers or names",
-                "Allow filtering and sorting of the previously listed tasks"
+                "Reference tasks by their listed numbers or names.",
+                "Allow filtering and sorting of the previously listed tasks."
             ])
         elif context.get('last_action') == 'create_task':
             instructions.extend([
-                "Allow modifications to the recently created task",
-                "Support adding additional details or subtasks"
+                "Allow modifications to the recently created task.",
+                "Support adding additional details or subtasks."
             ])
             
         return instructions
 
     async def _detect_intent(self, message: str) -> Intent:
-        """Use AI to detect message intent and domain"""
+        """Use DeepSeek AI to detect the intent from the user message."""
         try:
-            response = requests.post(
-                "https://api.together.xyz/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.TOGETHER_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "Analyze the user message and classify its intent. Respond in JSON format with domain, action, confidence, and parameters."
-                        },
-                        {"role": "user", "content": message}
-                    ],
-                    "max_tokens": 200,
-                    "temperature": 0.3
-                }
-            )
-            
+            # Build a prompt that instructs the AI to determine intent
+            prompt = self._build_prompt_intent(message)
+            print("Intent detection prompt:", prompt)
+            url = "https://api.deepseek.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "model": "deepseek-chat",
+                "messages": [
+                    {"role": "system", "content": (
+                        "You are an AI specialized in intent detection. "
+                        "Extract the intent from the user's message. "
+                        "Return a JSON object with these keys: "
+                        "domain (as one of [tasks, email, calendar, chat, general]), "
+                        "action (a descriptive string), "
+                        "confidence (a decimal number between 0 and 1), "
+                        "and parameters (an object with additional details if any). "
+                        "Ensure the output is valid JSON."
+                    )},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 100,
+                "response_format": {"type": "json_object"}
+            }
+
+            response = requests.post(url, json=data, headers=headers)
+            print("\n\n")
+            print("response is ", response)
+            result = response.json()
+            print("Intent detection response:", result)
+
+            print(result['choices'][0]['message']['content'])
+
+            # Check for a valid response and extract the content
             if response.status_code == 200:
                 content = response.json()['choices'][0]['message']['content']
                 intent_data = json.loads(content)
@@ -220,13 +234,13 @@ class ProcessorFactory:
                     parameters=intent_data.get('parameters', {})
                 )
             else:
+                # Fallback intent
                 return Intent(
                     domain=ProcessorType.TASK,
                     action='unknown',
                     confidence=0.0,
                     parameters={}
                 )
-                
         except Exception as e:
             print(f"Error detecting intent: {e}")
             return Intent(
@@ -236,8 +250,19 @@ class ProcessorFactory:
                 parameters={}
             )
 
+    def _build_prompt_intent(self, message: str) -> str:
+        """
+        Build a prompt that clearly instructs the AI on how to interpret the user's message.
+        """
+        prompt = (
+            f"User message: \"{message}\"\n"
+            "Please analyze the user's intent. "
+            "Return a JSON with 'domain', 'action', 'confidence', and 'parameters'."
+        )
+        return prompt
+
     async def _get_embedding(self, text: str) -> List[float]:
-        """Get text embedding using AI model"""
+        """Retrieve embedding for a given text (with caching)."""
         if text in self._embedding_cache:
             return self._embedding_cache[text]
             
@@ -253,27 +278,24 @@ class ProcessorFactory:
                     "input": text
                 }
             )
-            
             if response.status_code == 200:
                 embedding = response.json()['data'][0]['embedding']
                 self._embedding_cache[text] = embedding
                 return embedding
             else:
                 return []
-                
         except Exception as e:
             print(f"Error getting embedding: {e}")
             return []
 
     def _calculate_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
-        """Calculate cosine similarity between two embeddings"""
+        """Calculate cosine similarity between two embeddings."""
         if not embedding1 or not embedding2:
             return 0.0
-            
+
         try:
             vec1 = np.array(embedding1)
             vec2 = np.array(embedding2)
-            
             similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
             return float(similarity)
         except Exception as e:
@@ -281,67 +303,54 @@ class ProcessorFactory:
             return 0.0
 
     async def _is_followup_question(self, message: str, context: Dict[str, Any]) -> bool:
-        """Use AI to detect if message is a follow-up"""
+        """Determine if the current message is a follow-up to a previous context."""
         if not context.get('last_action'):
             return False
 
-        # Get embeddings for current and previous context
+        # Retrieve embeddings for the current message and last context
         message_embedding = await self._get_embedding(message)
-        context_embedding = await self._get_embedding(
-            f"{context.get('last_message', '')} {context.get('last_response', '')}"
-        )
+        context_text = f"{context.get('last_message', '')} {context.get('last_response', '')}"
+        context_embedding = await self._get_embedding(context_text)
         
-        # Calculate similarity
         similarity = self._calculate_similarity(message_embedding, context_embedding)
-        
-        # High similarity indicates follow-up
         if similarity > 0.8:
             return True
-            
-        # Fallback to rule-based detection
+
+        # Fallback: use basic rule-based detection
         return self._rule_based_followup_detection(message)
 
     def _rule_based_followup_detection(self, message: str) -> bool:
-        """Fallback rule-based follow-up detection"""
+        """Basic rules to determine if a message is a follow-up."""
         message_lower = message.lower()
-        
-        # Standalone commands that are not follow-ups
         standalone_commands = {
             'show me today', 'show today', 'show me tomorrow',
             'show me yesterday', 'show me upcoming', 'show me all',
             'show me pending', 'show me completed'
         }
-        
         if any(cmd in message_lower for cmd in standalone_commands):
             return False
-            
-        # Check for follow-up indicators
+
         followup_indicators = {
             'it', 'that', 'this', 'the task', 'the reminder',
             'change', 'modify', 'update', 'delete', 'remove'
         }
-        
         return any(indicator in message_lower for indicator in followup_indicators)
 
     async def _resolve_followup_reference(self, message: str, context: Dict[str, Any]) -> str:
-        """Use AI to resolve references in follow-up questions"""
+        """Resolve ambiguous references in follow-up questions using AI."""
         if not context.get('last_action'):
             return message
 
+        prompt = (
+            "Given the previous conversation context, resolve any ambiguous references "
+            "in the following user message to produce a self-contained command.\n\n"
+            f"Previous Context:\nUser: {context.get('last_message')}\n"
+            f"Assistant: {context.get('last_response')}\n"
+            f"Action: {context.get('last_action')}\n"
+            f"Result: {json.dumps(context.get('last_action_result', {}))}\n\n"
+            f"Current Message: {message}"
+        )
         try:
-            # Create prompt for reference resolution
-            prompt = f"""
-            Previous Context:
-            User: {context.get('last_message')}
-            Assistant: {context.get('last_response')}
-            Action: {context.get('last_action')}
-            Result: {json.dumps(context.get('last_action_result', {}))}
-
-            Current Message: {message}
-
-            Resolve any references in the current message to create a self-contained command.
-            """
-            
             response = requests.post(
                 "https://api.together.xyz/v1/chat/completions",
                 headers={
@@ -364,46 +373,10 @@ class ProcessorFactory:
                 return resolved if resolved else message
             else:
                 return message
-                
         except Exception as e:
             print(f"Error resolving references: {e}")
             return message
 
     def _might_expect_followup(self, result: Dict[str, Any]) -> bool:
-        """Predict if the current action might lead to follow-up questions"""
+        """Check if the current action is likely to trigger follow-up questions."""
         return self._followup_likely_actions.get(result.get('action', ''), False)
-
-class ConversationContext:
-    def __init__(self):
-        self.messages: List[Dict[str, Any]] = []
-        self.max_context_length = 10  # Keep last 10 messages for context
-        
-    def add_message(self, role: str, content: str, result: Optional[Dict] = None):
-        """Add a message to the conversation history"""
-        message = {
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now().isoformat(),
-        }
-        if result:
-            message["result"] = result
-            
-        self.messages.append(message)
-        if len(self.messages) > self.max_context_length:
-            self.messages.pop(0)
-            
-    def get_context_prompt(self) -> str:
-        """Generate a context prompt from conversation history"""
-        if not self.messages:
-            return ""
-            
-        prompt = "\nConversation History:\n"
-        for msg in self.messages:
-            prompt += f"{msg['role'].title()}: {msg['content']}\n"
-            if msg.get('result'):
-                prompt += f"Action: {json.dumps(msg['result'], indent=2)}\n"
-        return prompt
-        
-    def clear(self):
-        """Clear conversation history"""
-        self.messages = []

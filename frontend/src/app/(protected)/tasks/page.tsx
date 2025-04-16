@@ -17,6 +17,7 @@ export const runtime = 'edge'
 const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { tasks, setTasks, isLoading } = useTaskContext();
+  // const [tasks, setTasks] = useState<Task[]>([]);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const handleOpenTaskModal = () => {
