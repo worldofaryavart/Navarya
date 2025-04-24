@@ -97,17 +97,16 @@ class TaskProcessor(BaseCommandProcessor):
         
         Always validate input data and provide clear error messages."""
 
-    async def process_message(self, message: str, context_prompt: str = "", conversation_context: Optional[Dict[str, Any]] = None, user_token: str = "") -> Dict[str, Any]:
+    async def process_message(self, intent: Dict[str, Any], message: str, conversation_context: Optional[Dict[str, Any]] = None, user_token: str = "") -> Dict[str, Any]:
         """Process user message with enhanced error handling"""
         try:
             print("ready to process in task processor 2.. \n\n")
             parsed_result = await self._parse_natural_language(message)
-            print("parsed_result: ", parsed_result)
             print('\n\n')
             if not parsed_result['success']:
                 return parsed_result
                 
-            ai_result = await super().process_message(message, context_prompt, conversation_context)
+            ai_result = await super().process_message(intent, message, conversation_context)
             print("ai_result: ", ai_result)
             print('\n\n')
             if not ai_result.get('success'):

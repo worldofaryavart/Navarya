@@ -10,11 +10,11 @@ from google.cloud.firestore import Increment
 class BaseCommandProcessor(ABC):
     def __init__(self, db):
         self.db = db
-        self.TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
+        self.DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
         self.last_api_call = 0
         self.min_interval = 5
-        if not self.TOGETHER_API_KEY:
-            raise ValueError("TOGETHER_API_KEY not found in environment variables")
+        if not self.DEEPSEEK_API_KEY:
+            raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
 
     def firestore_object_handler(self, obj):
         if isinstance(obj, Increment):
@@ -38,17 +38,13 @@ class BaseCommandProcessor(ABC):
 
     async def process_message(
         self, 
+        intent: Dict[str, Any],
         message: str, 
-        context_prompt: str = "",
         conversation_context: Optional[Dict[str, Any]] = None
     ) -> Dict[Any, Any]:
         try:
             current_time = time.time()
-            
-            if current_time - self.last_api_call < self.min_interval:
-                print("Rate limited, using fallback parser")
-                return self._parse_natural_language(message)
-                
+                            
             print("Received message:", message)
             self.last_api_call = current_time
 
@@ -60,18 +56,9 @@ Current Date: {datetime.now().strftime("%Y-%m-%d")}
 Conversation Context:
 {json.dumps(conversation_context, indent=2, default=self.firestore_object_handler) if conversation_context else "No context available"}
 
-{context_prompt}
-
 Instructions for AI Response:
-1. First, classify the user's intent using this format:
-INTENT CLASSIFICATION:
-{{
-    "domain": "tasks|email|browser|conversation",
-    "intent": "specific_intent",
-    "confidence": 0.0 to 1.0
-}}
 
-2. Then, process the command and generate a response that:
+2. Process the command and generate a response that:
    - Is consistent with previous context and conversation history
    - Handles any references to previous messages or actions
    - Provides clear and actionable results
@@ -87,25 +74,37 @@ INTENT CLASSIFICATION:
 User Message: {message}
 """
 
-            response = requests.post(
-                "https://api.together.xyz/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.TOGETHER_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": message}
-                    ],
-                    "max_tokens": 1024,
-                    "temperature": 0.7,
-                }
-            )
-            
-            print("API Response status:", response.status_code)
-            
+
+            url = "https://api.deepseek.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "model": "deepseek-chat",
+                "messages": [
+                    {"role": "system", "content": (
+                        "You are an AI specialized in intent detection. "
+                        "Extract the intent from the user's message. "
+                        "Return a JSON object with these keys: "
+                        "domain (as one of [tasks, email, calendar, chat, general]), "
+                        "action (a descriptive string), "
+                        "confidence (a decimal number between 0 and 1), "
+                        "Ensure the output is valid JSON."
+                    )},
+                    {"role": "user", "content": system_prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 100,
+                "response_format": {"type": "json_object"}
+            }
+
+            response = requests.post(url, json=data, headers=headers)
+            result = response.json()
+
+            print(result['choices'][0]['message']['content'])
+                        
             if response.status_code != 200:
                 print("API Error:", response.text)
                 return {

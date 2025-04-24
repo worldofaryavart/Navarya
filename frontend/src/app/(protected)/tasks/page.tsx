@@ -91,20 +91,17 @@ const Tasks = () => {
       <div className="flex gap-4 md:flex-row flex-col">
         {/* Right Column - Tasks Section and Timeline */}
         <div className="w-full md:w-2/3 space-y-4 flex flex-col flex-1">
+          <div className="rounded-lg p-4 border border-gray-700/50">
+            <CalendarView tasks={tasks} />
+          </div>
           <div className="rounded-lg overflow-auto border border-gray-700/50 custom-scrollbar min-h-[322px]">
             <TasksSection tasks={tasks} />
-          </div>
-          <div className="rounded-lg border border-gray-700/50">
-            <CalendarTimeline tasks={tasks} />
           </div>
         </div>
 
         {/* Left Column - Calendar and Task List */}
         <div className="w-full md:w-1/3 space-y-4 flex flex-col md:order-none order-last">
-          <div className="rounded-lg p-4 border border-gray-700/50">
-            <CalendarView tasks={tasks} />
-          </div>
-          <div className="rounded-lg overflow-y-auto border border-gray-700/50 custom-scrollbar h-[1223px]">
+          <div className="rounded-lg overflow-y-auto border border-gray-700/50 custom-scrollbar h-[650px]">
             <TaskList
               tasks={tasks}
               onUpdateTask={handleUpdateTask}

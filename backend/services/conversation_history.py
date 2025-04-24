@@ -99,16 +99,12 @@ class ConversationHistoryService:
                 messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).stream()
             else:
                 # Get the active conversation
-                print("finding active conversaton")
                 active_conv_ref = self.db.collection('conversations')
-                print("active check 1")
                 query = active_conv_ref.where('userId', '==', user_id)\
                                      .where('active', '==', True)\
                                      .order_by('updatedAt', direction=firestore.Query.DESCENDING)\
                                      .limit(1)
-                print("active 2 check")
                 docs = list(query.stream())
-                print("active check 3")
                 if not docs:
                     print(f"No active conversations found for user {user_id}")
                     return {'conversation': None, 'messages': []}
@@ -119,9 +115,7 @@ class ConversationHistoryService:
                     **conv_doc.to_dict()
                 }
                 messages_ref = conv_doc.reference.collection('messages')
-                print("active check 4")
                 messages = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).stream()
-                print("active check 5")
             # Convert messages to list
             message_list = []
             for msg in messages:

@@ -110,8 +110,6 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
         
         # Get conversation context
         context = await conversation_service.get_conversation_context(conversation_id)
-        print("context is : ", context)
-        print("\n\n\n")
         
         # Process command
         processor_factory = ProcessorFactory(db)
