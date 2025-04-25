@@ -6,6 +6,7 @@ from enum import Enum
 from dataclasses import dataclass
 from services.command_processor.base_processor import BaseCommandProcessor
 from services.task_services import TaskService
+import json
 from services.reminder_service import ReminderService
 
 class TaskPriority(Enum):
@@ -81,26 +82,51 @@ class TaskProcessor(BaseCommandProcessor):
         self.reminder_service = ReminderService(db)
         self.timezone = pytz.timezone('Asia/Kolkata')
 
-    def get_system_prompt(self) -> str:
-        return """You are a task management assistant. Help users manage their tasks and reminders effectively.
-        You can create, list, update, and delete tasks. You can also set reminders for tasks.
-        
-        For tasks with reminders, make sure to:
-        1. Parse and validate reminder times
-        2. Handle recurring reminders appropriately
-        3. Consider timezone (Asia/Kolkata) when setting reminders
-        4. Support natural language time expressions (tomorrow, next week, etc.)
-        
-        Task Priorities: High, Medium, Low
-        Task Statuses: Pending, In Progress, Completed
-        Recurrence Types: daily, weekly, monthly, yearly
-        
-        Always validate input data and provide clear error messages."""
+    def get_system_prompt_subdomain(self, message: str, conversation_context: dict = None) -> str:
+        """
+        Builds the system prompt for the task subdomain detector.
+        The AI must identify one of: create_tasks, list_tasks, update_tasks, delete_tasks.
+        """
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        context_json = (
+            json.dumps(conversation_context, indent=2, default=self.firestore_object_handler)
+            if conversation_context else "{}"
+        )
+
+        prompt = f"""
+    You are a Task Subdomain Detector. Your job is to analyze the user's request and determine which task subdomain it belongs to:
+    - create_tasks
+    - list_tasks
+    - update_tasks
+    - delete_tasks
+
+    Return your result as a JSON object with the following schema:
+    {{
+        "success": <true|false>,          # Whether detection was successful
+        "subdomain": <string|null>,      # One of the four subdomains or null if unknown
+        "confidence": <float>,           # Confidence score between 0.0 and 1.0
+        "message": <string>              # Human-readable explanation
+    }}
+
+    Current Date: {current_date}
+
+    Conversation Context:
+    {context_json}
+
+    User Message:
+    """ + message + """
+
+    # Guidelines:
+    # - Use the context above to interpret references and maintain continuity.
+    # - If the intent is unclear, respond with success=false and subdomain=null.
+    # - Do not include any extra keys in the output.
+    """
+        return prompt
+
 
     async def process_message(self, intent: Dict[str, Any], message: str, conversation_context: Optional[Dict[str, Any]] = None, user_token: str = "") -> Dict[str, Any]:
         """Process user message with enhanced error handling"""
         try:
-            print("ready to process in task processor 2.. \n\n")
             parsed_result = await self._parse_natural_language(message)
             print('\n\n')
             if not parsed_result['success']:

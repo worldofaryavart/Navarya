@@ -60,7 +60,6 @@ class ProcessorFactory:
         """Determine the appropriate processor using intent detection."""
         try:
             intent = await self._detect_intent(message)
-            print("Detected intent:", intent)
             # Return the processor corresponding to the detected domain or a default
             return self._processors.get(intent.domain, self._processors[ProcessorType.TASK]), intent
         except Exception as e:
@@ -100,8 +99,6 @@ class ProcessorFactory:
             response = requests.post(url, json=data, headers=headers)
             result = response.json()
 
-            print(result['choices'][0]['message']['content'])
-
             # Check for a valid response and extract the content
             if response.status_code == 200:
                 content = response.json()['choices'][0]['message']['content']
@@ -135,14 +132,6 @@ class ProcessorFactory:
             processor, intent = await self.get_processor(message)
             print("\n\n\n")
             print("processor is : ", processor)
-            print("intent is : ", intent)
-            
-            # Build a context prompt for the AI
-            print("details that are necessary to know: ")
-            print("message is: ", message)
-            print("context is: ", context)
-            print("user token is: ", user_token)
-
             
             # Process the message with the selected processor
             result = await processor.process_message(
