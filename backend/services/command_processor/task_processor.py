@@ -8,6 +8,9 @@ from services.command_processor.base_processor import BaseCommandProcessor
 from services.task_services import TaskService
 import json
 from services.reminder_service import ReminderService
+import requests
+import os
+
 
 class TaskPriority(Enum):
     HIGH = "High"
@@ -81,6 +84,9 @@ class TaskProcessor(BaseCommandProcessor):
         self.task_service = TaskService(db)
         self.reminder_service = ReminderService(db)
         self.timezone = pytz.timezone('Asia/Kolkata')
+        self.DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+        if not self.DEEPSEEK_API_KEY:
+            raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
 
     def get_system_prompt_subdomain(self, message: str, conversation_context: dict = None) -> str:
         """
@@ -123,7 +129,6 @@ class TaskProcessor(BaseCommandProcessor):
     """
         return prompt
 
-
     async def process_message(self, intent: Dict[str, Any], message: str, conversation_context: Optional[Dict[str, Any]] = None, user_token: str = "") -> Dict[str, Any]:
         """Process user message with enhanced error handling"""
         try:
@@ -133,12 +138,10 @@ class TaskProcessor(BaseCommandProcessor):
                 return parsed_result
                 
             ai_result = await super().process_message(intent, message, conversation_context)
-            print("ai_result: ", ai_result)
-            print('\n\n')
-            if not ai_result.get('success'):
-                return ai_result
+
+            processed_result = await self.process_ai_result(ai_result, user_token)
                 
-            processed_result = await self.process_ai_response(ai_result, user_token)
+            # processed_result = await self.process_ai_response(ai_result, user_token)
             print("processed_result: ", processed_result)
             print('\n\n')
             return processed_result
@@ -177,8 +180,10 @@ class TaskProcessor(BaseCommandProcessor):
             'batch_operations': self._handle_batch_operations
         }
         
+        print("result in handle task action is ", result)
         action = result['action']
         handler = action_handlers.get(action)
+        print("handler is : ", handler)
         
         if not handler:
             return self._error_response(f"Unknown action: {action}", "invalid_action")
@@ -291,6 +296,8 @@ class TaskProcessor(BaseCommandProcessor):
     async def _list_tasks(self, data: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """List tasks with enhanced filtering"""
         tasks = await self.task_service.get_tasks(user_token)
+
+        print("tasks in list tasks are : ", tasks)
         
         if data.get('filter'):
             tasks = self._apply_filters(tasks, data['filter'])
@@ -303,6 +310,7 @@ class TaskProcessor(BaseCommandProcessor):
     def _apply_filters(self, tasks: List[Dict[str, Any]], filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Apply filters with validation"""
         filtered_tasks = tasks
+        print("filters are : ", filters)
         
         if filters.get('status'):
             try:
@@ -491,48 +499,232 @@ class TaskProcessor(BaseCommandProcessor):
                 'data': {}
             }
 
+    async def process_ai_result(self, ai_result: Dict[str, Any], user_token: str = "") -> Dict[str, Any]:
+        """Process AI result and extract task-related information"""
+        try:
+            print("ready to process in task processor 2.. \n\n")
+            print("ai_result in task processor 2 is ", ai_result)
+            
+            # Convert ai_result to JSON if it's not already
+            if isinstance(ai_result, str):
+                ai_result = json.loads(ai_result)
+            
+            # Check if success is True
+            if not ai_result.get('success'):
+                return {
+                    'success': False,
+                    'message': 'AI result is not successful'
+                }
+            
+            # Get the appropriate system prompt based on subdomain
+            subdomain = ai_result.get('subdomain')
+            if subdomain == 'list_tasks':
+                system_prompt = self.get_list_tasks_system_prompt()
+            elif subdomain == 'create_tasks':
+                system_prompt = self.get_create_tasks_system_prompt()
+            elif subdomain == 'update_tasks':
+                system_prompt = self.get_update_tasks_system_prompt()
+            elif subdomain == 'delete_tasks':
+                system_prompt = self.get_delete_tasks_system_prompt()
+            else:
+                return {
+                    'success': False,
+                    'message': f'Unknown subdomain: {subdomain}'
+                }
+                        
+            # Call AI API with the system prompt
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                ],
+                "temperature": 0.7,
+                "max_tokens": 300,  # Increased token limit for more complete responses
+                "response_format": {"type": "json_object"}
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {self.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+
+            response = requests.post("https://api.deepseek.com/v1/chat/completions", json=payload, headers=headers)
+
+            if response.status_code != 200:
+                return {"success": False, "message": f"API error: {response.text}"}
+
+            ai_payload = response.json()
+            choice = ai_payload.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+            
+            if not choice:
+                return {"success": False, "message": "Empty response from AI"}
+            
+            # Parse the JSON response
+            try:
+                print("choice is : " , choice)
+                ai_response = json.loads(choice)
+                
+                # Ensure the response has the expected structure
+                if not ai_response.get('response') or not ai_response['response'].get('action'):
+                    return {"success": False, "message": "AI response missing required structure"}
+                
+                # Process the AI response
+                process_response = await self.process_ai_response(ai_response, user_token)
+                return process_response
+                
+            except json.JSONDecodeError:
+                return {"success": False, "message": "Failed to parse AI response as JSON"}
+                
+        except Exception as e:
+            return {"success": False, "message": f"Error processing AI result: {str(e)}"}
+        
+    def get_list_tasks_system_prompt(self) -> str:
+        """
+        Get system prompt for listing tasks
+        """
+        system_prompt = """
+        You are a task management assistant. The user is asking to list or view their tasks.
+        Help retrieve and display their tasks in an organized manner.
+        Consider the following:
+        1. Determine if they want to view all tasks or filter by criteria (date, priority, completion status)
+        2. Format the tasks in a clear, readable way
+        3. If they're asking for a count or summary, provide that information
+        4. If they ask about specific tasks or categories, focus on those
+        
+        In your response, include:
+        - A brief acknowledgment of their request
+        - The task list or summary they requested
+        - A helpful action they might want to take next
+
+        Please format your response as a JSON object with the following structure:
+            {
+                "response": {
+                    "action": "list_tasks"
+                    "data": {
+                        "filter": {
+                            "priority": "high", // more options: "medium", "low"
+                            "status": "completed", // more options: "pending", "in_progress"
+                            "due_date": "2023-10-01" // date format YYYY-MM-DD
+                        }
+                    }, // Task data specific to the action
+                    "message": "Human-friendly message"
+                },
+                "context_updates": {} // Optional context updates
+            }
+        """
+        return system_prompt
+
+    def get_create_tasks_system_prompt(self) -> str:
+        """
+        Get system prompt for creating tasks
+        """
+        system_prompt = """
+        You are a task management assistant. The user is asking to create or add a new task.
+        Help them create a well-defined task entry.
+        Consider the following:
+        1. Extract the task title and description from their request
+        2. Identify any mentioned deadline, priority level, or category
+        3. Determine if additional information should be requested
+        4. Format the task with all necessary details
+        
+        In your response, include:
+        - Confirmation of the task being created
+        - A summary of the task details you've captured
+        - Any follow-up questions for missing but important information
+        - A helpful suggestion for what they might want to do next
+        """
+        return system_prompt
+
+    def get_update_tasks_system_prompt(self) -> str:
+        """
+        Get system prompt for updating tasks
+        """
+        system_prompt = """
+        You are a task management assistant. The user is asking to update or modify an existing task.
+        Help them make changes to their task effectively.
+        Consider the following:
+        1. Identify which task they want to update (by title, ID, or description)
+        2. Determine what aspects they want to change (deadline, priority, description, status)
+        3. Format the updated task information clearly
+        4. Check if confirmation is needed before updating
+        
+        In your response, include:
+        - Acknowledgment of which task is being updated
+        - The specific changes being made
+        - Confirmation of the update
+        - A helpful suggestion for what they might want to do next
+        """
+        return system_prompt
+
+    def get_delete_tasks_system_prompt(self) -> str:
+        """
+        Get system prompt for deleting tasks
+        """
+        system_prompt = """
+        You are a task management assistant. The user is asking to delete or remove a task.
+        Help them safely remove the task they specify.
+        Consider the following:
+        1. Identify which task they want to delete (by title, ID, or description)
+        2. Confirm if this is a permanent deletion or if it should be archived
+        3. Check if confirmation is needed before deleting
+        4. Prepare for potential undo/restore requests
+        
+        In your response, include:
+        - Clear identification of which task will be deleted
+        - Confirmation that the task has been deleted
+        - Information about how to restore the task if needed
+        - A helpful suggestion for what they might want to do next
+        """
+        return system_prompt
+
     async def process_ai_response(self, ai_response: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """Process the AI's response for task-related operations"""
         try:
             # Validate AI response structure
-            print("ready to process in task processor 3.. \n\n")
-            if not isinstance(ai_response, dict):
+            
+            if not isinstance(ai_response, dict) or 'response' not in ai_response:
                 return {
                     'success': False,
                     'message': 'Invalid AI response format'
                 }
                 
-            # Extract action and data from AI response
-            response = ai_response.get('response')
-            action = response.get('action')
-            data = response.get('data', {})
-            intent = ai_response.get('intent')
-            context_updates = response.get('context_updates')
+            # Extract fields from AI response
+            response_obj = ai_response.get('response', {})
+            action = response_obj.get('action')
+            data = response_obj.get('data', {})
+            message = response_obj.get('message', 'Task operation processed')
+            context_updates = ai_response.get('context_updates', {})
             
-            # Validate action and data
+            # Validate action
             if not action:
                 return {
                     'success': False,
                     'message': 'No action specified in AI response'
                 }
-                
-            handler_result = await self._handle_task_action(response, user_token)
-            print("handler_reulst is  ", handler_result)
-            if not handler_result['success']:
+                            
+            # Process the task action
+            handler_result = await self._handle_task_action({
+                'action': action,
+                'data': data
+            }, user_token)
+            
+            print("Handler result: ", handler_result)
+            
+            if not handler_result.get('success'):
                 return handler_result
             
-                    
-            # Return processed response
+            # Return the successful result with additional context
             return {
                 'success': True,
-                'intent': intent,
                 'action': action,
-                'data': data,
-                'message': response.get('message', 'Task operation processed successfully'),
+                'data': handler_result.get('data', data),
+                'message': handler_result.get('message', message),
                 'context_updates': context_updates
             }
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {
                 'success': False,
                 'message': f"Error processing AI response: {str(e)}"
