@@ -45,7 +45,6 @@ class BaseCommandProcessor(ABC):
         try:
             # Build system prompt correctly without passing self twice
             system_prompt = self.get_system_prompt_subdomain(message, conversation_context)
-            print(f"System prompt: {system_prompt}")
 
             payload = {
                 "model": "deepseek-chat",

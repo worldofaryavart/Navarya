@@ -180,7 +180,6 @@ class TaskProcessor(BaseCommandProcessor):
             'batch_operations': self._handle_batch_operations
         }
         
-        print("result in handle task action is ", result)
         action = result['action']
         handler = action_handlers.get(action)
         print("handler is : ", handler)
@@ -296,8 +295,6 @@ class TaskProcessor(BaseCommandProcessor):
     async def _list_tasks(self, data: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """List tasks with enhanced filtering"""
         tasks = await self.task_service.get_tasks(user_token)
-
-        print("tasks in list tasks are : ", tasks)
         
         if data.get('filter'):
             tasks = self._apply_filters(tasks, data['filter'])
@@ -621,6 +618,7 @@ class TaskProcessor(BaseCommandProcessor):
         }}
         """
         return system_prompt
+    
     def get_create_tasks_system_prompt(self) -> str:
         """
         Get system prompt for creating tasks
