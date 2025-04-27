@@ -139,7 +139,7 @@ class TaskProcessor(BaseCommandProcessor):
                 
             ai_result = await super().process_message(intent, message, conversation_context)
 
-            processed_result = await self.process_ai_result(ai_result, user_token)
+            processed_result = await self.process_ai_result(ai_result,message,conversation_context, user_token)
                 
             # processed_result = await self.process_ai_response(ai_result, user_token)
             print("processed_result: ", processed_result)
@@ -496,7 +496,7 @@ class TaskProcessor(BaseCommandProcessor):
                 'data': {}
             }
 
-    async def process_ai_result(self, ai_result: Dict[str, Any], user_token: str = "") -> Dict[str, Any]:
+    async def process_ai_result(self, ai_result: Dict[str, Any], message, conversation_context, user_token: str = "") -> Dict[str, Any]:
         """Process AI result and extract task-related information"""
         try:
             print("ready to process in task processor 2.. \n\n")
@@ -514,13 +514,13 @@ class TaskProcessor(BaseCommandProcessor):
                 }
             
             # Message in subdomain
-            message = ai_result.get('message')
+            ai_result_message = ai_result.get('message')
             # Get the appropriate system prompt based on subdomain
             subdomain = ai_result.get('subdomain')
             if subdomain == 'list_tasks':
-                system_prompt = self.get_list_tasks_system_prompt(message)
+                system_prompt = self.get_list_tasks_system_prompt(ai_result_message, message, conversation_context)
             elif subdomain == 'create_tasks':
-                system_prompt = self.get_create_tasks_system_prompt()
+                system_prompt = self.get_create_tasks_system_prompt(ai_result_message, message, conversation_context)
             elif subdomain == 'update_tasks':
                 system_prompt = self.get_update_tasks_system_prompt()
             elif subdomain == 'delete_tasks':
@@ -577,12 +577,17 @@ class TaskProcessor(BaseCommandProcessor):
         except Exception as e:
             return {"success": False, "message": f"Error processing AI result: {str(e)}"}
         
-    def get_list_tasks_system_prompt(self, message: str) -> str:
+    def get_list_tasks_system_prompt(self,ai_result_message, message: str, conversation_context) -> str:
         """
         Get system prompt for listing tasks with user message context
         """
         system_prompt = f"""
         You are a task management assistant. The user is asking to list or view their tasks.
+
+        User's message: "{message}"
+        
+        Intent analysis: {ai_result_message}
+        
         Help retrieve and display their tasks in an organized manner.
         Consider the following:
         1. Determine if they want to view all tasks or filter by criteria (date, priority, completion status) based on their message
@@ -619,27 +624,75 @@ class TaskProcessor(BaseCommandProcessor):
         """
         return system_prompt
     
-    def get_create_tasks_system_prompt(self) -> str:
+    def get_create_tasks_system_prompt(self, ai_result_message: str, message: str, conversation_context: Dict[str, Any] = None) -> str:
         """
-        Get system prompt for creating tasks
-        """
-        system_prompt = """
-        You are a task management assistant. The user is asking to create or add a new task.
-        Help them create a well-defined task entry.
-        Consider the following:
-        1. Extract the task title and description from their request
-        2. Identify any mentioned deadline, priority level, or category
-        3. Determine if additional information should be requested
-        4. Format the task with all necessary details
+        Get system prompt for creating tasks with additional context
         
-        In your response, include:
-        - Confirmation of the task being created
-        - A summary of the task details you've captured
-        - Any follow-up questions for missing but important information
-        - A helpful suggestion for what they might want to do next
+        Args:
+            ai_result_message: AI's analysis of the user's intent
+            message: User's original message
+            conversation_context: Previous conversation history
+        """
+        # Format conversation context for inclusion in the prompt
+        context_text = ""
+        # if conversation_context:
+        #     try:
+        #         # Extract relevant previous tasks or interactions
+        #         recent_interactions = []
+        #         for item in conversation_context.get('messages', [])[-3:]:  # Get last 3 messages
+        #             if item.get('role') and item.get('content'):
+        #                 recent_interactions.append(f"{item['role']}: {item['content']}")
+                
+        #         if recent_interactions:
+        #             context_text = "Recent conversation:\n" + "\n".join(recent_interactions)
+        #     except Exception as e:
+        #         context_text = "Note: Error processing conversation context."
+                # {context_text}
+
+        
+        system_prompt = f"""
+        You are a task management assistant. The user is asking to create or add a new task.
+        
+        User's message: "{message}"
+        
+        Intent analysis: {ai_result_message}
+                
+        Help them create a well-defined task entry by following these guidelines:
+        
+        1. Extract the task title and description from their request
+        - Title should be clear and concise (e.g., "Update Webxro Landing Page")
+        - Description should provide context about what needs to be done
+        
+        2. Identify specific task parameters:
+        - Due date/time: Extract explicit or implied deadlines
+        - Priority level: Detect urgency indicators ("urgent" = High priority)
+        - Task status: Usually "Pending" for new tasks
+        - Reminders: Any reminder requests
+        
+        3. Use conversation context to resolve ambiguities:
+        - References to previous tasks
+        - Incomplete information that might be in previous messages
+        - Recurring task patterns from history
+        
+        Please format your response as a JSON object with the following structure:
+        {{
+            "response": {{
+                "action": "create_task",
+                "data": {{
+                    "title": "Task title", // Required - the name of the task
+                    "description": "Detailed description", // Optional - more details about the task
+                    "due_date": "2023-10-01T14:30:00", // Optional - ISO format with date and time
+                    "priority": "High", // Optional - one of: "High", "Medium", "Low"
+                    "status": "Pending", // Optional - one of: "Pending", "In Progress", "Completed"
+                    "reminder": "2023-09-30T10:00:00" // Optional - when to send a reminder
+                }},
+                "message": "Human-friendly message confirming task creation"
+            }},
+            "context_updates": {{}} // Optional context updates
+        }}
         """
         return system_prompt
-
+    
     def get_update_tasks_system_prompt(self) -> str:
         """
         Get system prompt for updating tasks
