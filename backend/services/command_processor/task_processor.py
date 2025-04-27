@@ -302,8 +302,8 @@ class TaskProcessor(BaseCommandProcessor):
         if data.get('filter'):
             tasks = self._apply_filters(tasks, data['filter'])
             
-        if data.get('include_reminders'):
-            tasks = await self._include_reminders(tasks)
+        # if data.get('include_reminders'):
+        #     tasks = await self._include_reminders(tasks)
             
         return self._success_response('list_tasks', tasks, f"Found {len(tasks)} tasks")
 
@@ -516,10 +516,12 @@ class TaskProcessor(BaseCommandProcessor):
                     'message': 'AI result is not successful'
                 }
             
+            # Message in subdomain
+            message = ai_result.get('message')
             # Get the appropriate system prompt based on subdomain
             subdomain = ai_result.get('subdomain')
             if subdomain == 'list_tasks':
-                system_prompt = self.get_list_tasks_system_prompt()
+                system_prompt = self.get_list_tasks_system_prompt(message)
             elif subdomain == 'create_tasks':
                 system_prompt = self.get_create_tasks_system_prompt()
             elif subdomain == 'update_tasks':
@@ -578,18 +580,22 @@ class TaskProcessor(BaseCommandProcessor):
         except Exception as e:
             return {"success": False, "message": f"Error processing AI result: {str(e)}"}
         
-    def get_list_tasks_system_prompt(self) -> str:
+    def get_list_tasks_system_prompt(self, message: str) -> str:
         """
-        Get system prompt for listing tasks
+        Get system prompt for listing tasks with user message context
         """
-        system_prompt = """
+        system_prompt = f"""
         You are a task management assistant. The user is asking to list or view their tasks.
         Help retrieve and display their tasks in an organized manner.
         Consider the following:
-        1. Determine if they want to view all tasks or filter by criteria (date, priority, completion status)
-        2. Format the tasks in a clear, readable way
-        3. If they're asking for a count or summary, provide that information
-        4. If they ask about specific tasks or categories, focus on those
+        1. Determine if they want to view all tasks or filter by criteria (date, priority, completion status) based on their message
+        2. If they mention specific filters, apply those to the task list
+        3. Format the tasks in a clear, readable way
+        4. If they're asking for a count or summary, provide that information
+        5. If they ask about specific tasks or categories, focus on those
+        6. If they ask for a specific date, check if it's in the future or past and respond accordingly
+        
+        User's message: "{message}"
         
         In your response, include:
         - A brief acknowledgment of their request
@@ -597,23 +603,24 @@ class TaskProcessor(BaseCommandProcessor):
         - A helpful action they might want to take next
 
         Please format your response as a JSON object with the following structure:
-            {
-                "response": {
-                    "action": "list_tasks"
-                    "data": {
-                        "filter": {
-                            "priority": "high", // more options: "medium", "low"
-                            "status": "completed", // more options: "pending", "in_progress"
-                            "due_date": "2023-10-01" // date format YYYY-MM-DD
-                        }
-                    }, // Task data specific to the action
-                    "message": "Human-friendly message"
-                },
-                "context_updates": {} // Optional context updates
-            }
+        {{
+            "response": {{
+                "action": "list_tasks",
+                "data": {{
+                    "filter": {{
+                        "priority": "High", // Optional - one of: "High", "Medium", "Low"
+                        "status": "Completed", // Optional - one of: "Pending", "In Progress", "Completed"
+                        "due_date": "2023-10-01", // Optional - date format YYYY-MM-DD
+                        "has_reminder": true // Optional - boolean
+                    }},
+                    "include_reminders": true // Optional - boolean
+                }},
+                "message": "Human-friendly message"
+            }},
+            "context_updates": {{}} // Optional context updates
+        }}
         """
         return system_prompt
-
     def get_create_tasks_system_prompt(self) -> str:
         """
         Get system prompt for creating tasks
