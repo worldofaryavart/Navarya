@@ -100,33 +100,33 @@ class TaskProcessor(BaseCommandProcessor):
         )
 
         prompt = f"""
-    You are a Task Subdomain Detector. Your job is to analyze the user's request and determine which task subdomain it belongs to:
-    - create_tasks
-    - list_tasks
-    - update_tasks
-    - delete_tasks
+        You are a Task Subdomain Detector. Your job is to analyze the user's request and determine which task subdomain it belongs to:
+        - create_tasks
+        - list_tasks
+        - update_tasks
+        - delete_tasks
 
-    Return your result as a JSON object with the following schema:
-    {{
-        "success": <true|false>,          # Whether detection was successful
-        "subdomain": <string|null>,      # One of the four subdomains or null if unknown
-        "confidence": <float>,           # Confidence score between 0.0 and 1.0
-        "message": <string>              # Human-readable explanation
-    }}
+        Return your result as a JSON object with the following schema:
+        {{
+            "success": <true|false>,          # Whether detection was successful
+            "subdomain": <string|null>,      # One of the four subdomains or null if unknown
+            "confidence": <float>,           # Confidence score between 0.0 and 1.0
+            "message": <string>              # Human-readable explanation
+        }}
 
-    Current Date: {current_date}
+        Current Date: {current_date}
 
-    Conversation Context:
-    {context_json}
+        Conversation Context:
+        {context_json}
 
-    User Message:
-    """ + message + """
+        User Message:
+        """ + message + """
 
-    # Guidelines:
-    # - Use the context above to interpret references and maintain continuity.
-    # - If the intent is unclear, respond with success=false and subdomain=null.
-    # - Do not include any extra keys in the output.
-    """
+        # Guidelines:
+        # - Use the context above to interpret references and maintain continuity.
+        # - If the intent is unclear, respond with success=false and subdomain=null.
+        # - Do not include any extra keys in the output.
+        """
         return prompt
 
     async def process_message(self, intent: Dict[str, Any], message: str, conversation_context: Optional[Dict[str, Any]] = None, user_token: str = "") -> Dict[str, Any]:
@@ -522,7 +522,7 @@ class TaskProcessor(BaseCommandProcessor):
             elif subdomain == 'create_tasks':
                 system_prompt = self.get_create_tasks_system_prompt(ai_result_message, message, conversation_context)
             elif subdomain == 'update_tasks':
-                system_prompt = self.get_update_tasks_system_prompt()
+                system_prompt = self.get_update_tasks_system_prompt(ai_result_message, message, conversation_context)
             elif subdomain == 'delete_tasks':
                 system_prompt = self.get_delete_tasks_system_prompt()
             else:
@@ -693,24 +693,75 @@ class TaskProcessor(BaseCommandProcessor):
         """
         return system_prompt
     
-    def get_update_tasks_system_prompt(self) -> str:
+    def get_update_tasks_system_prompt(self, ai_result_message: str, message: str, conversation_context: Dict[str, Any] = None) -> str:
         """
-        Get system prompt for updating tasks
+        Get system prompt for updating tasks with additional context
         """
-        system_prompt = """
-        You are a task management assistant. The user is asking to update or modify an existing task.
-        Help them make changes to their task effectively.
-        Consider the following:
-        1. Identify which task they want to update (by title, ID, or description)
-        2. Determine what aspects they want to change (deadline, priority, description, status)
-        3. Format the updated task information clearly
-        4. Check if confirmation is needed before updating
+        # Format conversation context for inclusion in the prompt
+        # context_text = ""
+        # if conversation_context:
+        #     try:
+        #         # Extract relevant previous tasks or interactions
+        #         recent_interactions = []
+        #         for item in conversation_context.get('messages', [])[-3:]:  # Get last 3 messages
+        #             if item.get('role') and item.get('content'):
+        #                 recent_interactions.append(f"{item['role']}: {item['content']}")
+                
+        #         if recent_interactions:
+        #             context_text = "Recent conversation:\n" + "\n".join(recent_interactions)
+        #     except Exception as e:
+        #         context_text = "Note: Error processing conversation context."
+        # {context_text}
         
-        In your response, include:
-        - Acknowledgment of which task is being updated
-        - The specific changes being made
-        - Confirmation of the update
-        - A helpful suggestion for what they might want to do next
+        system_prompt = f"""
+        You are a task management assistant. The user is asking to update or modify an existing task.
+        
+        User's message: "{message}"
+        
+        Intent analysis: {ai_result_message}
+        
+        Help them make changes to their task effectively by following these guidelines:
+        
+        1. Identify which task they want to update
+        - Look for task titles, descriptions, or other identifying information
+        - Use conversation context to resolve ambiguous references
+        
+        2. Determine what specific updates they want to make:
+        - Due date changes (e.g., "extend deadline to Friday")
+        - Priority changes (e.g., "make it high priority")
+        - Status changes (e.g., "mark as in progress")
+        - Description/title changes (e.g., "rename to...")
+        - Reminder changes (e.g., "remind me tomorrow morning")
+        
+        3. Make sure you have enough information to identify the specific task
+        - If multiple tasks might match, ask for clarification
+        
+        Please format your response as a JSON object with the following structure:
+        {{
+            "response": {{
+                "action": "update_task",
+                "data": {{
+                    "description": "Task identifier or description", // Required - to identify which task to update
+                    "updates": {{
+                        "title": "Updated task title", // Optional - only if title is being changed
+                        "description": "Updated description", // Optional - only if description is being changed
+                        "due_date": "2023-10-01T14:30:00", // Optional - only if due date is being changed
+                        "priority": "High", // Optional - only if priority is being changed
+                        "status": "In Progress", // Optional - only if status is being changed
+                        "reminder": "2023-09-30T10:00:00" // Optional - only if reminder is being changed
+                    }}
+                }},
+                "message": "Human-friendly message confirming the update"
+            }},
+            "context_updates": {{}} // Optional context updates
+        }}
+        
+        Notes:
+        - In the "data" object, the "description" field is used to identify which task to update
+        - Only include fields in "updates" that the user wants to change
+        - Dates should be in ISO format or clearly specified (e.g., "tomorrow at 2pm")
+        - Valid priority values are: "High", "Medium", "Low"
+        - Valid status values are: "Pending", "In Progress", "Completed"
         """
         return system_prompt
 

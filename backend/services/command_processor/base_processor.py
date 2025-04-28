@@ -67,6 +67,7 @@ class BaseCommandProcessor(ABC):
 
             ai_payload = response.json()
             choice = ai_payload.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+            print("choice", choice)
             if not choice:
                 return {"success": False, "message": "Empty response from AI"}
             # Process and return final result
