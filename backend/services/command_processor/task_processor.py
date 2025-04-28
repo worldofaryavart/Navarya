@@ -524,7 +524,7 @@ class TaskProcessor(BaseCommandProcessor):
             elif subdomain == 'update_tasks':
                 system_prompt = self.get_update_tasks_system_prompt(ai_result_message, message, conversation_context)
             elif subdomain == 'delete_tasks':
-                system_prompt = self.get_delete_tasks_system_prompt()
+                system_prompt = self.get_delete_tasks_system_prompt(ai_result_message, message, conversation_context)
             else:
                 return {
                     'success': False,
@@ -765,24 +765,68 @@ class TaskProcessor(BaseCommandProcessor):
         """
         return system_prompt
 
-    def get_delete_tasks_system_prompt(self) -> str:
+    def get_delete_tasks_system_prompt(self, ai_result_message: str, message: str, conversation_context: Dict[str, Any] = None) -> str:
         """
-        Get system prompt for deleting tasks
-        """
-        system_prompt = """
-        You are a task management assistant. The user is asking to delete or remove a task.
-        Help them safely remove the task they specify.
-        Consider the following:
-        1. Identify which task they want to delete (by title, ID, or description)
-        2. Confirm if this is a permanent deletion or if it should be archived
-        3. Check if confirmation is needed before deleting
-        4. Prepare for potential undo/restore requests
+        Get system prompt for deleting tasks with additional context
         
-        In your response, include:
-        - Clear identification of which task will be deleted
-        - Confirmation that the task has been deleted
-        - Information about how to restore the task if needed
-        - A helpful suggestion for what they might want to do next
+        Args:
+            ai_result_message: AI's analysis of the user's intent
+            message: User's original message
+            conversation_context: Previous conversation history
+        """
+        # Format conversation context for inclusion in the prompt
+        # context_text = ""
+        # if conversation_context:
+        #     try:
+        #         # Extract relevant previous tasks or interactions
+        #         recent_interactions = []
+        #         for item in conversation_context.get('messages', [])[-3:]:  # Get last 3 messages
+        #             if item.get('role') and item.get('content'):
+        #                 recent_interactions.append(f"{item['role']}: {item['content']}")
+                
+        #         if recent_interactions:
+        #             context_text = "Recent conversation:\n" + "\n".join(recent_interactions)
+        #     except Exception as e:
+        #         context_text = "Note: Error processing conversation context."
+                # {context_text}
+        
+        system_prompt = f"""
+        You are a task management assistant. The user is asking to delete or remove a task.
+        
+        User's message: "{message}"
+        
+        Intent analysis: {ai_result_message}
+                
+        Help them safely remove the task they specify by following these guidelines:
+        
+        1. Task Identification:
+        - Precisely identify which task they want to delete (by title or description)
+        - Look for specific task name mentions in their message
+        - Use conversation context to resolve ambiguous references
+        
+        2. Safety Considerations:
+        - Ensure that we have enough information to identify the correct task
+        - Consider whether confirmation might be needed before deletion
+        - Be cautious with requests that could delete multiple tasks
+        
+        3. Response Preparation:
+        - Clearly indicate which task will be deleted
+        - Include relevant task details in your response for confirmation
+        - Provide information about the deletion process
+        
+        Please format your response as a JSON object with the following structure:
+        {{
+            "response": {{
+                "action": "delete_task",
+                "data": {{
+                    "description": "Task title or description to identify the task to delete" // Required - used to find the task
+                }},
+                "message": "Human-friendly message confirming task deletion"
+            }},
+            "context_updates": {{}} // Optional context updates
+        }}
+        
+        Important: The "description" field should contain enough information to uniquely identify the task to be deleted.
         """
         return system_prompt
 
