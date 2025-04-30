@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-export default function Home() {  
+export default function Home() {
   const router = useRouter();
-  
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
       {/* Navigation */}
@@ -15,17 +15,32 @@ export default function Home() {
             NavArya
           </div>
           <div className="hidden md:flex space-x-8 items-center">
-            <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
-            <a href="/about" className="text-gray-300 hover:text-white transition-colors">About</a>
-            <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
-            <button 
-              onClick={() => router.push('/signup')}
+            <a
+              href="#features"
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              Features
+            </a>
+            <a
+              href="/about"
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              About
+            </a>
+            <a
+              href="#pricing"
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              Pricing
+            </a>
+            <button
+              onClick={() => router.push("/signup")}
               className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all"
             >
               Sign Up
             </button>
-            <button 
-              onClick={() => router.push('/login')}
+            <button
+              onClick={() => router.push("/login")}
               className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all"
             >
               Login
@@ -39,42 +54,64 @@ export default function Home() {
         <div className="container mx-auto px-6 pt-32 pb-20">
           <div className="max-w-5xl mx-auto text-center relative z-10">
             <div className="inline-block mb-4 px-4 py-1 rounded-full bg-white/5 border border-white/10 text-sm">
-              Powered by Advanced AI Technology
+              Powered by AI
             </div>
             <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight">
-              Transform Your Business with{' '}
+              Work Smarter with{" "}
               <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                Intelligent AI
+                General AI Agent
               </span>
             </h1>
             <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-              NavArya brings enterprise-grade AI assistance to streamline your operations 
-              and boost productivity like never before
+              Boost productivity. Automate tasks.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button 
-                onClick={() => router.push('/login')}
+              <button
+                onClick={() => router.push("/login")}
                 className="group px-8 py-4 rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-90 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
                 <span className="relative z-10">Start Free Trial</span>
-                <svg className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                <svg
+                  className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
                 </svg>
               </button>
-              <button 
-                className="px-8 py-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-sm transition-all flex items-center justify-center gap-2"
-              >
+              <button className="px-8 py-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-sm transition-all flex items-center justify-center gap-2">
                 <span>Watch Demo</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </button>
             </div>
           </div>
         </div>
-        
+
         {/* Background Effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-indigo-500/20 rounded-full blur-[120px]"></div>
@@ -88,15 +125,31 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <p className="text-sm text-gray-400">
-                NavArya by <a href="https://webxro.com" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300">Webxro</a>
+                NavArya by{" "}
+                <a
+                  href="https://webxro.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-400 hover:text-purple-300"
+                >
+                  Webxro
+                </a>
               </p>
             </div>
             <div className="flex flex-col md:flex-row items-center gap-4">
-              <a href="https://webxro.com" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-400 hover:text-white transition-colors">
+              <a
+                href="https://webxro.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
                 Visit webxro.com
               </a>
               <span className="hidden md:inline text-gray-600">•</span>
-              <a href="mailto:contact@webxro.com" className="text-sm text-gray-400 hover:text-white transition-colors">
+              <a
+                href="mailto:contact@webxro.com"
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
                 contact@webxro.com
               </a>
             </div>
@@ -104,5 +157,5 @@ export default function Home() {
         </div>
       </footer>
     </div>
-  )
+  );
 }
