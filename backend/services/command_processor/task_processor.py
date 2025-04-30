@@ -105,6 +105,7 @@ class TaskProcessor(BaseCommandProcessor):
         - list_tasks
         - update_tasks
         - delete_tasks
+        - batch_operations
 
         Return your result as a JSON object with the following schema:
         {{
@@ -525,6 +526,8 @@ class TaskProcessor(BaseCommandProcessor):
                 system_prompt = self.get_update_tasks_system_prompt(ai_result_message, message, conversation_context)
             elif subdomain == 'delete_tasks':
                 system_prompt = self.get_delete_tasks_system_prompt(ai_result_message, message, conversation_context)
+            elif subdomain == 'batch_operations':
+                system_prompt = self.get_batch_operations_system_prompt(ai_result_message, message, conversation_context)
             else:
                 return {
                     'success': False,
@@ -829,7 +832,99 @@ class TaskProcessor(BaseCommandProcessor):
         Important: The "description" field should contain enough information to uniquely identify the task to be deleted.
         """
         return system_prompt
-
+    
+    def get_batch_operations_system_prompt(self, message: str, ai_result_message: str = None, conversation_context: Dict[str, Any] = None) -> str:
+        """
+        Get system prompt for batch operations with additional context
+        
+        Args:
+            message: User's original message
+            ai_result_message: AI's analysis of the user's intent (optional)
+            conversation_context: Previous conversation history (optional)
+        """
+        # context_text = ""
+        # if conversation_context:
+        #     try:
+        #         # Extract relevant previous tasks or interactions
+        #         recent_interactions = []
+        #         for item in conversation_context.get('messages', [])[-3:]:  # Get last 3 messages
+        #             if item.get('role') and item.get('content'):
+        #                 recent_interactions.append(f"{item['role']}: {item['content']}")
+                
+        #         if recent_interactions:
+        #             context_text = "Recent conversation:\n" + "\n".join(recent_interactions)
+        #     except Exception:
+        #         context_text = "Note: Error processing conversation context."
+        
+        intent_text = f"Intent analysis: {ai_result_message}" if ai_result_message else ""
+        
+        system_prompt = f"""
+        You are a task management assistant. The user is asking to perform multiple task operations at once.
+        
+        User's message: "{message}"
+        
+        {intent_text}
+                        
+        Help them execute multiple task operations in one batch by following these guidelines:
+        
+        1. Operation Identification:
+        - Identify all the different operations the user wants to perform (create, update, delete, list)
+        - For each operation, extract the necessary details
+        
+        2. Batch Processing:
+        - Group similar operations together
+        - Process each operation in sequence
+        - Ensure all operations have the required information
+        
+        3. Response Structure:
+        - Provide a summary of all operations to be performed
+        - Include details for each operation in your response
+        - Group results by operation type for clarity
+        
+        Please format your response as a JSON object with the following structure:
+        {{
+            "response": {{
+                "action": "batch_operations",
+                "data": {{
+                    "operations": [
+                        {{
+                            "type": "create_task",  // One of: create_task, update_task, delete_task, list_task
+                            "data": {{
+                                // For create_task:
+                                "title": "Task title",
+                                "description": "Task description",
+                                "due_date": "2023-10-01T14:30:00",
+                                "priority": "High",
+                                "status": "Pending",
+                                "reminder": "2023-09-30T10:00:00"
+                                // OR for update_task:
+                                // "description": "Task to update",
+                                // "updates": {{ "priority": "High", "status": "Completed" }}
+                                // OR for delete_task:
+                                // "description": "Task to delete"
+                                // OR for list_task:
+                                // "filter": {{
+                                    "priority": "High", // Optional - one of: "High", "Medium", "Low"
+                                    "status": "Completed", // Optional - one of: "Pending", "In Progress", "Completed"
+                                    "due_date": "2023-10-01", // Optional - date format YYYY-MM-DD
+                                    "has_reminder": true // Optional - boolean
+                                }},
+                            }}
+                        }},
+                    ]
+                }},
+                "message": "Human-friendly message summarizing the batch operations"
+            }},
+            "context_updates": {{}} // Optional context updates
+        }}
+        
+        Important:
+        - Each operation in the batch must include all required fields for that operation type
+        - The "operations" array should contain all operations to be performed
+        - Provide clear, user-friendly messaging about what will be done
+        """
+        return system_prompt
+    
     async def process_ai_response(self, ai_response: Dict[str, Any], user_token: str) -> Dict[str, Any]:
         """Process the AI's response for task-related operations"""
         try:
