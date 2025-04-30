@@ -437,6 +437,8 @@ class TaskProcessor(BaseCommandProcessor):
                     result = await self._update_task(op['data'], user_token)
                 elif op['type'] == 'delete_task':
                     result = await self._delete_task(op['data'], user_token)
+                elif op['type'] == 'list_task':
+                    result = await self._list_tasks(op['data'], user_token)
                 else:
                     result = self._error_response(f"Unknown operation type: {op['type']}", "invalid_operation")
                     
@@ -910,6 +912,7 @@ class TaskProcessor(BaseCommandProcessor):
                                     "has_reminder": true // Optional - boolean
                                 }},
                             }}
+                            // Additional operations...
                         }},
                     ]
                 }},
