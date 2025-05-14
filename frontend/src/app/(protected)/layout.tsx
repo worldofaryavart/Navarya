@@ -1,16 +1,17 @@
-'use client';
+"use client";
 
-import {useSidebar } from '@/context/SidebarContext';
-import Sidebar from '@/components/commonComp/Sidebar';
-import Header from '@/components/commonComp/Header';
+import { useSidebar } from "@/context/SidebarContext";
+import Sidebar from "@/components/commonComp/Sidebar";
+import Header from "@/components/commonComp/Header";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { auth } from "@/utils/config/firebase.config";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/commonComp/Loader";
-import AIControlButton from '@/components/AIController/AIControlButton';
-import { useLayout } from '@/context/LayoutContext';
-import { TaskProvider } from '@/context/TaskContext';
+import AIControlButton from "@/components/AIController/AIControlButton";
+import { useLayout } from "@/context/LayoutContext";
+import { TaskProvider } from "@/context/TaskContext";
+import { AppProviders } from "@/components/AppProvider";
 
 export default function ProtectedLayout({
   children,
@@ -39,24 +40,22 @@ export default function ProtectedLayout({
   }
 
   return (
-      <TaskProvider>
-        <div className="flex min-h-screen">
+    <AppProviders>
+      <div className="flex min-h-screen">
         <Header />
-          <Sidebar />
-          <div
-            className={`
+        <Sidebar />
+        <div
+          className={`
               flex-1 flex flex-col min-h-screen
               transition-all duration-300
-              ${isSidebarOpen ? 'pl-16' : ''}
-              ${isAISidebarOpen ? 'pr-96' : ''}
+              ${isSidebarOpen ? "pl-16" : ""}
+              ${isAISidebarOpen ? "pr-96" : ""}
             `}
-          >
-            <main className="flex-1">
-              {children}
-            </main>
-            <AIControlButton />
-          </div>
+        >
+          <main className="flex-1">{children}</main>
+          <AIControlButton />
         </div>
-      </TaskProvider>
+      </div>
+    </AppProviders>
   );
 }
