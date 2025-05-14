@@ -1,7 +1,7 @@
 import React from 'react';
 import { Task, FirestoreTimestamp } from '@/types/taskTypes';
 import { useUIStore } from '@/store/uiStateStore';
-import { formatDateToDisplay, parseDateFromDisplay } from '@/utils/dateUtils';
+import { formatDateToDisplay } from '@/utils/dateUtils';
 
 interface TasksSectionProps {
   tasks: Task[];
@@ -19,18 +19,24 @@ const TasksSection: React.FC<TasksSectionProps> = ({ tasks }) => {
       return value;
     }
     
-    // If it's a Firestore timestamp object
-    if (typeof value === 'object' && 'seconds' in value) {
+    // Fixed check for Firestore timestamp objects
+    if (typeof value === 'object' && value !== null && 'seconds' in value && value.seconds !== undefined) {
       return new Date(value.seconds * 1000);
     }
     
-    // If it's a formatted display string
-    if (typeof value === 'string' && value.includes('UTC')) {
-      return parseDateFromDisplay(value);
+    // If it's a string in the format you provided: "2025-01-07T00:00:00+00:00"
+    if (typeof value === 'string') {
+      try {
+        // This will handle ISO strings and your specific format
+        return new Date(value);
+      } catch (error) {
+        console.error("Error parsing date:", error);
+        return new Date(); // Fallback to current date on error
+      }
     }
     
-    // If it's an ISO string or any other date string
-    return new Date(value);
+    // Fallback for any other case
+    return new Date();
   };
 
   // Helper function to check if two dates are the same day
@@ -55,10 +61,19 @@ const TasksSection: React.FC<TasksSectionProps> = ({ tasks }) => {
     const priorityOrder = { High: 1, Medium: 2, Low: 3 };
     return tasks
       .filter((task) => {
-        const taskDate = convertToDate(task.dueDate);
-        return isToday(taskDate);
+        try {
+          const taskDate = task.dueDate ? convertToDate(task.dueDate) : null;
+          return isToday(taskDate);
+        } catch (error) {
+          console.error("Error processing task:", task, error);
+          return false;
+        }
       })
-      .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+      .sort((a, b) => {
+        const priorityA = a.priority || "Low";
+        const priorityB = b.priority || "Low";
+        return priorityOrder[priorityA] - priorityOrder[priorityB];
+      });
   };
 
   // Get tasks for a specific date and sort by priority
@@ -68,21 +83,40 @@ const TasksSection: React.FC<TasksSectionProps> = ({ tasks }) => {
     const priorityOrder = { High: 1, Medium: 2, Low: 3 };
     return tasks
       .filter((task) => {
-        const taskDate = convertToDate(task.dueDate);
-        return taskDate && isSameDay(taskDate, date);
+        try {
+          const taskDate = task.dueDate ? convertToDate(task.dueDate) : null;
+          return taskDate && isSameDay(taskDate, date);
+        } catch (error) {
+          console.error("Error processing task:", task, error);
+          return false;
+        }
       })
-      .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+      .sort((a, b) => {
+        const priorityA = a.priority || "Low";
+        const priorityB = b.priority || "Low";
+        return priorityOrder[priorityA] - priorityOrder[priorityB];
+      });
   };
 
   // Get the tasks to display based on selected date
   const getDisplayTasks = () => {
-    const compareDate = selectedDate ? convertToDate(selectedDate) : new Date();
-    return isToday(compareDate) ? getTodaysTasks() : getTasksForDate(compareDate);
+    try {
+      const compareDate = selectedDate ? convertToDate(selectedDate) : new Date();
+      return isToday(compareDate) ? getTodaysTasks() : getTasksForDate(compareDate);
+    } catch (error) {
+      console.error("Error getting display tasks:", error);
+      return [];
+    }
   };
 
   // Get the display date
   const getDisplayDate = (): Date => {
-    return selectedDate ? convertToDate(selectedDate) : new Date();
+    try {
+      return selectedDate ? convertToDate(selectedDate) : new Date();
+    } catch (error) {
+      console.error("Error getting display date:", error);
+      return new Date();
+    }
   };
 
   const displayTasks = getDisplayTasks();
