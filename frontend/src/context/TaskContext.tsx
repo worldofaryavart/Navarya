@@ -52,21 +52,21 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, [user]);
 
-  useEffect(() => {
-    // Only run if user is available and auth is finished loading
-    if (!authLoading && user) {
-      // Fetch immediately on mount
-      fetchTasks();
+  // useEffect(() => {
+  //   // Only run if user is available and auth is finished loading
+  //   if (!authLoading && user) {
+  //     // Fetch immediately on mount
+  //     fetchTasks();
 
-      // Set up an interval to fetch tasks every 2 minutes
-      const interval = setInterval(() => {
-        fetchTasks();
-      }, FETCH_COOLDOWN);
+  //     // Set up an interval to fetch tasks every 2 minutes
+  //     const interval = setInterval(() => {
+  //       fetchTasks();
+  //     }, FETCH_COOLDOWN);
 
-      // Cleanup on unmount
-      return () => clearInterval(interval);
-    }
-  }, [authLoading, user, fetchTasks]);
+  //     // Cleanup on unmount
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [authLoading, user, fetchTasks]);
 
   const value = {
     tasks,
