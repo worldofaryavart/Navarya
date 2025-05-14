@@ -967,6 +967,7 @@ class TaskProcessor(BaseCommandProcessor):
             # Return the successful result with additional context
             return {
                 'success': True,
+                'domain': 'task',
                 'action': action,
                 'data': handler_result.get('data', data),
                 'message': handler_result.get('message', message),

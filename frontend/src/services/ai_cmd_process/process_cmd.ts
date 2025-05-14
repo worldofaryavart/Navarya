@@ -52,6 +52,8 @@ export class AICommandHandler {
 
             const result = await aiResponse.json();
 
+            console.log("result of ai response is : ", result )
+
             if (!aiResponse.ok) {
                 console.error("API Error:", result);
                 return {
