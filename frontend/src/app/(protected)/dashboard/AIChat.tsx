@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AICommandHandler } from "@/services/ai_cmd_process/process_cmd";
 import { auth } from "@/utils/config/firebase.config";
+import FileModal from "./FileModal";
 
 interface Message {
   role: "user" | "assistant";
@@ -25,6 +26,7 @@ const AIAssistantPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -342,6 +344,11 @@ const AIAssistantPage: React.FC = () => {
     );
   };
 
+  const handleFileModalOpen = () => {
+    console.log("file modal is clicked");
+    setIsFileModalOpen(true);
+  };
+
   // Get current user from Firebase auth
   const user = auth.currentUser;
   if (!user) {
@@ -427,6 +434,7 @@ const AIAssistantPage: React.FC = () => {
             <button
               className="flex-shrink-0 p-3 text-gray-400 hover:text-gray-300 transition-colors ml-1"
               disabled={isProcessing}
+              onClick={handleFileModalOpen}
               type="button"
             >
               <svg
@@ -462,7 +470,7 @@ const AIAssistantPage: React.FC = () => {
                   e.currentTarget.style.height = "inherit";
                 }
               }}
-              placeholder="Ask Gemini"
+              placeholder="Ask Navarya"
               className="flex-1 bg-transparent text-white p-3 focus:outline-none resize-none overflow-y-auto min-h-[48px] placeholder-gray-500"
               rows={1}
               style={{ maxHeight: "120px" }}
@@ -534,6 +542,15 @@ const AIAssistantPage: React.FC = () => {
       <div className="gemini-disclaimer">
         AI Assistant can make mistakes, so double-check it
       </div>
+
+      {/* File Modal */}
+      {isFileModalOpen && 
+      <FileModal
+        isOpen={isFileModalOpen}
+        onClose={() => setIsFileModalOpen(false)}
+
+      
+      />}
     </div>
   );
 };
