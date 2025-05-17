@@ -68,29 +68,6 @@ export class AICommandHandler {
             const result = await aiResponse.json();
             console.log("result of ai response is : ", result);
 
-            // Handle task-related commands
-            if (result.domain === 'task') {
-                console.log("Task command detected");
-                
-                // First, redirect to the tasks page if we're not already there
-                this.router.push('/tasks');
-                
-                // Then fetch the latest tasks and update the context
-                if (this.fetchTasks) {
-                    await this.fetchTasks();
-                } else {
-                    // Fallback if fetchTasks isn't provided
-                    try {
-                        const fetchedTasks = await getTasks();
-                        if (this.setTasks) {
-                            this.setTasks(fetchedTasks);
-                        }
-                    } catch (error) {
-                        console.error("Failed to fetch tasks after command:", error);
-                    }
-                }
-            }
-
             if (!aiResponse.ok) {
                 console.error("API Error:", result);
                 return {

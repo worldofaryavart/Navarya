@@ -53,7 +53,7 @@ export default function ProtectedLayout({
             `}
         >
           <main className="flex-1">{children}</main>
-          <AIControlButton />
+          {/* <AIControlButton /> */}
         </div>
       </div>
     </AppProviders>
