@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   X,
@@ -7,13 +9,13 @@ import {
   HelpCircle,
   List,
   CheckCircle,
-  FilePlus,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { AICommandHandler } from "@/services/ai_cmd_process/process_cmd";
 import { auth } from "@/utils/config/firebase.config";
 import FileModal from "./FileModal";
+import { getConversationHistory } from "@/services/conversation_service/conversation";
 
 interface Message {
   role: "user" | "assistant";
@@ -21,15 +23,57 @@ interface Message {
   timestamp: Date;
 }
 
-const AIAssistantPage: React.FC = () => {
+const AIChat: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const params = useParams();
+
+  // Load conversation history if conversationId is provided
+  useEffect(() => {
+    const loadConversation = async () => {
+      // Check if we have a conversation ID in the URL params
+      const chatId = params?.id?.toString();
+      
+      if (chatId && chatId !== "new") {
+        setIsLoadingConversation(true);
+        setConversationId(chatId);
+        
+        try {
+          const history = await getConversationHistory(chatId);
+          if (history && history.messages && history.messages.length > 0) {
+            // Convert the history messages to our Message format
+            const formattedMessages = history.messages.map(msg => ({
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+              timestamp: new Date(msg.timestamp)
+            }));
+            
+            setMessages(formattedMessages);
+          }
+        } catch (error) {
+          console.error("Error loading conversation history:", error);
+          // Add an error message to the chat
+          setMessages([{
+            role: "assistant",
+            content: "Sorry, there was an error loading this conversation.",
+            timestamp: new Date()
+          }]);
+        } finally {
+          setIsLoadingConversation(false);
+        }
+      }
+    };
+
+    loadConversation();
+  }, [params]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,8 +92,25 @@ const AIAssistantPage: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const result = await AICommandHandler.processCommand(userMessage, router);
+      // Pass the conversationId to the AICommandHandler if we have one
+      const result = await AICommandHandler.processCommand(
+        userMessage, 
+        router, 
+        conversationId
+      );
+      
       if (result.success) {
+        // If this is a new conversation and we get back a conversationId, save it
+        if (!conversationId && result.conversationId) {
+          setConversationId(result.conversationId);
+          // Update the URL to include the conversation ID without refreshing
+          window.history.replaceState(
+            null, 
+            '', 
+            `/chat/${result.conversationId}`
+          );
+        }
+        
         const aiMessage: Message = {
           role: "assistant",
           content: result.message,
@@ -360,10 +421,17 @@ const AIAssistantPage: React.FC = () => {
   const userName = user.displayName || user.email?.split("@")[0] || "User";
 
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)] bg-gray-900 text-white w-full">
+    <div className="flex flex-col h-screen bg-gray-900 text-white w-full">
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-        {messages.length === 0 ? (
+        {isLoadingConversation ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center space-y-3">
+              <Loader2 size={32} className="animate-spin text-purple-500" />
+              <p className="text-gray-400">Loading conversation...</p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="bg-gray-800/30 p-6 rounded-xl shadow-lg max-w-md mx-auto">
               <h2 className="text-2xl font-semibold mb-2 text-white">
@@ -433,7 +501,7 @@ const AIAssistantPage: React.FC = () => {
           <div className="flex items-center w-full bg-gray-800 rounded-full border border-gray-700 pr-3">
             <button
               className="flex-shrink-0 p-3 text-gray-400 hover:text-gray-300 transition-colors ml-1"
-              disabled={isProcessing}
+              disabled={isProcessing || isLoadingConversation}
               onClick={handleFileModalOpen}
               type="button"
             >
@@ -474,14 +542,14 @@ const AIAssistantPage: React.FC = () => {
               className="flex-1 bg-transparent text-white p-3 focus:outline-none resize-none overflow-y-auto min-h-[48px] placeholder-gray-500"
               rows={1}
               style={{ maxHeight: "120px" }}
-              disabled={isProcessing}
+              disabled={isProcessing || isLoadingConversation}
             />
             <div className="flex items-center space-x-1 ml-1">
               {inputValue.trim() && (
                 <button
                   title="Send Message"
                   onClick={handleSubmit}
-                  disabled={!inputValue.trim() || isProcessing || isListening}
+                  disabled={!inputValue.trim() || isProcessing || isListening || isLoadingConversation}
                   className="p-2 text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   type="button"
                 >
@@ -496,7 +564,7 @@ const AIAssistantPage: React.FC = () => {
                 <button
                   title="Use Microphone"
                   onClick={handleSpeechRecognition}
-                  disabled={isProcessing || isListening}
+                  disabled={isProcessing || isListening || isLoadingConversation}
                   className={`p-2 transition-colors ${
                     isListening
                       ? "text-red-400 animate-pulse"
@@ -548,11 +616,9 @@ const AIAssistantPage: React.FC = () => {
       <FileModal
         isOpen={isFileModalOpen}
         onClose={() => setIsFileModalOpen(false)}
-
-      
       />}
     </div>
   );
 };
 
-export default AIAssistantPage;
+export default AIChat;

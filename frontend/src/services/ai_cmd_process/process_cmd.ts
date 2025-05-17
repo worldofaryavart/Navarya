@@ -3,7 +3,6 @@ import UICommandHandler from '@/utils/ai/uiCommandHandler';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/utils/config/firebase.config';
 import { Task } from '@/types/taskTypes';
-import { getTasks } from '@/services/task_services/tasks';
 
 type AppRouterInstance = ReturnType<typeof useRouter>;
 
@@ -28,26 +27,19 @@ const getAuthToken = async () => {
 
 export class AICommandHandler {
     private router: AppRouterInstance;
-    private setTasks?: React.Dispatch<React.SetStateAction<Task[]>>;
-    private fetchTasks?: () => Promise<void>;
 
     constructor(
         router: AppRouterInstance, 
-        setTasks?: React.Dispatch<React.SetStateAction<Task[]>>,
-        fetchTasks?: () => Promise<void>
     ) {
         this.router = router;
-        this.setTasks = setTasks;
-        this.fetchTasks = fetchTasks;
     }
 
     public static async processCommand(
         userMessage: Message, 
         router: AppRouterInstance,
-        setTasks?: React.Dispatch<React.SetStateAction<Task[]>>,
-        fetchTasks?: () => Promise<void>
+        conversationId: null
     ): Promise<CommandResult> {
-        const aiCommandHandler = new AICommandHandler(router, setTasks, fetchTasks);
+        const aiCommandHandler = new AICommandHandler(router);
         return aiCommandHandler.processCommandInternal(userMessage);
     }
 

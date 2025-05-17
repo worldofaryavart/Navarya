@@ -7,7 +7,7 @@ export default function SignupPage() {
   const router = useRouter();
 
   const handleSignup = () => {
-    router.push('/dashboard');
+    router.push('/chat/new');
   };
 
   return (

@@ -145,23 +145,18 @@ class ConversationHistoryService:
             # Set all existing conversations to inactive
             print("starting conversation in conversation history")
             active_conv_ref = self.db.collection('conversations')
-            print("check 1")
             query = active_conv_ref.where('userId', '==', user_id).where('active', '==', True)
-            print("check 2")
             docs = list(query.stream())
-            print("check 3")
+
             # Update all active conversations to inactive
             batch = self.db.batch()
-            print("check 4")
             for doc in docs:
                 doc_ref = active_conv_ref.document(doc.id)
                 batch.update(doc_ref, {'active': False})
-            print("check 5")
             batch.commit()
-            print("check 6")
+
             # Create new conversation with empty context
             new_conv_ref = active_conv_ref.document()
-            print("check 7")
             new_conv_ref.set({
                 'userId': user_id,
                 'createdAt': firestore.SERVER_TIMESTAMP,
@@ -171,7 +166,8 @@ class ConversationHistoryService:
             })
             print("check 8")
 
-            return True
+            return {"status": "success", "id": new_conv_ref.id, "message": "New conversation started successfully."}
+        
         except Exception as e:
             print('Error starting new conversation:', str(e))
             return False

@@ -85,7 +85,7 @@ export const getConversationHistory = async (conversationId?: string): Promise<M
   }
 };
 
-export const startNewConversation = async (): Promise<boolean> => {
+export const startNewConversation = async (): Promise<{ status: string; id?: string; message?: string }> => {
   try {
     const token = await getAuthToken();
     const response = await fetch(getApiUrl(`/api/conversations/new`), {
@@ -94,16 +94,22 @@ export const startNewConversation = async (): Promise<boolean> => {
         'Authorization': `Bearer ${token}`
       }
     });
+
     if (!response.ok) {
       throw new Error('Failed to start new conversation');
     }
 
-    return true;
-  } catch (error) {
+    // Parse response JSON
+    const data = await response.json();
+
+    // Return the response object with status and id
+    return data;
+  } catch (error: any) {
     console.error('Error starting new conversation:', error);
-    return false;
+    return { status: 'error', message: error.message || 'Unknown error' };
   }
 };
+
 
 export const getAllConversations = async (
   pageSize: number = 6,
