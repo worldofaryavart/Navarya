@@ -12,26 +12,20 @@ export default function Home() {
       <nav className="border-b border-gray-800 backdrop-blur-sm bg-black/30 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="text-2xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-            NavArya
+            Navarya
           </div>
           <div className="hidden md:flex space-x-8 items-center">
-            <a
+            {/* <a
               href="#features"
               className="text-gray-300 hover:text-white transition-colors"
             >
               Features
-            </a>
+            </a> */}
             <a
               href="/about"
               className="text-gray-300 hover:text-white transition-colors"
             >
               About
-            </a>
-            <a
-              href="#pricing"
-              className="text-gray-300 hover:text-white transition-colors"
-            >
-              Pricing
             </a>
             <button
               onClick={() => router.push("/signup")}
@@ -54,17 +48,14 @@ export default function Home() {
         <div className="container mx-auto px-6 pt-32 pb-20">
           <div className="max-w-5xl mx-auto text-center relative z-10">
             <div className="inline-block mb-4 px-4 py-1 rounded-full bg-white/5 border border-white/10 text-sm">
-              Powered by AI
+              Persistent Memory AI
             </div>
             <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight">
-              Work Smarter with{" "}
+              AI{" "}
               <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                General AI Agent
+                That Remembers Everything
               </span>
             </h1>
-            <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-              Boost productivity. Automate tasks.
-            </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => router.push("/login")}
@@ -125,14 +116,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <p className="text-sm text-gray-400">
-                NavArya by{" "}
+                Navarya by{" "}
                 <a
                   href="https://webxro.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300"
                 >
-                  Webxro
+                  aryavart.xyz
                 </a>
               </p>
             </div>
@@ -143,7 +134,7 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="text-sm text-gray-400 hover:text-white transition-colors"
               >
-                Visit webxro.com
+                Visit aryavart.xyz 
               </a>
               <span className="hidden md:inline text-gray-600">•</span>
               <a

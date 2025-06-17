@@ -15,7 +15,6 @@ import Link from "next/link";
 import { AICommandHandler } from "@/services/ai_cmd_process/process_cmd";
 import { auth } from "@/utils/config/firebase.config";
 import FileModal from "./FileModal";
-import { getConversationHistory } from "@/services/conversation_service/conversation";
 
 interface Message {
   role: "user" | "assistant";
@@ -36,44 +35,6 @@ const AIChat: React.FC = () => {
   const router = useRouter();
   const params = useParams();
 
-  // Load conversation history if conversationId is provided
-  useEffect(() => {
-    const loadConversation = async () => {
-      // Check if we have a conversation ID in the URL params
-      const chatId = params?.id?.toString();
-      
-      if (chatId && chatId !== "new") {
-        setIsLoadingConversation(true);
-        setConversationId(chatId);
-        
-        try {
-          const history = await getConversationHistory(chatId);
-          if (history && history.messages && history.messages.length > 0) {
-            // Convert the history messages to our Message format
-            const formattedMessages = history.messages.map(msg => ({
-              role: msg.role as "user" | "assistant",
-              content: msg.content,
-              timestamp: new Date(msg.timestamp)
-            }));
-            
-            setMessages(formattedMessages);
-          }
-        } catch (error) {
-          console.error("Error loading conversation history:", error);
-          // Add an error message to the chat
-          setMessages([{
-            role: "assistant",
-            content: "Sorry, there was an error loading this conversation.",
-            timestamp: new Date()
-          }]);
-        } finally {
-          setIsLoadingConversation(false);
-        }
-      }
-    };
-
-    loadConversation();
-  }, [params]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -90,52 +51,6 @@ const AIChat: React.FC = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsProcessing(true);
-
-    try {
-      // Pass the conversationId to the AICommandHandler if we have one
-      const result = await AICommandHandler.processCommand(
-        userMessage, 
-        router, 
-        conversationId
-      );
-      
-      if (result.success) {
-        // If this is a new conversation and we get back a conversationId, save it
-        if (!conversationId && result.conversationId) {
-          setConversationId(result.conversationId);
-          // Update the URL to include the conversation ID without refreshing
-          window.history.replaceState(
-            null, 
-            '', 
-            `/chat/${result.conversationId}`
-          );
-        }
-        
-        const aiMessage: Message = {
-          role: "assistant",
-          content: result.message,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-      } else {
-        const errorMessage: Message = {
-          role: "assistant",
-          content: result.message || "Sorry, I encountered an issue.",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      }
-    } catch (error) {
-      console.error("Error processing command:", error);
-      const errorMessage: Message = {
-        role: "assistant",
-        content: "Sorry, I encountered an error processing your request.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   const handleSpeechRecognition = () => {

@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { LayoutProvider } from "@/context/LayoutContext";
-import { SidebarProvider } from "@/context/SidebarContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NavArya",
-  description: "AI-powered task management and scheduling",
+  title: "Navarya",
+  description: "Persistent Memory AI",
 };
 
 export default function RootLayout({
@@ -19,13 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className}`}>
-        <div className="min-h-screen">
-          <LayoutProvider>
-            <SidebarProvider>
-              {children}
-            </SidebarProvider>
-          </LayoutProvider> 
-        </div>
+        <div className="min-h-screen">{children}</div>
       </body>
     </html>
   );

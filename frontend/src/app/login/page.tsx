@@ -12,7 +12,7 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      router.push("/chat/new");
+      router.push("/chat");
     }
   }, [user, loading, router]);
 
