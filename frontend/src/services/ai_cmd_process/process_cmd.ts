@@ -1,8 +1,6 @@
 import { getApiUrl } from '@/utils/config/api.config';
-import UICommandHandler from '@/utils/ai/uiCommandHandler';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/utils/config/firebase.config';
-import { Task } from '@/types/taskTypes';
 
 type AppRouterInstance = ReturnType<typeof useRouter>;
 
@@ -37,7 +35,6 @@ export class AICommandHandler {
     public static async processCommand(
         userMessage: Message, 
         router: AppRouterInstance,
-        conversationId: null
     ): Promise<CommandResult> {
         const aiCommandHandler = new AICommandHandler(router);
         return aiCommandHandler.processCommandInternal(userMessage);
@@ -66,15 +63,6 @@ export class AICommandHandler {
                     success: false,
                     message: result.detail || "Failed to process the command. Please try again."
                 };
-            }
-
-            const uiCommandHandler = new UICommandHandler(this.router);
-            const uiCommands = UICommandHandler.parseAIResponse(result);
-            console.log("UI commands are:", uiCommands);
-
-            for (const command of uiCommands) {
-                console.log("Executing UI command:", command);
-                await uiCommandHandler.executeCommand(command);
             }
 
             if (!result.success) {

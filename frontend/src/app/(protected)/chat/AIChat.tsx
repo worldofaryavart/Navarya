@@ -29,12 +29,10 @@ const AIChat: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const params = useParams();
-
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,9 +46,49 @@ const AIChat: React.FC = () => {
       content: inputValue,
       timestamp: new Date(),
     };
+
+    // Add user message to the chat immediately
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsProcessing(true);
+
+    try {
+      // Process the command through AI service
+      const result = await AICommandHandler.processCommand(
+        userMessage,
+        router,
+      );
+
+      // Create assistant response message
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: result.message,
+        timestamp: new Date(),
+      };
+
+      // Add assistant response to messages
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      // Handle any additional data if needed
+      if (result.data) {
+        console.log("Additional data from AI:", result.data);
+        // You can handle additional data here if needed
+      }
+
+    } catch (error) {
+      console.error("Error processing command:", error);
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        role: "assistant",
+        content: "Sorry, there was an error processing your request. Please try again.",
+        timestamp: new Date(),
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSpeechRecognition = () => {
@@ -395,7 +433,7 @@ const AIChat: React.FC = () => {
               </div>
             ))}
             <div ref={messagesEndRef} />
-            {isProcessing && messages.length > 0 && (
+            {isProcessing && (
               <div className="flex justify-start">
                 <div className="max-w-[85%] md:max-w-[75%] p-3 rounded-xl shadow-md bg-gray-700/80 text-gray-200 mr-auto">
                   <div className="flex items-center space-x-1.5">

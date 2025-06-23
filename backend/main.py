@@ -9,6 +9,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from datetime import datetime
 from enum import Enum
+from services.process_factory import ProcessFactory
 
 # Load environment variables
 load_dotenv()
@@ -68,45 +69,15 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
     try:
         user_id = user['uid']
         print("user id is:  ", user_id)
-        
-        # Get or create active conversation
-        conversations = await conversation_service.get_conversation_history(user_id)
-        
-        if not conversations['conversation']:
-            print("conversation doesn't exist")
-        else:
-            # Get the conversation ID from the conversation data
-            conversation_id = conversations['conversation']['id']
-            print("conversation id is ", conversation_id)
-        
-        if not conversation_id:
-            raise HTTPException(status_code=500, detail="Failed to get active conversation")
-        
-        # Save user message
-        await conversation_service.save_message(user_id, message.content, message.role.value)
-        
-        # Get conversation context
-        context = await conversation_service.get_conversation_context(conversation_id)
+
         
         # Process command
-        processor_factory = ProcessorFactory(db)
-        result = await processor_factory.process_with_context(message.content, context, user_id)
+        processor_factory = ProcessFactory(db)
+        result = await processor_factory.process_message(message.content, user_id)
 
         print("result in process _command: ", result)
-        
-        # Update context with AI response
-        context_updates = {
-            'last_ai_response': result.get('message', ''),
-            'task_results': result.get('data', {})
-        }
-        await conversation_service.update_conversation_context(conversation_id, context_updates)
-        
-        # Save AI response
-        await conversation_service.save_message(
-            user_id,
-            result.get('message', 'No response generated'),
-            Role.AI.value
-        )
+        if not result:
+            raise HTTPException(status_code=400, detail="No valid command found")
         
         return result
     except Exception as e:
