@@ -561,7 +561,7 @@ const AIChat: React.FC = () => {
         }
       `}</style>
       <div className="gemini-disclaimer">
-        AI Assistant can make mistakes, so double-check it
+        AI can make mistakes, so double-check it
       </div>
 
       {/* File Modal */}
