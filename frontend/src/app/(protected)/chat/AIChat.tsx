@@ -125,7 +125,7 @@ const AIChat: React.FC = () => {
   const renderMessageContent = (message: Message) => {
     if (message.role === "user") {
       return (
-        <p className="text-white whitespace-pre-wrap">{message.content}</p>
+        <p className="text-white whitespace-pre-wrap break-words">{message.content}</p>
       );
     }
 
@@ -352,7 +352,7 @@ const AIChat: React.FC = () => {
     }
 
     return (
-      <div className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+      <div className="text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
         {message.content}
       </div>
     );
@@ -374,93 +374,116 @@ const AIChat: React.FC = () => {
   const userName = user.displayName || user.email?.split("@")[0] || "User";
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white w-full">
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-        {isLoadingConversation ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="flex flex-col items-center space-y-3">
-              <Loader2 size={32} className="animate-spin text-purple-500" />
-              <p className="text-gray-400">Loading conversation...</p>
-            </div>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="bg-gray-800/30 p-6 rounded-xl shadow-lg max-w-md mx-auto">
-              <h2 className="text-2xl font-semibold mb-2 text-white">
-                Hello, {userName}!
-              </h2>
-              <p className="text-gray-300 mb-4">
-                <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-blue-500">
-                  Navarya
-                </span>{" "}
-                welcomes you! How can I assist you today?
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex message-item ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[85%] md:max-w-[75%] p-3 rounded-xl shadow-md ${
-                    message.role === "user"
-                      ? "bg-purple-600 text-white ml-auto"
-                      : "bg-gray-700/80 text-gray-200 mr-auto"
-                  }`}
-                >
-                  {renderMessageContent(message)}
-                  <div className="mt-1.5 flex items-center justify-end space-x-2">
-                    <span
-                      className={`text-xs ${
-                        message.role === "user"
-                          ? "text-purple-200/70"
-                          : "text-gray-400/70"
-                      }`}
-                    >
-                      {message.timestamp.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-            {isProcessing && (
-              <div className="flex justify-start">
-                <div className="max-w-[85%] md:max-w-[75%] p-3 rounded-xl shadow-md bg-gray-700/80 text-gray-200 mr-auto">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse delay-75"></span>
-                    <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse delay-150"></span>
-                    <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse delay-300"></span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+    <div className="flex flex-col h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <div className="bg-gray-800/50 border-b border-gray-700/50 p-4 flex-shrink-0">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-xl font-semibold text-center">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">
+              Navarya
+            </span>
+          </h1>
+        </div>
       </div>
 
-      {/* Input Area - Gemini Style */}
-      <div className="p-3 md:p-4 bg-gray-900 sticky bottom-0 flex justify-center">
-        <div className="relative flex items-center w-full max-w-4xl">
-          <div className="flex items-center w-full bg-gray-800 rounded-full border border-gray-700 pr-3">
+      {/* Messages Container */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto px-4 py-6">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {isLoadingConversation ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center space-y-3">
+                  <Loader2 size={32} className="animate-spin text-purple-500" />
+                  <p className="text-gray-400">Loading conversation...</p>
+                </div>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <div className="bg-gray-800/30 p-8 rounded-2xl shadow-lg max-w-md mx-auto">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-2xl font-bold text-white">N</span>
+                  </div>
+                  <h2 className="text-2xl font-semibold mb-3 text-white">
+                    Hello, {userName}!
+                  </h2>
+                  <p className="text-gray-300 mb-4 leading-relaxed">
+                    Welcome to{" "}
+                    <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">
+                      Navarya
+                    </span>
+                    ! How can I assist you today?
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex message-item ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[75%] lg:max-w-[65%] p-4 rounded-2xl shadow-lg ${
+                        message.role === "user"
+                          ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-br-md"
+                          : "bg-gray-800/80 text-gray-100 rounded-bl-md border border-gray-700/50"
+                      }`}
+                    >
+                      {renderMessageContent(message)}
+                      <div className="mt-2 flex items-center justify-end">
+                        <span
+                          className={`text-xs ${
+                            message.role === "user"
+                              ? "text-blue-100/70"
+                              : "text-gray-400/70"
+                          }`}
+                        >
+                          {message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+                {isProcessing && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[75%] lg:max-w-[65%] p-4 rounded-2xl rounded-bl-md shadow-lg bg-gray-800/80 border border-gray-700/50">
+                      <div className="flex items-center space-x-2">
+                        <div className="flex space-x-1">
+                          <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                        <span className="text-sm text-gray-400">Navarya is typing...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <div className="bg-gray-900 border-t border-gray-700/50 p-4 flex-shrink-0">
+        <div className="max-w-4xl mx-auto">
+          <div className="relative flex items-end bg-gray-800 rounded-2xl border border-gray-700/50 shadow-lg">
+            {/* File Upload Button */}
             <button
-              className="flex-shrink-0 p-3 text-gray-400 hover:text-gray-300 transition-colors ml-1"
+              className="flex-shrink-0 p-3 text-gray-400 hover:text-gray-300 transition-colors"
               disabled={isProcessing || isLoadingConversation}
               onClick={handleFileModalOpen}
               type="button"
             >
               <svg
-                width="24"
-                height="24"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -474,6 +497,8 @@ const AIChat: React.FC = () => {
                 />
               </svg>
             </button>
+
+            {/* Text Input */}
             <textarea
               value={inputValue}
               onChange={(e) => {
@@ -491,56 +516,61 @@ const AIChat: React.FC = () => {
                   e.currentTarget.style.height = "inherit";
                 }
               }}
-              placeholder="Ask Navarya"
-              className="flex-1 bg-transparent text-white p-3 focus:outline-none resize-none overflow-y-auto min-h-[48px] placeholder-gray-500"
+              placeholder="Message Navarya..."
+              className="flex-1 bg-transparent text-white py-3 px-1 focus:outline-none resize-none overflow-y-auto min-h-[48px] max-h-[120px] placeholder-gray-400"
               rows={1}
-              style={{ maxHeight: "120px" }}
               disabled={isProcessing || isLoadingConversation}
             />
-            <div className="flex items-center space-x-1 ml-1">
-              {inputValue.trim() && (
+
+            {/* Action Buttons */}
+            <div className="flex items-center pr-2">
+              {inputValue.trim() ? (
                 <button
                   title="Send Message"
                   onClick={handleSubmit}
                   disabled={!inputValue.trim() || isProcessing || isListening || isLoadingConversation}
-                  className="p-2 text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-full hover:from-indigo-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   type="button"
                 >
                   {isProcessing && !isListening ? (
-                    <Loader2 size={20} className="animate-spin" />
+                    <Loader2 size={18} className="animate-spin" />
                   ) : (
-                    <Send size={20} />
+                    <Send size={18} />
                   )}
                 </button>
-              )}
-              {!inputValue.trim() && (
+              ) : (
                 <button
                   title="Use Microphone"
                   onClick={handleSpeechRecognition}
                   disabled={isProcessing || isListening || isLoadingConversation}
-                  className={`p-2 transition-colors ${
+                  className={`p-2.5 rounded-full transition-all duration-200 ${
                     isListening
-                      ? "text-red-400 animate-pulse"
-                      : "text-gray-400 hover:text-gray-300"
+                      ? "bg-red-600 text-white animate-pulse"
+                      : "text-gray-400 hover:text-gray-300 hover:bg-gray-700"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                   type="button"
                 >
-                  <Mic size={20} />
+                  <Mic size={18} />
                 </button>
               )}
             </div>
           </div>
+
+          {/* Disclaimer */}
+          <p className="text-center text-xs text-gray-500 mt-3">
+            AI can make mistakes, so double-check important information
+          </p>
         </div>
       </div>
 
       <style jsx global>{`
         .message-item {
-          animation: fadeIn 0.3s ease-out forwards;
+          animation: fadeInUp 0.4s ease-out forwards;
         }
-        @keyframes fadeIn {
+        @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(15px);
           }
           to {
             opacity: 1;
@@ -548,21 +578,26 @@ const AIChat: React.FC = () => {
           }
         }
         textarea {
-          scrollbar-width: none; /* For Firefox */
+          scrollbar-width: none;
         }
         textarea::-webkit-scrollbar {
           display: none;
         }
-        .gemini-disclaimer {
-          font-size: 12px;
-          color: #888;
-          text-align: center;
-          padding: 10px 0;
+        /* Custom scrollbar for messages */
+        .overflow-y-auto::-webkit-scrollbar {
+          width: 6px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-track {
+          background: rgba(31, 41, 55, 0.3);
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+          background: rgba(75, 85, 99, 0.5);
+          border-radius: 3px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+          background: rgba(107, 114, 128, 0.7);
         }
       `}</style>
-      <div className="gemini-disclaimer">
-        AI can make mistakes, so double-check it
-      </div>
 
       {/* File Modal */}
       {isFileModalOpen && 
