@@ -12,7 +12,7 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      router.push("/chat");
+      router.push("/protected");
     }
   }, [user, loading, router]);
 
@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-md px-4">
-        <Login onLogin={() => router.push("/chat")} />
+        <Login onLogin={() => router.push("/protected")} />
       </div>
     </div>
   );

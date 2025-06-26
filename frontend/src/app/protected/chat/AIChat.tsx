@@ -600,11 +600,11 @@ const AIChat: React.FC = () => {
       `}</style>
 
       {/* File Modal */}
-      {isFileModalOpen && 
+      {/* {isFileModalOpen && 
       <FileModal
         isOpen={isFileModalOpen}
         onClose={() => setIsFileModalOpen(false)}
-      />}
+      />} */}
     </div>
   );
 };

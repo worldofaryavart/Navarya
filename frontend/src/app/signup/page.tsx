@@ -7,7 +7,7 @@ export default function SignupPage() {
   const router = useRouter();
 
   const handleSignup = () => {
-    router.push('/chat/new');
+    router.push('/protected');
   };
 
   return (

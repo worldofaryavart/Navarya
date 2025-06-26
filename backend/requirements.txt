@@ -12,3 +12,5 @@ google-api-python-client
 firebase-admin
 numpy
 openai
+PyPDF2 
+python-multipart
