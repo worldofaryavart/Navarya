@@ -210,7 +210,7 @@ const NewChatPage = () => {
       <div className="flex-1 overflow-hidden">
         <div className="h-full flex">
           {/* Left Panel - Summary and PDF */}
-          <div className="w-80 bg-gray-800/30 border-r border-gray-700/50 p-4 overflow-y-auto">
+          <div className="w-[40rem] bg-gray-800/30 border-r border-gray-700/50 p-4 overflow-y-auto">
             <div className="space-y-4">
               <PDFSummary pdfData={pdfData} />
               <PDFViewer pdfData={pdfData} />

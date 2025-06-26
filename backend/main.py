@@ -304,6 +304,45 @@ async def get_documents(user = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Error in get_documents endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+# Add this new endpoint to your FastAPI code
+
+@app.get("/api/documents/{document_id}")
+async def get_document_details(document_id: str, user = Depends(verify_token)):
+    """Get details of a specific user document by its ID."""
+    try:
+        user_id = user['uid']
+        user_documents = get_user_documents(user_id)
+
+        target_document = next((doc for doc in user_documents if doc.get('id') == document_id), None)
+
+        if not target_document:
+            raise HTTPException(status_code=404, detail="Document not found for this user or ID.")
+        
+        # Prepare the response, similar to how you structure pdfData on the frontend
+        response_data = {
+            "name": target_document.get("original_name"),
+            "size": target_document.get("file_size"),
+            "type": target_document.get("file_type"),
+            "fileId": target_document.get("id"),
+            "pdfUrl": f"/static/{target_document.get('id')}", # Construct the static URL
+            "summary": target_document.get("summary", None), # Can be null if not yet summarized
+            "keyPoints": target_document.get("key_points", []),
+            # Add other relevant fields if needed, e.g., isLoadingSummary or summaryError from backend is less common
+            # Frontend will manage isLoadingSummary based on whether summary is present.
+            "summaryError": target_document.get("summary_error", None) # If you store summary errors
+        }
+
+        return JSONResponse(
+            status_code=200,
+            content=response_data
+        )
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error in get_document_details endpoint for document_id {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving document details: {str(e)}")
 
 @app.delete("/api/documents/{document_id}")
 async def delete_document(document_id: str, user = Depends(verify_token)):
