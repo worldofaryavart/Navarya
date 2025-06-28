@@ -17,6 +17,8 @@ import io
 import json
 import logging
 
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")  # Make this configurable
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -132,59 +134,51 @@ async def upload_files(files: List[UploadFile] = File(...), user = Depends(verif
     """Upload and process files"""
     try:
         user_id = user['uid']
-        uploaded_files_info = [] # Store info to return to frontend
+        uploaded_files_info = []
         documents_to_save = []
         
         for file in files:
             logger.info(f"Processing uploaded file: {file.filename} ({file.content_type})")
-            # Check file type
             if not file.content_type:
                 logger.warning(f"Skipping file {file.filename} due to missing content type.")
                 continue
                 
-            # Read file content
             file_content = await file.read()
-            
-            # Create unique filename
             file_extension = os.path.splitext(file.filename)[1]
             unique_filename = f"{user_id}_{datetime.now().timestamp()}_{file.filename}"
             file_path = os.path.join(UPLOAD_DIR, unique_filename)
             
-            # Save file to disk
             with open(file_path, "wb") as buffer:
                 buffer.write(file_content)
             logger.info(f"File saved to: {file_path}")
             
-            # Process based on file type
             extracted_text = ""
             if file.content_type == "application/pdf":
                 extracted_text = extract_text_from_pdf(file_content)
             elif file.content_type.startswith("text/"):
                 extracted_text = file_content.decode('utf-8')
             
-            # Prepare document data for Firestore
             document_data = {
-                "id": unique_filename, # This is the ID frontend will use
+                "id": unique_filename,
                 "original_name": file.filename,
                 "file_type": file.content_type,
                 "file_size": len(file_content),
-                "file_path": file_path, # Store full path for backend access
+                "file_path": file_path,
                 "extracted_text": extracted_text,
                 "uploaded_at": datetime.now().isoformat()
             }
             
             documents_to_save.append(document_data)
             
-            # Prepare info to send back to frontend
+            # Fix: Include full URL with backend domain
             uploaded_files_info.append({
                 "name": file.filename,
                 "size": len(file_content),
                 "type": file.content_type,
-                "id": unique_filename, # Frontend needs this ID to request summary/view PDF
-                "url": f"/static/{unique_filename}" # URL to access the file
+                "id": unique_filename,
+                "url": f"{BASE_URL}/static/{unique_filename}"  # Full URL instead of relative
             })
         
-        # Save documents metadata to Firestore
         if documents_to_save:
             save_user_documents(user_id, documents_to_save)
         
@@ -201,6 +195,38 @@ async def upload_files(files: List[UploadFile] = File(...), user = Depends(verif
         logger.error(f"Error in upload_files endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error uploading files: {str(e)}")
 
+# Update the get_documents function:
+@app.get("/api/documents")
+async def get_documents(user = Depends(verify_token)):
+    """Get user's uploaded documents"""
+    try:
+        user_id = user['uid']
+        documents = get_user_documents(user_id)
+        
+        doc_metadata = []
+        for doc in documents:
+            doc_metadata.append({
+                "id": doc.get("id"),
+                "original_name": doc.get("original_name"),
+                "file_type": doc.get("file_type"),
+                "file_size": doc.get("file_size"),
+                "uploaded_at": doc.get("uploaded_at"),
+                "has_text": bool(doc.get("extracted_text")),
+                "summary": doc.get("summary", ""),
+                "keyPoints": doc.get("key_points", []),
+                "url": f"{BASE_URL}/static/{doc.get('id')}"  # Full URL
+            })
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "documents": doc_metadata,
+                "total": len(doc_metadata)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in get_documents endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/api/summarize-document/{document_id}")
 async def summarize_document(document_id: str, user = Depends(verify_token)):
     """Generate AI summary and key points for a specific document."""
@@ -319,18 +345,15 @@ async def get_document_details(document_id: str, user = Depends(verify_token)):
         if not target_document:
             raise HTTPException(status_code=404, detail="Document not found for this user or ID.")
         
-        # Prepare the response, similar to how you structure pdfData on the frontend
         response_data = {
             "name": target_document.get("original_name"),
             "size": target_document.get("file_size"),
             "type": target_document.get("file_type"),
             "fileId": target_document.get("id"),
-            "pdfUrl": f"/static/{target_document.get('id')}", # Construct the static URL
-            "summary": target_document.get("summary", None), # Can be null if not yet summarized
+            "pdfUrl": f"{BASE_URL}/static/{target_document.get('id')}",  # Full URL
+            "summary": target_document.get("summary", None),
             "keyPoints": target_document.get("key_points", []),
-            # Add other relevant fields if needed, e.g., isLoadingSummary or summaryError from backend is less common
-            # Frontend will manage isLoadingSummary based on whether summary is present.
-            "summaryError": target_document.get("summary_error", None) # If you store summary errors
+            "summaryError": target_document.get("summary_error", None)
         }
 
         return JSONResponse(
@@ -343,7 +366,7 @@ async def get_document_details(document_id: str, user = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Error in get_document_details endpoint for document_id {document_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving document details: {str(e)}")
-
+    
 @app.delete("/api/documents/{document_id}")
 async def delete_document(document_id: str, user = Depends(verify_token)):
     """Delete a user's document"""

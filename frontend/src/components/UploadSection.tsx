@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, FileText, Sparkles } from 'lucide-react';
-import FileModal from '../app/protected/chat/FileModal';
+import FileModal from './FileModal';
 
 interface UploadSectionProps {
   onFileUpload: (data: { name: string; size: number; type: string; id: string; url: string; }) => void;

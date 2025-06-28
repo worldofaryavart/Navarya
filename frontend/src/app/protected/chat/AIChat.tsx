@@ -14,7 +14,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { AICommandHandler } from "@/services/ai_cmd_process/process_cmd";
 import { auth } from "@/utils/config/firebase.config";
-import FileModal from "./FileModal";
+import FileModal from "../../../components/FileModal";
 
 interface Message {
   role: "user" | "assistant";
