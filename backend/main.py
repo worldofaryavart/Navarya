@@ -272,7 +272,7 @@ async def process_command(message: MessageRequest, user = Depends(verify_token))
         logger.error(f"Error in process_command endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/user-documents")
+@app.get("/api/documents")
 async def get_documents(user = Depends(verify_token)):
     """Get user's uploaded documents"""
     try:
