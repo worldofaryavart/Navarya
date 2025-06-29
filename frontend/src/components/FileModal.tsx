@@ -1,6 +1,7 @@
 import { useState, useRef, ChangeEvent } from "react";
 import { Upload, FileText, Image as ImageIcon, X, Loader2 } from "lucide-react";
 import { auth } from "@/utils/config/firebase.config";
+import { getApiUrl } from "@/utils/config/api.config";
 
 // Define the types for file objects
 interface FileData {
@@ -86,7 +87,7 @@ const FileModal = ({ isOpen, onClose, onFileUpload }: FileModalProps) => {
         });
       }, 300);
 
-      const response = await fetch("http://localhost:8000/api/upload", {
+      const response = await fetch(getApiUrl("/api/upload"), {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
