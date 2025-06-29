@@ -151,7 +151,7 @@ class ProcessFactory:
             
             # Call DeepSeek
             response = await self.client.chat.completions.create(
-                model="deepseek-reasoner",
+                model="deepseek-chat",
                 messages=messages,
                 temperature=0.3,  # Lower for more factual responses
                 max_tokens=2000
