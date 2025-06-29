@@ -6,6 +6,7 @@ import { auth } from "@/utils/config/firebase.config";
 import { useRouter } from "next/navigation";
 import UploadSection from "@/components/UploadSection";
 import PreviousProjects from "@/components/PreviousProject";
+import { getApiUrl } from "@/utils/config/api.config";
 
 interface Project {
   id: string;
@@ -34,7 +35,7 @@ const MainPage = () => {
         }
         const token = await user.getIdToken();
 
-        const response = await fetch("http://localhost:8000/api/documents", {
+        const response = await fetch(getApiUrl("/api/documents"), {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,

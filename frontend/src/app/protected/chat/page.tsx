@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation'; // For Next.js App
 import PDFSummary from "@/components/chat/PDFSummary";
 import PDFViewer from "@/components/chat/PDFViewer";
 import AIChat from "@/components/chat/AIChat2";
+import { getApiUrl } from "@/utils/config/api.config";
 // If using Next.js Pages Router: import { useRouter } from 'next/router';
 
 // Updated PDFData interface
@@ -54,7 +55,7 @@ const NewChatPage = () => {
         const token = await user.getIdToken();
 
         // Fetch the full details of the document using its fileId
-        const response = await fetch(`http://localhost:8000/api/documents/${fileId}`, {
+        const response = await fetch(getApiUrl(`/api/documents/${fileId}`), {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -105,7 +106,7 @@ const NewChatPage = () => {
             }
             const token = await user.getIdToken();
 
-            const response = await fetch(`http://localhost:8000/api/summarize-document/${id}`, {
+            const response = await fetch(getApiUrl(`/api/summarize-document/${id}`), {
                 method: "GET", // Or POST if it's an action
                 headers: {
                     "Authorization": `Bearer ${token}`,
