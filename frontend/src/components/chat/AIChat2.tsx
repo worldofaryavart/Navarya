@@ -1,5 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
-import { MessageSquare, Loader2, Send, Mic, HelpCircle, CheckCircle, AlertCircle, Trophy, Target } from "lucide-react";
+import {
+  MessageSquare,
+  Loader2,
+  Send,
+  Mic,
+  HelpCircle,
+  CheckCircle,
+  AlertCircle,
+  Trophy,
+  Target,
+} from "lucide-react";
 import { auth } from "@/utils/config/firebase.config";
 import { getApiUrl } from "@/utils/config/api.config";
 
@@ -65,7 +75,8 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
   const [isListening, setIsListening] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [questionSession, setQuestionSession] = useState<QuestionSession | null>(null);
+  const [questionSession, setQuestionSession] =
+    useState<QuestionSession | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -96,7 +107,7 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
         }),
       });
       const result = await response.json();
-      
+
       if (result.questions && result.questions.length > 0) {
         setQuestionSession({
           questions: result.questions,
@@ -112,16 +123,17 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
           content: `I've generated ${result.questions.length} ${difficulty} difficulty questions based on your document. Let's start with the first one:\n\n**Question 1:**\n${result.questions[0].question}`,
           timestamp: new Date(),
         };
-        setMessages(prev => [...prev, questionMessage]);
+        setMessages((prev) => [...prev, questionMessage]);
       }
     } catch (error) {
       console.error("Error generating questions:", error);
       const errorMessage: MessageWithTimestamp = {
         role: "assistant",
-        content: "I encountered an error while generating questions. Please try again.",
+        content:
+          "I encountered an error while generating questions. Please try again.",
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsGeneratingQuestions(false);
     }
@@ -156,33 +168,50 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
   const handleAnswerSubmit = async () => {
     if (!currentAnswer.trim() || !questionSession || isEvaluating) return;
 
-    const currentQuestion = questionSession.questions[questionSession.currentQuestionIndex];
-    
+    const currentQuestion =
+      questionSession.questions[questionSession.currentQuestionIndex];
+
     // Add user's answer to messages
     const userMessage: MessageWithTimestamp = {
       role: "user",
       content: currentAnswer,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const evaluationResult = await evaluateAnswer(currentQuestion.id, currentAnswer);
-      
+      const evaluationResult = await evaluateAnswer(
+        currentQuestion.id,
+        currentAnswer
+      );
+
       // Create evaluation message
-      const evaluationContent = `**Evaluation Results:**\n\n` +
-        `**Score:** ${evaluationResult.score}/100 ${evaluationResult.is_correct ? '✅' : '❌'}\n\n` +
+      const evaluationContent =
+        `**Evaluation Results:**\n\n` +
+        `**Score:** ${evaluationResult.score}/100 ${
+          evaluationResult.is_correct ? "✅" : "❌"
+        }\n\n` +
         `**Feedback:** ${evaluationResult.feedback}\n\n` +
-        (evaluationResult.strengths?.length > 0 ? `**Strengths:**\n${evaluationResult.strengths.map((strength: string) => `• ${strength}`).join('\n')}\n\n` : '') +
-        (evaluationResult.missing_points?.length > 0 ? `**Areas for Improvement:**\n${evaluationResult.missing_points.map((point: string) => `• ${point}`).join('\n')}\n\n` : '') +
-        (evaluationResult.reference_text ? `**Reference:** ${evaluationResult.reference_text}` : '');
+        (evaluationResult.strengths?.length > 0
+          ? `**Strengths:**\n${evaluationResult.strengths
+              .map((strength: string) => `• ${strength}`)
+              .join("\n")}\n\n`
+          : "") +
+        (evaluationResult.missing_points?.length > 0
+          ? `**Areas for Improvement:**\n${evaluationResult.missing_points
+              .map((point: string) => `• ${point}`)
+              .join("\n")}\n\n`
+          : "") +
+        (evaluationResult.reference_text
+          ? `**Reference:** ${evaluationResult.reference_text}`
+          : "");
 
       const evaluationMessage: MessageWithTimestamp = {
         role: "assistant",
         content: evaluationContent,
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, evaluationMessage]);
+      setMessages((prev) => [...prev, evaluationMessage]);
 
       // Update question session
       const updatedSession = {
@@ -192,26 +221,37 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
       };
 
       // Check if there are more questions
-      if (questionSession.currentQuestionIndex < questionSession.questions.length - 1) {
+      if (
+        questionSession.currentQuestionIndex <
+        questionSession.questions.length - 1
+      ) {
         const nextIndex = questionSession.currentQuestionIndex + 1;
         updatedSession.currentQuestionIndex = nextIndex;
-        
+
         const nextQuestionMessage: MessageWithTimestamp = {
           role: "assistant",
-          content: `**Question ${nextIndex + 1}:**\n${questionSession.questions[nextIndex].question}`,
+          content: `**Question ${nextIndex + 1}:**\n${
+            questionSession.questions[nextIndex].question
+          }`,
           timestamp: new Date(),
         };
-        setMessages(prev => [...prev, nextQuestionMessage]);
+        setMessages((prev) => [...prev, nextQuestionMessage]);
       } else {
         // End of questions - show summary
         updatedSession.isActive = false;
-        const totalScore = updatedSession.evaluations.reduce((sum, evalItem) => sum + evalItem.score, 0);
+        const totalScore = updatedSession.evaluations.reduce(
+          (sum, evalItem) => sum + evalItem.score,
+          0
+        );
         const averageScore = totalScore / updatedSession.evaluations.length;
-        const correctAnswers = updatedSession.evaluations.filter(evalItem => evalItem.is_correct).length;
+        const correctAnswers = updatedSession.evaluations.filter(
+          (evalItem) => evalItem.is_correct
+        ).length;
 
         const summaryMessage: MessageWithTimestamp = {
           role: "assistant",
-          content: `🎉 **Quiz Complete!**\n\n` +
+          content:
+            `🎉 **Quiz Complete!**\n\n` +
             `**Final Results:**\n` +
             `• Questions Answered: ${updatedSession.evaluations.length}\n` +
             `• Correct Answers: ${correctAnswers}/${updatedSession.evaluations.length}\n` +
@@ -221,7 +261,7 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
           timestamp: new Date(),
           showQuestionButtons: true,
         };
-        setMessages(prev => [...prev, summaryMessage]);
+        setMessages((prev) => [...prev, summaryMessage]);
       }
 
       setQuestionSession(updatedSession);
@@ -229,10 +269,11 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
     } catch (error) {
       const errorMessage: MessageWithTimestamp = {
         role: "assistant",
-        content: "I encountered an error while evaluating your answer. Please try again.",
+        content:
+          "I encountered an error while evaluating your answer. Please try again.",
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 
@@ -331,17 +372,307 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
   };
 
   const renderMessageContent = (message: MessageWithTimestamp) => {
+    const parseContent = (content: string) => {
+      const lines = content.split("\n");
+      const elements: React.ReactNode[] = [];
+      let currentListItems: string[] = [];
+      let currentListType: "ul" | "ol" | null = null;
+      let inCodeBlock = false;
+      let codeBlockLines: string[] = [];
+      let codeBlockLanguage = "";
+
+      const flushCurrentList = () => {
+        if (currentListItems.length > 0) {
+          const ListComponent = currentListType === "ol" ? "ol" : "ul";
+          elements.push(
+            <ListComponent
+              key={elements.length}
+              className={`${
+                currentListType === "ol" ? "list-decimal" : "list-disc"
+              } list-inside ml-4 space-y-1 my-2`}
+            >
+              {currentListItems.map((item, idx) => (
+                <li
+                  key={idx}
+                  className={
+                    message.role === "user"
+                      ? "text-blue-100 leading-relaxed"
+                      : "text-gray-300 leading-relaxed"
+                  }
+                >
+                  {parseInlineFormatting(item)}
+                </li>
+              ))}
+            </ListComponent>
+          );
+          currentListItems = [];
+          currentListType = null;
+        }
+      };
+
+      const flushCodeBlock = () => {
+        if (codeBlockLines.length > 0) {
+          elements.push(
+            <div key={elements.length} className="my-3">
+              <div
+                className={`${
+                  message.role === "user"
+                    ? "bg-blue-800/30 border-blue-600/50"
+                    : "bg-gray-900 border-gray-700"
+                } rounded-lg border overflow-hidden`}
+              >
+                {codeBlockLanguage && (
+                  <div
+                    className={`${
+                      message.role === "user"
+                        ? "bg-blue-700/30 text-blue-200 border-blue-600/50"
+                        : "bg-gray-800 text-gray-400 border-gray-700"
+                    } px-3 py-1 text-xs border-b`}
+                  >
+                    {codeBlockLanguage}
+                  </div>
+                )}
+                <pre className="p-3 overflow-x-auto">
+                  <code
+                    className={`${
+                      message.role === "user"
+                        ? "text-blue-100"
+                        : "text-gray-300"
+                    } text-sm font-mono`}
+                  >
+                    {codeBlockLines.join("\n")}
+                  </code>
+                </pre>
+              </div>
+            </div>
+          );
+          codeBlockLines = [];
+          codeBlockLanguage = "";
+        }
+      };
+
+      lines.forEach((line, index) => {
+        if (line.startsWith("```")) {
+          if (inCodeBlock) {
+            inCodeBlock = false;
+            flushCodeBlock();
+          } else {
+            flushCurrentList();
+            inCodeBlock = true;
+            codeBlockLanguage = line.substring(3).trim();
+          }
+          return;
+        }
+
+        if (inCodeBlock) {
+          codeBlockLines.push(line);
+          return;
+        }
+
+        if (line.startsWith("###")) {
+          flushCurrentList();
+          elements.push(
+            <h3
+              key={elements.length}
+              className={`text-lg font-semibold ${
+                message.role === "user" ? "text-blue-50" : "text-white"
+              } mt-4 mb-2`}
+            >
+              {parseInlineFormatting(line.substring(3).trim())}
+            </h3>
+          );
+          return;
+        }
+
+        if (line.startsWith("##")) {
+          flushCurrentList();
+          elements.push(
+            <h2
+              key={elements.length}
+              className={`text-xl font-semibold ${
+                message.role === "user" ? "text-blue-50" : "text-white"
+              } mt-4 mb-2`}
+            >
+              {parseInlineFormatting(line.substring(2).trim())}
+            </h2>
+          );
+          return;
+        }
+
+        if (line.startsWith("#")) {
+          flushCurrentList();
+          elements.push(
+            <h1
+              key={elements.length}
+              className={`text-2xl font-bold ${
+                message.role === "user" ? "text-blue-50" : "text-white"
+              } mt-4 mb-3`}
+            >
+              {parseInlineFormatting(line.substring(1).trim())}
+            </h1>
+          );
+          return;
+        }
+
+        const numberedListMatch = line.match(/^\d+\.\s+(.+)$/);
+        if (numberedListMatch) {
+          if (currentListType !== "ol") {
+            flushCurrentList();
+            currentListType = "ol";
+          }
+          currentListItems.push(numberedListMatch[1]);
+          return;
+        }
+
+        const bulletListMatch = line.match(/^[-•*]\s+(.+)$/);
+        if (bulletListMatch) {
+          if (currentListType !== "ul") {
+            flushCurrentList();
+            currentListType = "ul";
+          }
+          currentListItems.push(bulletListMatch[1]);
+          return;
+        }
+
+        if (line.startsWith(">")) {
+          flushCurrentList();
+          elements.push(
+            <blockquote
+              key={elements.length}
+              className={`border-l-4 ${
+                message.role === "user"
+                  ? "border-blue-300 text-blue-100"
+                  : "border-blue-500 text-gray-300"
+              } pl-4 my-3 italic`}
+            >
+              {parseInlineFormatting(line.substring(1).trim())}
+            </blockquote>
+          );
+          return;
+        }
+
+        if (line.trim() === "---" || line.trim() === "***") {
+          flushCurrentList();
+          elements.push(
+            <hr
+              key={elements.length}
+              className={`my-4 ${
+                message.role === "user"
+                  ? "border-blue-300/50"
+                  : "border-gray-600"
+              }`}
+            />
+          );
+          return;
+        }
+
+        if (line.trim() === "") {
+          flushCurrentList();
+          if (elements.length > 0) {
+            elements.push(<br key={elements.length} />);
+          }
+          return;
+        }
+
+        flushCurrentList();
+        elements.push(
+          <p
+            key={elements.length}
+            className={`${
+              message.role === "user" ? "text-blue-50" : "text-gray-300"
+            } leading-relaxed my-2`}
+          >
+            {parseInlineFormatting(line)}
+          </p>
+        );
+      });
+
+      flushCurrentList();
+      flushCodeBlock();
+
+      return elements;
+    };
+
+    const parseInlineFormatting = (text: string): React.ReactNode => {
+      const userStyles = message.role === "user";
+
+      text = text.replace(
+        /`([^`]+)`/g,
+        `<code class="${
+          userStyles
+            ? "bg-blue-700/30 text-blue-100"
+            : "bg-gray-800 text-gray-300"
+        } px-1 py-0.5 rounded text-sm font-mono">$1</code>`
+      );
+      text = text.replace(
+        /\*\*([^*]+)\*\*/g,
+        `<strong class="font-semibold ${
+          userStyles ? "text-blue-50" : "text-white"
+        }">$1</strong>`
+      );
+      text = text.replace(
+        /__([^_]+)__/g,
+        `<strong class="font-semibold ${
+          userStyles ? "text-blue-50" : "text-white"
+        }">$1</strong>`
+      );
+      text = text.replace(
+        /\*([^*]+)\*/g,
+        `<em class="italic ${
+          userStyles ? "text-blue-100" : "text-gray-200"
+        }">$1</em>`
+      );
+      text = text.replace(
+        /_([^_]+)_/g,
+        `<em class="italic ${
+          userStyles ? "text-blue-100" : "text-gray-200"
+        }">$1</em>`
+      );
+      text = text.replace(
+        /~~([^~]+)~~/g,
+        `<del class="line-through ${
+          userStyles ? "text-blue-200" : "text-gray-400"
+        }">$1</del>`
+      );
+      text = text.replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        `<a href="$2" class="${
+          userStyles
+            ? "text-blue-200 hover:text-blue-100"
+            : "text-blue-400 hover:text-blue-300"
+        } underline" target="_blank" rel="noopener noreferrer">$1</a>`
+      );
+      text = text.replace(
+        /\[Reference\s+(\d+),?\s*([^\]]+)\]/g,
+        `<span class="${
+          userStyles
+            ? "bg-blue-800/40 text-blue-200 border-blue-600/50"
+            : "bg-blue-900/30 text-blue-300 border-blue-700/50"
+        } px-2 py-0.5 rounded-md text-sm border">[Ref $1, $2]</span>`
+      );
+      text = text.replace(
+        /==([^=]+)==/g,
+        `<mark class="${
+          userStyles
+            ? "bg-yellow-500/30 text-yellow-100"
+            : "bg-yellow-600/30 text-yellow-200"
+        } px-1 rounded">$1</mark>`
+      );
+
+      return <span dangerouslySetInnerHTML={{ __html: text }} />;
+    };
+
     if (message.role === "user") {
       return (
-        <p className="text-white whitespace-pre-wrap break-words">
-          {message.content}
-        </p>
+        <div className="text-white whitespace-pre-wrap break-words">
+          {parseContent(message.content)}
+        </div>
       );
     }
 
     return (
-      <div className="text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
-        {message.content}
+      <div className="text-gray-300 leading-relaxed break-words">
+        {parseContent(message.content)}
       </div>
     );
   };
@@ -353,28 +684,37 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
         disabled={isGeneratingQuestions || questionSession?.isActive}
         className="group flex items-center gap-2 px-4 py-2 bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 hover:text-white rounded-lg border border-gray-600/30 hover:border-gray-500/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
       >
-        <Target size={16} className="text-green-400 group-hover:text-green-300" />
+        <Target
+          size={16}
+          className="text-green-400 group-hover:text-green-300"
+        />
         Easy Quiz
       </button>
-      
+
       <button
         onClick={() => generateQuestions("medium")}
         disabled={isGeneratingQuestions || questionSession?.isActive}
         className="group flex items-center gap-2 px-4 py-2 bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 hover:text-white rounded-lg border border-gray-600/30 hover:border-gray-500/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
       >
-        <HelpCircle size={16} className="text-blue-400 group-hover:text-blue-300" />
+        <HelpCircle
+          size={16}
+          className="text-blue-400 group-hover:text-blue-300"
+        />
         Medium Quiz
       </button>
-      
+
       <button
         onClick={() => generateQuestions("hard")}
         disabled={isGeneratingQuestions || questionSession?.isActive}
         className="group flex items-center gap-2 px-4 py-2 bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 hover:text-white rounded-lg border border-gray-600/30 hover:border-gray-500/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
       >
-        <Trophy size={16} className="text-orange-400 group-hover:text-orange-300" />
+        <Trophy
+          size={16}
+          className="text-orange-400 group-hover:text-orange-300"
+        />
         Hard Quiz
       </button>
-      
+
       {isGeneratingQuestions && (
         <div className="flex items-center gap-2 text-gray-400 text-sm">
           <Loader2 size={16} className="animate-spin" />
@@ -437,10 +777,13 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
                       }`}
                     >
                       {renderMessageContent(message)}
-                      
+
                       {/* Question Buttons - only show for assistant messages when specified */}
-                      {message.role === "assistant" && message.showQuestionButtons && !questionSession?.isActive && renderQuestionButtons()}
-                      
+                      {message.role === "assistant" &&
+                        message.showQuestionButtons &&
+                        !questionSession?.isActive &&
+                        renderQuestionButtons()}
+
                       <div className="mt-2 flex items-center justify-end">
                         <span
                           className={`text-xs ${
@@ -475,7 +818,9 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
                           ></div>
                         </div>
                         <span className="text-sm text-gray-400">
-                          {isEvaluating ? "Evaluating your answer..." : "AI is thinking..."}
+                          {isEvaluating
+                            ? "Evaluating your answer..."
+                            : "AI is thinking..."}
                         </span>
                       </div>
                     </div>
@@ -497,7 +842,8 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
                 <div className="flex items-center gap-2">
                   <CheckCircle size={16} className="text-blue-400" />
                   <span className="text-blue-200">
-                    Question {questionSession.currentQuestionIndex + 1} of {questionSession.questions.length}
+                    Question {questionSession.currentQuestionIndex + 1} of{" "}
+                    {questionSession.questions.length}
                   </span>
                   <span className="px-2 py-1 bg-blue-700/30 text-blue-200 rounded text-xs capitalize">
                     {questionSession.difficulty}
@@ -512,7 +858,7 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
               </div>
             </div>
           )}
-          
+
           <div className="relative flex items-end bg-gray-800 rounded-2xl border border-gray-700/50 shadow-lg">
             <textarea
               value={questionSession?.isActive ? currentAnswer : inputValue}
@@ -546,11 +892,28 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
             />
 
             <div className="flex items-center pr-2">
-              {(questionSession?.isActive ? currentAnswer.trim() : inputValue.trim()) ? (
+              {(
+                questionSession?.isActive
+                  ? currentAnswer.trim()
+                  : inputValue.trim()
+              ) ? (
                 <button
-                  title={questionSession?.isActive ? "Submit Answer" : "Send Message"}
-                  onClick={questionSession?.isActive ? handleAnswerSubmit : handleSubmit}
-                  disabled={(questionSession?.isActive ? !currentAnswer.trim() : !inputValue.trim()) || isProcessing || isEvaluating || isListening}
+                  title={
+                    questionSession?.isActive ? "Submit Answer" : "Send Message"
+                  }
+                  onClick={
+                    questionSession?.isActive
+                      ? handleAnswerSubmit
+                      : handleSubmit
+                  }
+                  disabled={
+                    (questionSession?.isActive
+                      ? !currentAnswer.trim()
+                      : !inputValue.trim()) ||
+                    isProcessing ||
+                    isEvaluating ||
+                    isListening
+                  }
                   className={`p-2.5 ${getSubmitButtonColor()} text-white rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
                   type="button"
                 >
