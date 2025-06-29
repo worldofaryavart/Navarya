@@ -48,12 +48,12 @@ export default function Home() {
         <div className="container mx-auto px-6 pt-32 pb-20">
           <div className="max-w-5xl mx-auto text-center relative z-10">
             <div className="inline-block mb-4 px-4 py-1 rounded-full bg-white/5 border border-white/10 text-sm">
-              Persistent Memory AI
+              Research Summarization AI
             </div>
             <h1 className="text-6xl md:text-7xl font-bold mb-8 leading-tight">
               AI{" "}
               <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                That Remembers Everything
+                That Summarize PDF Research Papers
               </span>
             </h1>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -77,7 +77,7 @@ export default function Home() {
                   />
                 </svg>
               </button>
-              <button className="px-8 py-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-sm transition-all flex items-center justify-center gap-2">
+              {/* <button className="px-8 py-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-sm transition-all flex items-center justify-center gap-2">
                 <span>Watch Demo</span>
                 <svg
                   className="w-5 h-5"
@@ -98,7 +98,7 @@ export default function Home() {
                     d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

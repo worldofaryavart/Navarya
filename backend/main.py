@@ -42,6 +42,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class QuestionGenerationRequest(BaseModel):
+    document_id: str
+    difficulty_level: Optional[str] = "medium"  # easy, medium, hard
+
+class AnswerEvaluationRequest(BaseModel):
+    question_id: str
+    user_answer: str
+    document_id: str
+
+class Question(BaseModel):
+    id: str
+    question: str
+    expected_answer: str
+    difficulty: str
+    source_chunk: Dict
+    reference_section: str
+
+class Role(str, Enum):
+    USER = 'user'
+    AI = 'assistant'
+
+class MessageRequest(BaseModel):
+    role: Role
+    document_id: str
+    content: str
+    conversation_history: Optional[List[Dict]] = []
+
 # Create uploads directory if it doesn't exist
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -84,6 +111,37 @@ def extract_text_from_pdf(file_content: bytes) -> str:
         logger.error(f"Error extracting text from PDF: {e}")
         raise HTTPException(status_code=400, detail=f"Error extracting text from PDF: {str(e)}")
 
+def chunk_document_with_metadata(extracted_text: str, filename: str) -> List[Dict]:
+    """Enhanced chunking with paragraph/section tracking"""
+    chunks = []
+    paragraphs = extracted_text.split('\n\n')
+    
+    for i, paragraph in enumerate(paragraphs):
+        if paragraph.strip():
+            chunks.append({
+                'text': paragraph.strip(),
+                'paragraph_index': i,
+                'section': f"Paragraph {i+1}",
+                'document': filename,
+                'char_start': extracted_text.find(paragraph),
+                'char_end': extracted_text.find(paragraph) + len(paragraph)
+            })
+    
+    return chunks
+
+def save_chunked_document(user_id: str, document_data: Dict, chunks: List[Dict]):
+    """Save document with chunks for better retrieval"""
+    try:
+        # Update your existing document save logic
+        document_data['chunks'] = chunks
+        document_data['total_chunks'] = len(chunks)
+        
+        # Your existing save logic here
+        save_user_documents(user_id, [document_data])
+        
+    except Exception as e:
+        logger.error(f"Error saving chunked document: {e}")
+
 def save_user_documents(user_id: str, documents: List[Dict]) -> None:
     """Save user documents to Firestore"""
     try:
@@ -121,13 +179,6 @@ def get_user_documents(user_id: str) -> List[Dict]:
         logger.error(f"Error getting documents from Firestore for user {user_id}: {e}")
         return []
 
-class Role(str, Enum):
-    USER = 'user'
-    AI = 'assistant'
-
-class MessageRequest(BaseModel):
-    role: Role
-    content: str
 
 @app.post("/api/upload")
 async def upload_files(files: List[UploadFile] = File(...), user = Depends(verify_token)):
@@ -158,6 +209,7 @@ async def upload_files(files: List[UploadFile] = File(...), user = Depends(verif
             elif file.content_type.startswith("text/"):
                 extracted_text = file_content.decode('utf-8')
             
+            # Create document_data dictionary FIRST
             document_data = {
                 "id": unique_filename,
                 "original_name": file.filename,
@@ -167,6 +219,12 @@ async def upload_files(files: List[UploadFile] = File(...), user = Depends(verif
                 "extracted_text": extracted_text,
                 "uploaded_at": datetime.now().isoformat()
             }
+            
+            # THEN add chunking if extracted_text exists
+            if extracted_text:
+                chunks = chunk_document_with_metadata(extracted_text, file.filename)
+                document_data['chunks'] = chunks
+                document_data['total_chunks'] = len(chunks)
             
             documents_to_save.append(document_data)
             
@@ -194,6 +252,124 @@ async def upload_files(files: List[UploadFile] = File(...), user = Depends(verif
     except Exception as e:
         logger.error(f"Error in upload_files endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error uploading files: {str(e)}")
+    
+@app.post("/api/process-command")
+async def process_command(message: MessageRequest, user = Depends(verify_token)):
+    """Process natural language commands using AI"""
+    try:
+        user_id = user['uid']
+        logger.info(f"Processing command for user: {user_id}")
+
+        # Get user documents for context
+        user_documents = get_user_documents(user_id)
+
+        target_document = next((doc for doc in user_documents if doc.get('id') == message.document_id), None)
+
+        if not target_document:
+            raise HTTPException(status_code=404, detail="Document not found for this user or ID.")
+        
+        # Process command
+        processor_factory = ProcessFactory(db)
+        result = await processor_factory.process_message(message.content, user_id, user_documents, conversation_history=message.conversation_history)
+
+        logger.info(f"Result from process_command: {result.get('message', '')[:100]}...")
+        if not result:
+            raise HTTPException(status_code=400, detail="No valid command found")
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error in process_command endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/generate-questions")
+async def generate_questions(request: QuestionGenerationRequest, user = Depends(verify_token)):
+    """Generate comprehension questions from a document"""
+    try:
+        user_id = user['uid']
+        
+        # Get user documents
+        user_documents = get_user_documents(user_id)
+        
+        # Find the specific document
+        target_document = None
+        for doc in user_documents:
+            if doc.get('id') == request.document_id:
+                target_document = doc
+                break
+        
+        if not target_document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Generate questions
+        processor_factory = ProcessFactory(db)
+        result = await processor_factory.generate_questions_from_document(
+            target_document, 
+            request.difficulty_level
+        )
+        
+        if result['success']:
+            # Save questions to user's session (you might want to store these in DB)
+            questions_doc_ref = db.collection('user_questions').document(user_id)
+            questions_doc_ref.set({
+                'questions': result['questions'],
+                'document_id': request.document_id,
+                'generated_at': datetime.now(),
+                'difficulty': request.difficulty_level
+            })
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in generate_questions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/evaluate-answer")
+async def evaluate_answer(request: AnswerEvaluationRequest, user = Depends(verify_token)):
+    """Evaluate user's answer to a question"""
+    try:
+        user_id = user['uid']
+        
+        # Get user's questions
+        questions_doc_ref = db.collection('user_questions').document(user_id)
+        questions_doc = questions_doc_ref.get()
+        
+        if not questions_doc.exists:
+            raise HTTPException(status_code=404, detail="No questions found for user")
+        
+        questions_data = questions_doc.to_dict()
+        questions = questions_data.get('questions', [])
+        
+        # Find the specific question
+        target_question = None
+        for question in questions:
+            if question.get('id') == request.question_id:
+                target_question = question
+                break
+        
+        if not target_question:
+            raise HTTPException(status_code=404, detail="Question not found")
+        
+        # Get document data
+        user_documents = get_user_documents(user_id)
+        target_document = None
+        for doc in user_documents:
+            if doc.get('id') == request.document_id:
+                target_document = doc
+                break
+        
+        # Evaluate answer
+        processor_factory = ProcessFactory(db)
+        result = await processor_factory.evaluate_answer(
+            target_question,
+            request.user_answer,
+            target_document
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in evaluate_answer: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Update the get_documents function:
 @app.get("/api/documents")
@@ -227,6 +403,7 @@ async def get_documents(user = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Error in get_documents endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
 @app.get("/api/summarize-document/{document_id}")
 async def summarize_document(document_id: str, user = Depends(verify_token)):
     """Generate AI summary and key points for a specific document."""
@@ -275,29 +452,6 @@ async def summarize_document(document_id: str, user = Depends(verify_token)):
         logger.error(f"Error in summarize_document endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
 
-@app.post("/api/process-command")
-async def process_command(message: MessageRequest, user = Depends(verify_token)):
-    """Process natural language commands using AI"""
-    try:
-        user_id = user['uid']
-        logger.info(f"Processing command for user: {user_id}")
-
-        # Get user documents for context
-        user_documents = get_user_documents(user_id)
-        
-        # Process command
-        processor_factory = ProcessFactory(db)
-        result = await processor_factory.process_message(message.content, user_id, user_documents)
-
-        logger.info(f"Result from process_command: {result.get('message', '')[:100]}...")
-        if not result:
-            raise HTTPException(status_code=400, detail="No valid command found")
-        
-        return result
-    except Exception as e:
-        logger.error(f"Error in process_command endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/api/documents")
 async def get_documents(user = Depends(verify_token)):
     """Get user's uploaded documents"""
@@ -331,8 +485,6 @@ async def get_documents(user = Depends(verify_token)):
         logger.error(f"Error in get_documents endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
-# Add this new endpoint to your FastAPI code
-
 @app.get("/api/documents/{document_id}")
 async def get_document_details(document_id: str, user = Depends(verify_token)):
     """Get details of a specific user document by its ID."""

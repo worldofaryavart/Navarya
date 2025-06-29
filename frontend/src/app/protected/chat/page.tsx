@@ -196,13 +196,6 @@ const NewChatPage = () => {
               Navarya
             </span>
           </h1>
-          {/* <button
-            onClick={() => router.push('/')} // Navigate back to the MainPage
-            className="text-gray-400 hover:text-white transition-colors"
-            title="Upload new document or view previous projects"
-          >
-            <Upload size={20} /> 
-          </button> */}
         </div>
       </div>
 

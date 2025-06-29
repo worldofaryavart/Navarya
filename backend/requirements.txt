@@ -14,3 +14,5 @@ numpy
 openai
 PyPDF2 
 python-multipart
+fuzzywuzzy 
+python-levenshtein
