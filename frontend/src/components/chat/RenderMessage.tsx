@@ -1,3 +1,5 @@
+import { MessageWithTimestamp } from "./AIChat2";
+
 const renderMessageContent = (message: MessageWithTimestamp) => {
   const parseContent = (content: string) => {
     const lines = content.split("\n");

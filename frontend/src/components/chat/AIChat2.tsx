@@ -46,7 +46,7 @@ interface AIChat2Props {
   pdfData: PDFData;
 }
 
-interface MessageWithTimestamp {
+export interface MessageWithTimestamp {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
