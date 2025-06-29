@@ -84,7 +84,7 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
     setIsGeneratingQuestions(true);
     try {
       const userToken = await getAuthToken();
-      const response = await fetch("/api/generate-questions", {
+      const response = await fetch(getApiUrl("/api/generate-questions"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -131,7 +131,7 @@ const AIChat: React.FC<AIChat2Props> = ({ pdfData }) => {
     setIsEvaluating(true);
     try {
       const userToken = await getAuthToken();
-      const response = await fetch("/api/evaluate-answer", {
+      const response = await fetch(getApiUrl("/api/evaluate-answer"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
