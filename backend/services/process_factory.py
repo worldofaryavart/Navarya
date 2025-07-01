@@ -382,6 +382,7 @@ class ProcessFactory:
 
     The question should be specific enough that someone who read and understood this text could answer it, but not so obvious that it's just asking for a direct quote."""
 
+                # this is the message to send to deepseek
                 messages = [
                     {"role": "system", "content": "You are an expert educator who creates thoughtful comprehension questions. Generate questions that test true understanding, not just memorization."},
                     {"role": "user", "content": prompt}
