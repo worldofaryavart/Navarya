@@ -14,7 +14,7 @@ interface PDFData {
 }
 
 const PDFViewer = ({ pdfData }: { pdfData: PDFData }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const handleDownload = () => {
     if (pdfData.pdfUrl) {
