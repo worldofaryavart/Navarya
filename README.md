@@ -47,32 +47,32 @@ cd backend
 ```
 
 ##  🧪 Backend Setup (FastAPI)
-###a. Create and activate a virtual environment
+a. Create and activate a virtual environment
 
 ```python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
-###b. Install dependencies
+b. Install dependencies
 ```
 pip install -r requirements.txt
 ```
 
-###c. Set environment variables
+c. Set environment variables
 Create a .env file in the backend/ folder with:
 
 DEEPSEEK_API_KEY=your_deepseek_api_key
 
-###d. Run the FastAPI server
+d. Run the FastAPI server
 ```
 uvicorn main:app --reload
 ```
-###3. 🎨 Frontend Setup (Next.js)
+3. 🎨 Frontend Setup (Next.js)
 ```
 cd frontend
 npm install
 ```
 a. Set Firebase environment
-###Create a .env.local in frontend/ with your Firebase keys:
+Create a .env.local in frontend/ with your Firebase keys:
 
 env
 
@@ -80,7 +80,7 @@ NEXT_PUBLIC_FIREBASE_API_KEY=...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
 
-###b. Start the frontend
+b. Start the frontend
 
 npm run dev
 
