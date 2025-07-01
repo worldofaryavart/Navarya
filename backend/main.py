@@ -27,9 +27,13 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Initialize Firebase Admin
-cred = credentials.Certificate("firebase-credentials.json")
+# cred = credentials.Certificate("firebase-credentials.json")
+# firebase_admin.initialize_app(cred)
+firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
+cred = credentials.Certificate(json.loads(firebase_creds))
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
 
 app = FastAPI()
 
